@@ -1,106 +1,84 @@
-# Endpoint Test Report
+# Frontend Auth Endpoints Test Report
 
-## Test Script Created: `test_api_endpoints.py`
+## Summary
 
-### Features:
-- ✅ No hanging commands (all have timeouts)
-- ✅ Clear pass/fail reporting
-- ✅ Tests all 5 endpoints
-- ✅ Unicode-safe output (fixed encoding issues)
+**Status:** ❌ **BLOCKED** - Backend server cannot start due to circular import error
 
-### What Gets Tested:
+## Issue Identified
 
-1. **Health Check** - `GET /health`
-   - Verifies server is running
-   - Expected: `{"status": "ok"}`
-
-2. **List Templates** - `GET /api/v1/templates`
-   - Lists all active templates
-   - Expected: Array of template objects
-
-3. **Get Template Detail** - `GET /api/v1/templates/{slug}`
-   - Gets template with latest version
-   - Expected: Template detail object
-
-4. **Non-Streaming Execution** - `POST /api/v1/templates/{slug}/execute`
-   - Executes template and returns full response
-   - Expected: Complete execution with output data
-   - Timeout: 30 seconds
-
-5. **Streaming Execution** - `POST /api/v1/templates/{slug}/execute-stream`
-   - Executes template with Server-Sent Events
-   - Expected: SSE stream with content chunks
-   - Timeout: 30 seconds
-
-## How to Run Tests
-
-### Option 1: Automated Test Script
-```powershell
-# Terminal 1: Start server
-.\venv\Scripts\activate
-python -m uvicorn app.main:app --reload
-
-# Terminal 2: Run tests
-.\venv\Scripts\activate
-python test_api_endpoints.py
-```
-
-### Option 2: Manual Testing via Browser
-1. Start server
-2. Open: http://localhost:8000/docs
-3. Test endpoints interactively
-
-### Option 3: Manual Testing via PowerShell
-See `QUICK_TEST.md` for curl commands
-
-## Expected Test Output
+The backend server is failing to start due to a circular import error:
 
 ```
-============================================================
-  1ne.ai Backend - API Endpoint Test Report
-============================================================
-
-Checking if server is running...
-[PASS] - Server Health Check
-       Status: ok
-
-[OK] Server is running. Starting endpoint tests...
-
-1. Testing List Templates endpoint...
-[PASS] - List Templates
-       Found X templates. First: lesson_planner
-
-2. Testing Get Template Detail endpoint...
-[PASS] - Get Template Detail
-       Template: Lesson Planner, Version: 1
-
-3. Testing Non-Streaming Execution endpoint...
-   (This may take 10-30 seconds if using real LLM)
-[PASS] - Non-Streaming Execution
-       Execution ID: abc123..., Model: gpt-4o-mini, Provider: openai, Output: ✓
-
-4. Testing Streaming Execution endpoint...
-   (This may take 10-30 seconds if using real LLM)
-[PASS] - Streaming Execution
-       Received 15 events, Execution ID: abc123..., Content-Type: SSE
-
-============================================================
-  Test Summary
-============================================================
-[PASS] - List Templates
-[PASS] - Get Template Detail
-[PASS] - Non-Streaming Execution
-[PASS] - Streaming Execution
-
-Total: 4/4 tests passed
-
-[SUCCESS] All tests passed!
+ImportError: cannot import name 'AuditService' from partially initialized module 
+'app.domains.auth.services' (most likely due to a circular import)
 ```
+
+**Location:** `app/domains/auth/services/signup_service.py` line 39
+- Trying to import `AuditService` from `app.domains.auth.services`
+- This creates a circular dependency
+
+## Test Status
+
+### Server Status
+- ❌ Backend server cannot start
+- ❌ Health endpoint `/health` - Cannot test (server not running)
+- ❌ All auth endpoints - Cannot test (server not running)
+
+### Endpoints That Should Be Tested (from frontend perspective)
+
+1. **POST /api/v1/auth/login** - User login
+2. **POST /api/v1/auth/signup** - User signup  
+3. **POST /api/v1/auth/register** - User registration (legacy)
+4. **POST /api/v1/auth/forgot-password** - Request password reset
+5. **POST /api/v1/auth/reset-password** - Reset password with token
+6. **POST /api/v1/auth/verify-email** - Verify email with token
+7. **POST /api/v1/auth/resend-verification** - Resend verification email
+8. **GET /api/v1/auth/me** - Get current user profile (requires auth)
+9. **POST /api/v1/auth/refresh** - Refresh access token
+10. **POST /api/v1/auth/logout** - Logout user
+
+## Required Fix
+
+The circular import must be resolved before testing can proceed:
+
+1. **Fix the circular import** in `app/domains/auth/services/`
+   - Review imports in `signup_service.py` and `__init__.py`
+   - Use lazy imports or refactor to break the cycle
+   - Ensure `AuditService` is properly exported
+
+2. **Restart the backend server**
+   ```powershell
+   cd 1ne_backend
+   .\venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+   ```
+
+3. **Run comprehensive endpoint tests**
+   ```powershell
+   cd 1ne_backend
+   .\venv\Scripts\python.exe test_endpoints_comprehensive.py
+   ```
+
+## Test Script Created
+
+Created `test_endpoints_comprehensive.py` to test all auth endpoints from frontend perspective once the server is running.
+
+The script will:
+- Check server health
+- Test all 10 auth endpoints
+- Verify expected status codes
+- Report pass/fail for each endpoint
+- Provide detailed summary
+
+## Next Steps
+
+1. **Priority 1:** Fix the circular import error
+2. **Priority 2:** Start the backend server successfully  
+3. **Priority 3:** Run the comprehensive endpoint tests
+4. **Priority 4:** Verify all endpoints work correctly from frontend
 
 ## Notes
 
-- All commands have timeout protection
-- Test script exits cleanly on errors
-- No infinite loops or hanging processes
-- Clear error messages if something fails
-
+- Frontend code appears to be ready (based on previous work)
+- Backend API structure is in place (`app/api/v1/__init__.py` includes auth routes)
+- Auth routes are registered via `app.domains.auth.routes`
+- The issue is in the service layer initialization, not the API routes themselves

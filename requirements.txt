@@ -34,3 +34,10 @@ google-generativeai>=0.3.0,<1.0.0
 # Caching (Optional - Redis support)
 redis>=5.0.0,<6.0.0
 
+# Authentication & Security
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+slowapi>=0.1.9
+aiosmtplib>=3.0.0
+email-validator>=2.1.0
+

@@ -173,17 +173,34 @@ deactivate
    alembic upgrade head
    ```
 
-2. **Seed initial templates (optional):**
+2. **Seed auth data (roles, permissions, platform tenant):**
    ```bash
-   python -m app.seed.cli
+   python -m app.seed.cli --auth
    ```
 
-3. **Start the development server:**
+3. **Create super admin account:**
+   ```bash
+   # Interactive mode (recommended for first-time setup)
+   python -m app.seed.cli --create-admin --interactive
+   
+   # Or using environment variables (for CI/CD)
+   # Add SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD to .env
+   python -m app.seed.cli --create-admin
+   ```
+   
+   **📖 For complete super admin guide, see:** [SUPER_ADMIN_GUIDE.md](SUPER_ADMIN_GUIDE.md)
+
+4. **Seed initial templates (optional):**
+   ```bash
+   python -m app.seed.cli --templates
+   ```
+
+5. **Start the development server:**
    ```bash
    uvicorn app.main:app --reload
    ```
 
-4. **Verify the application is running:**
+6. **Verify the application is running:**
    - API: http://localhost:8000
    - API Documentation: http://localhost:8000/docs
    - Health Check: http://localhost:8000/health

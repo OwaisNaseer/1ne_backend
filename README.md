@@ -72,10 +72,16 @@ Backend API for 1ne.ai - an AI-powered teacher assistant.
    alembic upgrade head
    ```
 
-7. **Seed initial data (optional):**
+7. **Seed initial data and create super admin:**
    ```bash
-   python -m app.seed.cli
+   # Seed auth data (roles, permissions, platform tenant)
+   python -m app.seed.cli --auth
+   
+   # Create super admin (interactive - recommended for first-time setup)
+   python -m app.seed.cli --create-admin --interactive
    ```
+   
+   **📖 For detailed super admin guide, see:** [SUPER_ADMIN_GUIDE.md](SUPER_ADMIN_GUIDE.md)
 
 8. **Start the development server:**
    ```bash

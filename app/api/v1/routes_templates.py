@@ -11,6 +11,8 @@ from sqlalchemy import func, or_
 
 # API dependencies placeholder (for future auth/tenant deps)
 from app.db.session import get_db
+from app.domains.auth.dependencies import get_optional_current_user
+from app.domains.auth.models import User
 from app.models.template import Template, TemplateCategory
 from app.models.template_version import TemplateVersion, TemplateVersionStatus
 from app.models.template_execution import TemplateExecution
@@ -65,6 +67,7 @@ def list_templates(
     q: Optional[str] = Query(default=None, description="Search query for template name/description"),
     is_hot: Optional[bool] = Query(default=None, description="Filter by hot templates (top 3 by execution count)"),
     is_favorite: Optional[bool] = Query(default=None, description="Filter by favorite templates"),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> List[TemplateListItem]:
     """
     List published templates with search, hot, and favorite support.
@@ -132,16 +135,24 @@ def list_templates(
             hot_template_ids = set()
 
         # Get favorite template IDs for current session/user
+        # Prefer user_id if authenticated, otherwise use session_id
         session_id = _get_session_id(request)
         favorite_template_ids = set()
-        if session_id:
-            try:
+        try:
+            if current_user:
+                # Use user_id if authenticated
+                favorites = db.query(TemplateFavorite.template_id).filter(
+                    TemplateFavorite.user_id == current_user.id
+                ).all()
+                favorite_template_ids = {f[0] for f in favorites}
+            elif session_id:
+                # Fall back to session_id for non-authenticated users
                 favorites = db.query(TemplateFavorite.template_id).filter(
                     TemplateFavorite.session_id == session_id
                 ).all()
                 favorite_template_ids = {f[0] for f in favorites}
-            except Exception as e:
-                logger.warning(f"Error getting favorites: {e}")
+        except Exception as e:
+            logger.warning(f"Error getting favorites: {e}")
 
         # Get execution counts for each template (optimized with single query)
         try:
@@ -281,12 +292,15 @@ async def execute_template(
     slug: str,
     payload: TemplateExecuteRequest,
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> TemplateExecuteResponse:
     """
     Execute a template by slug using the latest published version.
 
     This uses a stubbed execution service that returns fake but structurally
     correct UniversalTemplateOutput (no real LLM yet).
+    
+    Authentication is optional - if provided, user_id and tenant_id will be tracked.
     """
     template: Optional[Template] = (
         db.query(Template)
@@ -309,14 +323,18 @@ async def execute_template(
     # Lightweight validation based on input_schema
     _validate_against_input_schema(latest_version.input_schema or {}, payload.data)
 
+    # Get user_id and tenant_id from auth if available
+    user_id = current_user.id if current_user else None
+    tenant_id = current_user.tenant_id if current_user else None
+
     # Execute via execution service (async)
     execution, universal_output = await ExecutionService.execute(
         db,
         template=template,
         template_version=latest_version,
         input_data=payload.data,
-        user_id=None,
-        tenant_id=None,
+        user_id=user_id,
+        tenant_id=tenant_id,
         is_demo=False,
     )
 
@@ -340,6 +358,7 @@ async def execute_template_stream(
     slug: str,
     payload: TemplateExecuteRequest,
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> StreamingResponse:
     """
     Execute a template with streaming output (Server-Sent Events).
@@ -374,13 +393,17 @@ async def execute_template_stream(
         Each chunk from the LLM is sent as soon as it arrives.
         """
         try:
+            # Get user_id and tenant_id from auth if available
+            user_id = current_user.id if current_user else None
+            tenant_id = current_user.tenant_id if current_user else None
+            
             async for event in ExecutionService.execute_stream(
                 db,
                 template=template,
                 template_version=latest_version,
                 input_data=payload.data,
-                user_id=None,  # TODO: Get from auth dependency
-                tenant_id=None,  # TODO: Get from tenant dependency
+                user_id=user_id,
+                tenant_id=tenant_id,
                 is_demo=False,
             ):
                 # CRITICAL: Format and send immediately without buffering
@@ -412,6 +435,7 @@ def add_favorite(
     template_id: str,
     request: Request,
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> Dict[str, Any]:
     """Add a template to favorites."""
     try:
@@ -428,17 +452,25 @@ def add_favorite(
             )
 
         session_id = _get_session_id(request)
-        if not session_id:
+        
+        # Require either auth or session_id
+        if not current_user and not session_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Session ID required. Send X-Session-Id header or session_id cookie."
+                detail="Authentication or Session ID required. Send Authorization header or X-Session-Id header."
             )
 
-        # Check if already favorited
-        existing = db.query(TemplateFavorite).filter(
-            TemplateFavorite.template_id == template_id,
-            TemplateFavorite.session_id == session_id
-        ).first()
+        # Check if already favorited - prefer user_id if authenticated
+        if current_user:
+            existing = db.query(TemplateFavorite).filter(
+                TemplateFavorite.template_id == template_id,
+                TemplateFavorite.user_id == current_user.id
+            ).first()
+        else:
+            existing = db.query(TemplateFavorite).filter(
+                TemplateFavorite.template_id == template_id,
+                TemplateFavorite.session_id == session_id
+            ).first()
 
         if existing:
             return {"message": "Template already in favorites", "is_favorite": True}
@@ -447,7 +479,7 @@ def add_favorite(
         favorite = TemplateFavorite(
             template_id=template_id,
             session_id=session_id,
-            user_id=None,  # Will be set when auth is added
+            user_id=current_user.id if current_user else None,
         )
         db.add(favorite)
         db.commit()
@@ -470,20 +502,30 @@ def remove_favorite(
     template_id: str,
     request: Request,
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> Dict[str, Any]:
     """Remove a template from favorites."""
     try:
         session_id = _get_session_id(request)
-        if not session_id:
+        
+        # Require either auth or session_id
+        if not current_user and not session_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Session ID required. Send X-Session-Id header or session_id cookie."
+                detail="Authentication or Session ID required. Send Authorization header or X-Session-Id header."
             )
 
-        favorite = db.query(TemplateFavorite).filter(
-            TemplateFavorite.template_id == template_id,
-            TemplateFavorite.session_id == session_id
-        ).first()
+        # Find favorite - prefer user_id if authenticated
+        if current_user:
+            favorite = db.query(TemplateFavorite).filter(
+                TemplateFavorite.template_id == template_id,
+                TemplateFavorite.user_id == current_user.id
+            ).first()
+        else:
+            favorite = db.query(TemplateFavorite).filter(
+                TemplateFavorite.template_id == template_id,
+                TemplateFavorite.session_id == session_id
+            ).first()
 
         if not favorite:
             return {"message": "Template not in favorites", "is_favorite": False}
@@ -508,21 +550,30 @@ def toggle_favorite(
     template_id: str,
     request: Request,
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> Dict[str, Any]:
     """Toggle favorite status of a template."""
     try:
         session_id = _get_session_id(request)
-        if not session_id:
+        
+        # Require either auth or session_id
+        if not current_user and not session_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Session ID required. Send X-Session-Id header or session_id cookie."
+                detail="Authentication or Session ID required. Send Authorization header or X-Session-Id header."
             )
 
-        # Check if already favorited
-        favorite = db.query(TemplateFavorite).filter(
-            TemplateFavorite.template_id == template_id,
-            TemplateFavorite.session_id == session_id
-        ).first()
+        # Check if already favorited - prefer user_id if authenticated
+        if current_user:
+            favorite = db.query(TemplateFavorite).filter(
+                TemplateFavorite.template_id == template_id,
+                TemplateFavorite.user_id == current_user.id
+            ).first()
+        else:
+            favorite = db.query(TemplateFavorite).filter(
+                TemplateFavorite.template_id == template_id,
+                TemplateFavorite.session_id == session_id
+            ).first()
 
         if favorite:
             # Remove favorite
@@ -546,7 +597,7 @@ def toggle_favorite(
             favorite = TemplateFavorite(
                 template_id=template_id,
                 session_id=session_id,
-                user_id=None,
+                user_id=current_user.id if current_user else None,
             )
             db.add(favorite)
             db.commit()

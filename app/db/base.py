@@ -14,3 +14,22 @@ from app.models.template import Template  # noqa: F401, E402
 from app.models.template_version import TemplateVersion  # noqa: F401, E402
 from app.models.template_execution import TemplateExecution  # noqa: F401, E402
 
+# Import auth models
+from app.domains.auth.models import (  # noqa: F401, E402
+    Tenant,
+    User,
+    Role,
+    Permission,
+    RolePermission,
+    UserRole,
+    RefreshToken,
+    PasswordResetToken,
+    EmailVerificationToken,
+    ParentStudentLink,
+    Institution,
+    PersonalWorkspace,
+    UserMembership,
+    Invite,
+    AuditLog,
+)
+

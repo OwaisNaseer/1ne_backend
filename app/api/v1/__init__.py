@@ -4,8 +4,12 @@ API v1 routes package.
 from fastapi import APIRouter
 
 from app.api.v1 import routes_templates, routes_demo
+from app.domains.auth import routes as auth_routes
 
 router = APIRouter()
+
+# Authentication routes
+router.include_router(auth_routes.router)
 
 # Core template routes
 router.include_router(routes_templates.router)
