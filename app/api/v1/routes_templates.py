@@ -11,7 +11,7 @@ from sqlalchemy import func, or_
 
 # API dependencies placeholder (for future auth/tenant deps)
 from app.db.session import get_db
-from app.domains.auth.dependencies import get_optional_current_user
+from app.domains.auth.dependencies import get_optional_current_user, get_current_user
 from app.domains.auth.models import User
 from app.models.template import Template, TemplateCategory
 from app.models.template_version import TemplateVersion, TemplateVersionStatus
@@ -550,33 +550,21 @@ def toggle_favorite(
     template_id: str,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),  # Require authentication
 ) -> Dict[str, Any]:
-    """Toggle favorite status of a template."""
+    """Toggle favorite status of a template. Requires authentication."""
+    from sqlalchemy.exc import IntegrityError
+    
     try:
-        session_id = _get_session_id(request)
-        
-        # Require either auth or session_id
-        if not current_user and not session_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Authentication or Session ID required. Send Authorization header or X-Session-Id header."
-            )
-
-        # Check if already favorited - prefer user_id if authenticated
-        if current_user:
-            favorite = db.query(TemplateFavorite).filter(
-                TemplateFavorite.template_id == template_id,
-                TemplateFavorite.user_id == current_user.id
-            ).first()
-        else:
-            favorite = db.query(TemplateFavorite).filter(
-                TemplateFavorite.template_id == template_id,
-                TemplateFavorite.session_id == session_id
-            ).first()
+        # Authentication is required - get_current_user will raise 401 if not authenticated
+        # Check if already favorited by user_id
+        favorite = db.query(TemplateFavorite).filter(
+            TemplateFavorite.template_id == template_id,
+            TemplateFavorite.user_id == current_user.id
+        ).first()
 
         if favorite:
-            # Remove favorite
+            # Remove favorite (user-based or session-based)
             db.delete(favorite)
             db.commit()
             return {"message": "Template removed from favorites", "is_favorite": False}
@@ -594,23 +582,55 @@ def toggle_favorite(
                     detail="Template not found"
                 )
 
-            favorite = TemplateFavorite(
+            # Create new favorite - use only user_id (no session_id needed since auth is required)
+            new_favorite = TemplateFavorite(
                 template_id=template_id,
-                session_id=session_id,
-                user_id=current_user.id if current_user else None,
+                user_id=current_user.id,
+                session_id=None,  # Not needed when authenticated
             )
-            db.add(favorite)
-            db.commit()
-            db.refresh(favorite)
-            return {"message": "Template added to favorites", "is_favorite": True}
+            
+            try:
+                db.add(new_favorite)
+                db.commit()
+                db.refresh(new_favorite)
+                return {"message": "Template added to favorites", "is_favorite": True}
+            except IntegrityError as e:
+                # Handle unique constraint violation gracefully (race condition)
+                db.rollback()
+                
+                # Check if it's a unique constraint violation
+                error_str = str(e.orig) if hasattr(e, 'orig') else str(e)
+                if 'uq_template_favorite_user' in error_str:
+                    # Favorite already exists due to race condition - verify and return
+                    logger.warning(f"Unique constraint violation for favorite {template_id}, rechecking")
+                    
+                    # Re-check for existing favorite (might have been created between our check and insert)
+                    existing = db.query(TemplateFavorite).filter(
+                        TemplateFavorite.template_id == template_id,
+                        TemplateFavorite.user_id == current_user.id
+                    ).first()
+                    if existing:
+                        return {"message": "Template already in favorites", "is_favorite": True}
+                
+                # Re-raise if not a unique constraint violation we can handle
+                logger.error(f"Unhandled integrity error: {e}")
+                raise
+                
     except HTTPException:
         raise
+    except IntegrityError as e:
+        logger.error(f"Integrity error toggling favorite: {e}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Favorite already exists or constraint violation occurred"
+        )
     except Exception as e:
         logger.error(f"Error toggling favorite: {e}", exc_info=True)
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error toggling favorite: {str(e)[:200]}"
-    )
+        )
 
 
