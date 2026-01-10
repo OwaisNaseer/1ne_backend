@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     # Refresh Token Rotation
     REFRESH_TOKEN_ROTATION_ENABLED: bool = True
 
+    # File Upload Configuration
+    UPLOAD_DIR: str = "uploads"
+    PROFILE_PICTURES_DIR: str = "uploads/profile_pictures"
+    MAX_FILE_SIZE_MB: int = 5
+    ALLOWED_IMAGE_EXTENSIONS: list[str] = [".jpg", ".jpeg", ".png", ".webp"]
+
     # Super Admin Setup (for first-time initialization)
     SUPER_ADMIN_EMAIL: Optional[str] = None
     SUPER_ADMIN_PASSWORD: Optional[str] = None

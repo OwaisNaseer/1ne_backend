@@ -5,6 +5,8 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
 from pydantic import ValidationError
 
@@ -276,3 +278,8 @@ async def health_check():
 # Register API v1 routers (they already include /api/v1 prefixes)
 app.include_router(v1_router)
 
+# Mount static files for profile pictures
+from app.core.config import settings
+profile_pictures_dir = Path(settings.PROFILE_PICTURES_DIR)
+profile_pictures_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static/profile_pictures", StaticFiles(directory=str(profile_pictures_dir)), name="profile_pictures")

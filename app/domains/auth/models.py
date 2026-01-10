@@ -148,6 +148,7 @@ class User(Base):
     last_name = Column(String(100), nullable=False)
     full_name = Column(String(200), nullable=True)  # Computed field, can be updated
     phone = Column(String(20), nullable=True)
+    profile_picture_url = Column(String(500), nullable=True)
     
     # Status
     status = Column(SQLEnum(UserStatus, values_callable=lambda x: [e.value for e in x]), default=UserStatus.PENDING_VERIFICATION, nullable=False, index=True)

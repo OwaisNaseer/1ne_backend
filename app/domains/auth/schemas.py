@@ -126,6 +126,7 @@ class UserUpdate(BaseModel):
     """User update schema."""
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    email: Optional[str] = None
     phone: Optional[str] = None
     username: Optional[str] = None
 
@@ -139,6 +140,7 @@ class UserResponse(UserBase):
     tenant_id: UUID
     status: UserStatus
     email_verified: bool
+    profile_picture_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     roles: Optional[List["UserRoleInfo"]] = None
@@ -156,6 +158,7 @@ class UserRoleInfo(BaseModel):
 class UserProfile(UserResponse):
     """Extended user profile schema."""
     last_login_at: Optional[datetime] = None
+    # profile_picture_url is already included via UserResponse inheritance
 
 
 # Tenant schemas

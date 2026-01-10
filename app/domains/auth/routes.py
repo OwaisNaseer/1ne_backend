@@ -5,12 +5,13 @@ import time
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.core.logging import get_logger
 from app.core.rate_limit import rate_limit_login
+from app.core.exceptions import UserAlreadyExistsError, UserNotFoundError
 from app.domains.auth.dependencies import (
     get_current_user,
     require_permission,
@@ -876,40 +877,270 @@ async def get_current_user_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get current user profile with active membership context."""
-    # Get memberships
-    membership_service = MembershipService(db)
-    memberships = membership_service.get_user_memberships(current_user.id, active_only=True)
-    
-    # Get active membership from refresh token (if available in request context)
-    # For now, we'll use the first membership as active
-    active_membership_id = None
-    if memberships:
-        active_membership_id = memberships[0].id
-    
-    # Build user profile with membership context
-    profile = UserProfile.model_validate(current_user)
-    
-    # Add membership info to profile (extend the response)
-    # Note: UserProfile doesn't have memberships field, so we'll add it via dict
-    profile_dict = profile.model_dump()
-    profile_dict['active_membership_id'] = str(active_membership_id) if active_membership_id else None
-    profile_dict['memberships_count'] = len(memberships)
-    
-    return profile_dict
+    """Get current user profile with all fields including profile_picture_url."""
+    try:
+        logger.info(f"Retrieving profile for user: {current_user.email}, id: {current_user.id}, role: {current_user.roles}")
+        
+        # Refresh user to ensure we have latest data from database
+        db.refresh(current_user)
+        
+        # Log user data before validation
+        logger.info(f"User data - email: {current_user.email}, first_name: {current_user.first_name}, last_name: {current_user.last_name}")
+        logger.info(f"User data - phone: {current_user.phone}, username: {current_user.username}, profile_picture_url: {current_user.profile_picture_url}")
+        logger.info(f"User data - tenant_id: {current_user.tenant_id}, status: {current_user.status}, email_verified: {current_user.email_verified}")
+        
+        # Load roles for the user - use same approach as login route
+        from app.domains.auth.models import UserRole, Role
+        from app.domains.auth.schemas import UserRoleInfo
+        from sqlalchemy.orm import joinedload
+        
+        # Query UserRole with role relationship eagerly loaded
+        user_roles = db.query(UserRole).options(joinedload(UserRole.role)).filter(
+            UserRole.user_id == current_user.id
+        ).all()
+        
+        roles_data = []
+        if user_roles:
+            # Use UserRoleInfo directly like in login route - this ensures proper validation
+            for ur in user_roles:
+                if ur.role:  # Ensure role is loaded
+                    try:
+                        role_info = UserRoleInfo(
+                            id=ur.role.id,
+                            name=ur.role.name,
+                            scope=ur.role.scope,
+                            tenant_id=ur.tenant_id,
+                            granted_at=ur.granted_at,
+                        )
+                        roles_data.append(role_info)
+                        logger.info(f"Added role: {ur.role.name}, tenant_id: {ur.tenant_id}, granted_at: {ur.granted_at}")
+                    except Exception as role_error:
+                        logger.error(f"Error creating UserRoleInfo for role: {role_error}", exc_info=True)
+        
+        logger.info(f"User roles data count: {len(roles_data)}")
+        
+        # Build profile data manually to avoid validation issues
+        profile_data = {
+            "id": str(current_user.id),
+            "email": current_user.email,
+            "first_name": current_user.first_name,
+            "last_name": current_user.last_name,
+            "full_name": current_user.full_name,
+            "phone": current_user.phone,
+            "username": current_user.username,
+            "tenant_id": str(current_user.tenant_id),
+            "status": current_user.status,
+            "email_verified": current_user.email_verified,
+            "profile_picture_url": current_user.profile_picture_url,
+            "created_at": current_user.created_at,
+            "updated_at": current_user.updated_at,
+            "roles": roles_data if roles_data else [],
+        }
+        
+        logger.info(f"Profile data built: {profile_data}")
+        
+        # Validate with UserProfile schema
+        profile = UserProfile.model_validate(profile_data)
+        
+        logger.info(f"Profile validation successful for user: {current_user.email}")
+        return profile
+    except Exception as e:
+        logger.error(f"Error retrieving profile for user {current_user.id}: {e}", exc_info=True)
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve profile: {str(e)}"
+        )
 
 
 @router.put("/auth/me", response_model=UserResponse)
 async def update_current_user_profile(
-    request: UserUpdate,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Update current user profile."""
-    user_service = UserService(db)
-    updated_user = user_service.update_user(current_user.id, request, current_user.id)
+    """
+    Update current user profile - accepts multipart/form-data for file uploads.
     
-    return UserResponse.model_validate(updated_user)
+    Supports updating:
+    - first_name, last_name, email, phone, username (text fields)
+    - profile_picture (file upload)
+    - remove_profile_picture (boolean flag to remove existing picture)
+    """
+    try:
+        # Parse multipart/form-data
+        form_data = await request.form()
+        
+        # Extract text fields
+        first_name = form_data.get("first_name")
+        last_name = form_data.get("last_name")
+        email = form_data.get("email")
+        phone = form_data.get("phone")
+        username = form_data.get("username")
+        
+        # Extract file - log all form data keys first
+        logger.info(f"Form data keys: {list(form_data.keys())}")
+        profile_picture_file: Optional[UploadFile] = form_data.get("profile_picture")
+        logger.info(f"Profile picture file received: {profile_picture_file is not None}, type: {type(profile_picture_file)}")
+        
+        # Check if it's a valid file - be lenient with type checking
+        if profile_picture_file and profile_picture_file is not None:
+            # Check if it has the attributes of an UploadFile (filename, read, etc.)
+            has_filename = hasattr(profile_picture_file, 'filename')
+            has_read = hasattr(profile_picture_file, 'read')
+            
+            logger.info(f"File has filename attr: {has_filename}, has read attr: {has_read}")
+            
+            if has_filename and has_read:
+                filename = getattr(profile_picture_file, 'filename', None)
+                content_type = getattr(profile_picture_file, 'content_type', None)
+                logger.info(f"Profile picture filename: {filename}, content_type: {content_type}")
+                
+                if not filename or filename == "":
+                    logger.warning("Profile picture file has empty filename, treating as None")
+                    profile_picture_file = None
+                else:
+                    logger.info(f"Profile picture file is VALID and will be uploaded: {filename}")
+            else:
+                logger.warning(f"Profile picture doesn't have required attributes (filename: {has_filename}, read: {has_read})")
+                profile_picture_file = None
+        else:
+            if "profile_picture" not in form_data:
+                logger.info("No profile_picture key in form data")
+            else:
+                logger.warning(f"profile_picture key exists but value is falsy: {profile_picture_file}")
+            profile_picture_file = None
+        
+        # Extract remove flag
+        remove_profile_picture_str = form_data.get("remove_profile_picture", "").lower()
+        remove_profile_picture = remove_profile_picture_str in ("true", "1", "yes")
+        
+        # Prepare update data
+        update_kwargs = {}
+        if first_name is not None:
+            update_kwargs["first_name"] = first_name
+        if last_name is not None:
+            update_kwargs["last_name"] = last_name
+        if email is not None:
+            update_kwargs["email"] = email
+        # Handle phone - if explicitly sent (even if empty), include it
+        if "phone" in form_data:
+            phone_value = phone.strip() if phone else ""
+            update_kwargs["phone"] = phone_value
+        # Handle username - if explicitly sent (even if empty), include it
+        # Use a special sentinel to distinguish "not sent" vs "sent as empty"
+        if "username" in form_data:
+            username_value = username.strip() if username else ""
+            update_kwargs["username"] = username_value
+        
+        # Update user profile
+        user_service = UserService(db)
+        try:
+            logger.info(f"Updating user {current_user.id} with profile_picture_file: {profile_picture_file is not None}, remove_profile_picture: {remove_profile_picture}")
+            updated_user = await user_service.update_user(
+                user_id=current_user.id,
+                updated_by=current_user.id,
+                profile_picture_file=profile_picture_file,
+                remove_profile_picture=remove_profile_picture,
+                **update_kwargs
+            )
+            logger.info(f"User updated, profile_picture_url: {updated_user.profile_picture_url}")
+        except ValueError as e:
+            # Validation errors
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+        except UserAlreadyExistsError as e:
+            # Uniqueness constraint violations
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+        except UserNotFoundError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        except Exception as e:
+            logger.error(f"Error updating user profile: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update profile"
+            )
+        
+        # Refresh user to get latest data including profile_picture_url (service already refreshes, but ensure it's current)
+        db.refresh(updated_user)
+        
+        # Log the profile_picture_url value before building response
+        logger.info(f"User {updated_user.id} profile_picture_url after update: {updated_user.profile_picture_url}")
+        
+        # Load roles for the user - same logic as in /auth/me GET endpoint
+        from app.domains.auth.models import UserRole, Role
+        from app.domains.auth.schemas import UserRoleInfo, RoleName, RoleScope
+        from sqlalchemy.orm import joinedload
+        
+        user_roles = db.query(UserRole).options(joinedload(UserRole.role)).filter(
+            UserRole.user_id == updated_user.id
+        ).all()
+        
+        roles_data = []
+        for ur in user_roles:
+            if ur.role:
+                try:
+                    roles_data.append(
+                        UserRoleInfo(
+                            id=ur.role.id,
+                            name=RoleName(ur.role.name) if isinstance(ur.role.name, str) else ur.role.name,
+                            scope=RoleScope(ur.role.scope) if isinstance(ur.role.scope, str) else ur.role.scope,
+                            tenant_id=ur.tenant_id,
+                            granted_at=ur.granted_at,
+                        )
+                    )
+                except Exception as role_creation_error:
+                    logger.error(f"Error creating UserRoleInfo for role {ur.role.name}: {role_creation_error}", exc_info=True)
+        
+        # Build response manually to ensure all fields are correctly populated
+        response_dict = {
+            "id": str(updated_user.id),
+            "email": updated_user.email,
+            "first_name": updated_user.first_name,
+            "last_name": updated_user.last_name,
+            "phone": updated_user.phone,
+            "username": updated_user.username,
+            "tenant_id": str(updated_user.tenant_id),
+            "status": updated_user.status,
+            "email_verified": updated_user.email_verified,
+            "profile_picture_url": updated_user.profile_picture_url,
+            "created_at": updated_user.created_at,
+            "updated_at": updated_user.updated_at,
+            "roles": roles_data if roles_data else None,
+        }
+        
+        # Validate and create response
+        response_data = UserResponse(**response_dict).model_dump()
+        
+        logger.info(f"Profile update response for user {updated_user.id}: profile_picture_url = {response_data.get('profile_picture_url')}")
+        
+        # If email was changed, include new access token and flags
+        if hasattr(user_service, '_email_changed') and user_service._email_changed:
+            if hasattr(user_service, '_new_access_token') and user_service._new_access_token:
+                response_data['access_token'] = user_service._new_access_token
+                response_data['email_changed'] = True
+                response_data['email_verification_required'] = True
+                response_data['message'] = "Email updated successfully. Please check your new email for verification."
+        
+        return response_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in update_current_user_profile: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while updating profile"
+        )
 
 
 @router.post("/auth/me/change-password", status_code=status.HTTP_204_NO_CONTENT)
@@ -1025,7 +1256,7 @@ async def update_super_admin(
 ):
     """Update super admin information (Super Admin only)."""
     super_admin_service = SuperAdminService(db)
-    updated_user = super_admin_service.update_super_admin(
+    updated_user = await super_admin_service.update_super_admin(
         user_id=user_id,
         request=request,
         updated_by=current_user.id,
@@ -1234,7 +1465,7 @@ async def update_user(
     if not user or user.tenant_id != current_user.tenant_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     
-    updated_user = user_service.update_user(user_id, request, current_user.id)
+    updated_user = await user_service.update_user(user_id, request, current_user.id)
     return UserResponse.model_validate(updated_user)
 
 

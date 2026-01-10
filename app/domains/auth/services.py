@@ -6,8 +6,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 
+from fastapi import UploadFile, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
+from email_validator import validate_email, EmailNotValidError
 
 from app.core.config import settings
 from app.core.security import (
@@ -67,6 +69,7 @@ from app.utils.email import (
     create_password_reset_email_template,
     create_invitation_email_template,
 )
+from app.utils.file_storage import file_storage_service
 
 logger = get_logger(__name__)
 
@@ -767,36 +770,256 @@ class UserService:
         
         return user
     
-    def update_user(self, user_id: UUID, request: UserUpdate, updated_by: UUID) -> User:
-        """Update user profile."""
+    async def update_user(
+        self,
+        user_id: UUID,
+        request: Optional[UserUpdate] = None,
+        updated_by: Optional[UUID] = None,
+        profile_picture_file: Optional[UploadFile] = None,
+        remove_profile_picture: bool = False,
+        **kwargs
+    ) -> User:
+        # Track email change for token generation
+        self._email_changed = False
+        self._new_access_token = None
+        """
+        Update user profile with all fields and optional profile picture.
+        
+        Args:
+            user_id: User ID to update
+            request: UserUpdate schema with profile fields (optional, can use kwargs instead)
+            updated_by: User ID performing the update
+            profile_picture_file: Optional UploadFile for profile picture
+            remove_profile_picture: If True, remove existing profile picture
+            **kwargs: Additional fields (first_name, last_name, email, phone, username)
+        """
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
             raise UserNotFoundError()
         
-        if request.first_name is not None:
-            user.first_name = request.first_name
-        if request.last_name is not None:
-            user.last_name = request.last_name
-        if request.phone is not None:
-            user.phone = request.phone
-        if request.username is not None:
-            user.username = request.username
+        # Extract fields from request or kwargs
+        # For optional fields like phone and username, check if they're in kwargs explicitly
+        # because empty string is falsy and would be lost with 'or' operator
+        first_name = kwargs.get('first_name') if 'first_name' in kwargs else (request.first_name if request else None)
+        last_name = kwargs.get('last_name') if 'last_name' in kwargs else (request.last_name if request else None)
+        email = kwargs.get('email') if 'email' in kwargs else (request.email if request else None)
+        phone = kwargs.get('phone') if 'phone' in kwargs else (request.phone if request else None)
+        username = kwargs.get('username') if 'username' in kwargs else (request.username if request else None)
         
-        # Update full name
+        # Validate and update first_name
+        if first_name is not None:
+            first_name = first_name.strip()
+            if len(first_name) < 1 or len(first_name) > 100:
+                raise ValueError("First name must be between 1 and 100 characters")
+            user.first_name = first_name
+        
+        # Validate and update last_name
+        if last_name is not None:
+            last_name = last_name.strip()
+            if len(last_name) < 1 or len(last_name) > 100:
+                raise ValueError("Last name must be between 1 and 100 characters")
+            user.last_name = last_name
+        
+        # Validate and update email
+        if email is not None:
+            email = email.strip().lower()
+            try:
+                validate_email(email, check_deliverability=False)
+            except EmailNotValidError as e:
+                raise ValueError(f"Invalid email format: {str(e)}")
+            
+            # Check email uniqueness if changed
+            if email != user.email:
+                existing_user = self.db.query(User).filter(
+                    User.email == email,
+                    User.id != user_id
+                ).first()
+                if existing_user:
+                    raise UserAlreadyExistsError("Email already in use")
+                
+                # Store old email for verification email
+                old_email = user.email
+                self._email_changed = True
+                
+                # Update email and mark as unverified
+                user.email = email
+                user.email_verified = False  # Require re-verification
+                
+                # Send verification email to new address
+                try:
+                    # Create verification token
+                    token_string = generate_token_string()
+                    token_hash = hash_token(token_string)
+                    expires_at = datetime.now(timezone.utc) + timedelta(
+                        minutes=settings.EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES
+                    )
+                    
+                    # Delete old verification tokens for this user
+                    self.db.query(EmailVerificationToken).filter(
+                        EmailVerificationToken.user_id == user.id
+                    ).delete()
+                    
+                    # Create new verification token
+                    verification_token = EmailVerificationToken(
+                        user_id=user.id,
+                        token_hash=token_hash,
+                        expires_at=expires_at,
+                    )
+                    self.db.add(verification_token)
+                    # Note: commit will happen later with other changes
+                    
+                    # Send verification email (non-blocking - don't fail update if email fails)
+                    try:
+                        subject, html_content, text_content = create_verification_email_template(
+                            user.email, token_string
+                        )
+                        # Send email asynchronously (don't block the response)
+                        # Use create_task to run in background
+                        import asyncio
+                        try:
+                            loop = asyncio.get_event_loop()
+                            if loop.is_running():
+                                # Schedule as background task
+                                asyncio.create_task(send_email(user.email, subject, html_content, text_content))
+                            else:
+                                # Run directly if no loop is running
+                                await send_email(user.email, subject, html_content, text_content)
+                        except RuntimeError:
+                            # Create new event loop if needed
+                            asyncio.run(send_email(user.email, subject, html_content, text_content))
+                        logger.info(f"Verification email queued for new email: {user.email}")
+                    except Exception as email_send_error:
+                        logger.warning(f"Failed to queue verification email: {email_send_error}")
+                        # Don't fail the update if email sending fails
+                except Exception as email_error:
+                    logger.warning(f"Failed to prepare verification email: {email_error}")
+                    # Don't fail the update if email preparation fails
+        
+        # Validate and update phone
+        if phone is not None:
+            phone = phone.strip() if phone else None
+            if phone:
+                if len(phone) > 20:
+                    raise ValueError("Phone number must be 20 characters or less")
+                user.phone = phone
+            else:
+                # Remove phone if empty string is sent
+                user.phone = None
+        
+        # Validate and update username
+        if username is not None:
+            # Handle empty string explicitly - strip and check if it's actually empty
+            if isinstance(username, str):
+                username = username.strip()
+            else:
+                username = None
+            
+            # Check if username is empty after stripping
+            is_empty = not username or len(username) == 0
+            
+            if not is_empty:
+                # Username has value - validate it
+                if len(username) < 3 or len(username) > 100:
+                    raise ValueError("Username must be between 3 and 100 characters")
+                if not username.replace('_', '').replace('-', '').isalnum():
+                    raise ValueError("Username can only contain letters, numbers, underscores, and hyphens")
+                
+                # Check username uniqueness if changed
+                if username != user.username:
+                    existing_user = self.db.query(User).filter(
+                        User.username == username,
+                        User.id != user_id
+                    ).first()
+                    if existing_user:
+                        raise UserAlreadyExistsError("Username already in use")
+                user.username = username
+                logger.info(f"Username updated to '{username}' for user {user_id}")
+            else:
+                # Remove username if empty string is sent
+                user.username = None
+                logger.info(f"Username removed (set to None) for user {user_id}")
+        
+        # Update full name automatically
         user.full_name = f"{user.first_name} {user.last_name}".strip()
         
-        self.db.commit()
-        self.db.refresh(user)
+        # Handle profile picture
+        old_profile_picture_url = user.profile_picture_url
+        logger.info(f"Profile picture handling - remove: {remove_profile_picture}, file provided: {profile_picture_file is not None}, old_url: {old_profile_picture_url}")
         
-        self.audit.log_event(
-            self.db,
-            AuditEventType.USER_UPDATED,
-            f"User updated: {user.email}",
-            actor_user_id=updated_by,
-            tenant_id=user.tenant_id,
-            target_user_id=user.id,
-            target_type="user",
-        )
+        if remove_profile_picture:
+            # Remove profile picture
+            if old_profile_picture_url:
+                file_storage_service.delete_profile_picture(old_profile_picture_url)
+                user.profile_picture_url = None
+                logger.info("Profile picture removed")
+        elif profile_picture_file:
+            # Upload new profile picture
+            try:
+                logger.info(f"Starting profile picture upload for user {user_id}, file: {getattr(profile_picture_file, 'filename', 'unknown')}")
+                filename = await file_storage_service.save_profile_picture(
+                    profile_picture_file,
+                    old_file_url=old_profile_picture_url
+                )
+                logger.info(f"Profile picture saved successfully with filename: {filename}")
+                user.profile_picture_url = filename
+                logger.info(f"Set user.profile_picture_url to: {filename}, user.profile_picture_url is now: {user.profile_picture_url}")
+            except HTTPException as e:
+                logger.error(f"HTTPException during profile picture upload: {e.detail}")
+                raise
+            except Exception as e:
+                logger.error(f"Error handling profile picture upload: {e}", exc_info=True)
+                raise ValueError(f"Failed to upload profile picture: {str(e)}")
+        else:
+            logger.info("No profile picture file provided and remove flag is False, skipping profile picture update")
+        
+        try:
+            logger.info(f"Before commit - user.profile_picture_url: {user.profile_picture_url}")
+            self.db.commit()
+            logger.info(f"After commit - user.profile_picture_url: {user.profile_picture_url}")
+            self.db.refresh(user)
+            logger.info(f"After refresh - user.profile_picture_url: {user.profile_picture_url}")
+            
+            # Double-check by querying from database to ensure we have latest data
+            # User is already imported at top of file, so use it directly
+            db_user = self.db.query(User).filter(User.id == user.id).first()
+            if db_user:
+                logger.info(f"Database query - db_user.profile_picture_url: {db_user.profile_picture_url}")
+                # Ensure we're using the latest data from database
+                user.profile_picture_url = db_user.profile_picture_url
+                logger.info(f"Updated user.profile_picture_url from database: {user.profile_picture_url}")
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Database error updating user: {e}", exc_info=True)
+            raise ValueError(f"Failed to update profile: {str(e)}")
+        
+        # If email was changed, generate new access token
+        if hasattr(self, '_email_changed') and self._email_changed:
+            from app.core.security import create_access_token
+            try:
+                self._new_access_token = create_access_token({
+                    "user_id": str(user.id),
+                    "email": user.email,  # Updated email
+                    "tenant_id": str(user.tenant_id),
+                })
+                logger.info(f"New access token generated for user {user.id} after email change")
+            except Exception as token_error:
+                logger.warning(f"Failed to generate new access token: {token_error}")
+                # Don't fail the update if token generation fails
+        
+        # Audit log
+        try:
+            self.audit.log_event(
+                self.db,
+                AuditEventType.USER_UPDATED,
+                f"User profile updated: {user.email}" + (" (email changed)" if hasattr(self, '_email_changed') and self._email_changed else ""),
+                actor_user_id=updated_by,
+                tenant_id=user.tenant_id,
+                target_user_id=user.id,
+                target_type="user",
+            )
+        except Exception as e:
+            logger.warning(f"Failed to log audit event: {e}")
+            # Don't fail the update if audit logging fails
         
         return user
     
@@ -1586,7 +1809,7 @@ class SuperAdminService:
         
         return user
     
-    def update_super_admin(
+    async def update_super_admin(
         self,
         user_id: UUID,
         request: UserUpdate,
@@ -1611,7 +1834,7 @@ class SuperAdminService:
             raise UserNotFoundError("Super admin not found")
         
         # Use application service for update
-        updated_user = self.user_service.update_user(user_id, request, updated_by)
+        updated_user = await self.user_service.update_user(user_id, request, updated_by)
         
         # Audit log
         self.audit.log_event(
