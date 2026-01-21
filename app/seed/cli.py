@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.seed.seed_templates import seed_templates
 from app.seed.seeders.auth_seeder import seed_auth_data
+from app.seed.seeders.subscription_seeder import seed_subscription_tiers
+from app.seed.seeders.chatbot_seeder import seed_chatbots
 from app.domains.auth.models import UserStatus
 
 
@@ -233,6 +235,8 @@ USAGE:
 OPTIONS:
     --auth                    Seed auth data (roles, permissions, platform tenant)
     --templates               Seed templates
+    --subscriptions           Seed subscription tiers and features
+    --chatbots                Seed chatbots, models, and capabilities
     --create-admin            Create super admin from environment variables
     --create-admin --interactive    Create super admin interactively (recommended)
     --list-admins             List all super admins
@@ -283,10 +287,10 @@ DOCUMENTATION:
     interactive = "--interactive" in sys.argv or (create_admin and len(sys.argv) == 2)
     
     # Determine what to seed
-    seed_auth = "--auth" in sys.argv or (len(sys.argv) == 1 and not any([
-        create_admin, list_admins, update_admin, delete_admin
-    ]))
-    seed_templates_flag = "--templates" in sys.argv or len(sys.argv) == 1
+    seed_auth = "--auth" in sys.argv
+    seed_templates_flag = "--templates" in sys.argv
+    seed_subscriptions = "--subscriptions" in sys.argv
+    seed_chatbots_flag = "--chatbots" in sys.argv
     
     db: Session = SessionLocal()
     try:
@@ -345,6 +349,27 @@ DOCUMENTATION:
             print(f"  Templates skipped: {template_result['templates_skipped']}")
             print(f"  Versions created: {template_result['versions_created']}")
             print(f"  Versions skipped: {template_result['versions_skipped']}")
+            print()
+
+        if seed_subscriptions and not any([list_admins, update_admin, delete_admin]):
+            print("Seeding subscription tiers and features...")
+            subscription_result = seed_subscription_tiers(db, force=force)
+            print(f"Subscription seeding complete!")
+            print(f"  Tiers created: {subscription_result['tiers_created']}")
+            print(f"  Tiers skipped: {subscription_result['tiers_skipped']}")
+            print(f"  Features created: {subscription_result['features_created']}")
+            print(f"  Features skipped: {subscription_result['features_skipped']}")
+            print()
+
+        if seed_chatbots_flag and not any([list_admins, update_admin, delete_admin]):
+            print("Seeding chatbots...")
+            chatbot_result = seed_chatbots(db, force=force)
+            print(f"Chatbot seeding complete!")
+            print(f"  Chatbots created: {chatbot_result['chatbots_created']}")
+            print(f"  Chatbots skipped: {chatbot_result['chatbots_skipped']}")
+            print(f"  Models assigned: {chatbot_result['models_created']}")
+            print(f"  Capabilities created: {chatbot_result['capabilities_created']}")
+            print()
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         db.rollback()

@@ -33,3 +33,23 @@ from app.domains.auth.models import (  # noqa: F401, E402
     AuditLog,
 )
 
+# Import subscription models
+from app.domains.subscriptions.models import (  # noqa: F401, E402
+    SubscriptionTierModel,
+    SubscriptionTierFeature,
+    UserSubscription,
+    SubscriptionHistory,
+    UserUsageQuota,
+    UserUsageLog,
+)
+
+# Import chatbot models
+from app.domains.chatbots.models import (  # noqa: F401, E402
+    Chatbot,
+    ChatbotModelAssignment,
+    ChatbotCapability,
+    ChatbotConversation,
+    ChatbotMessage,
+    ChatbotModelUsage,
+    UserCapabilityProgress,
+)

@@ -38,33 +38,41 @@ def get_current_user(
     token = credentials.credentials
     
     try:
+        logger.debug(f"Validating token: {token[:20]}..." if len(token) > 20 else f"Token: {token}")
         payload = decode_token(token, token_type="access")
         user_id = payload.get("user_id")
         
         if not user_id:
+            logger.error("Token payload missing user_id")
             raise AuthenticationError("Invalid token payload")
         
+        logger.debug(f"Token decoded successfully, user_id: {user_id}")
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
+            logger.error(f"User not found for user_id: {user_id}")
             raise AuthenticationError("User not found")
         
         # Check account status
         if user.status == UserStatus.LOCKED:
+            logger.warning(f"Account locked for user_id: {user_id}")
             raise AccountLockedError()
         
         if user.status != UserStatus.ACTIVE:
+            logger.warning(f"Account not active for user_id: {user_id}, status: {user.status}")
             raise AuthenticationError(f"Account status: {user.status}")
         
         if not user.email_verified:
+            logger.warning(f"Email not verified for user_id: {user_id}")
             raise EmailNotVerifiedError()
         
+        logger.debug(f"Authentication successful for user_id: {user_id}")
         return user
         
     except Exception as e:
         if isinstance(e, (AccountLockedError, EmailNotVerifiedError, AuthenticationError)):
             raise
-        logger.error(f"Authentication error: {str(e)}")
-        raise AuthenticationError("Could not validate credentials")
+        logger.error(f"Authentication error: {str(e)}", exc_info=True)
+        raise AuthenticationError(f"Could not validate credentials: {str(e)}")
 
 
 def require_active_user(
