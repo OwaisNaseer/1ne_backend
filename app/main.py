@@ -49,14 +49,34 @@ app.add_middleware(
 if settings.ENVIRONMENT == "dev":
     cors_origins = ["*"]  # Allow all origins in development
 else:
+    # Get frontend URL from environment variable, fallback to localhost
+    frontend_url = settings.FRONTEND_URL or "http://localhost:5173"
+    
     cors_origins = [
-        "http://localhost:5173",  # Vite default port
-        "http://localhost:3000",    # Alternative React port
+        "https://1ne-frontend.vercel.app",  # Vercel production frontend
+        frontend_url,  # Primary frontend URL from environment
+        "http://localhost:5173",  # Vite default port (local dev)
+        "http://localhost:3000",    # Alternative React port (local dev)
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
         "http://localhost:5174",  # Vite alternative port
         "http://127.0.0.1:5174",
     ]
+    
+    # Add Vercel frontend URL if provided via environment variable
+    vercel_url = settings.FRONTEND_URL
+    if vercel_url and vercel_url not in cors_origins:
+        cors_origins.append(vercel_url)
+    
+    # Also allow any Vercel preview deployments (pattern matching)
+    # This allows preview deployments to work without manual configuration
+    import os
+    vercel_preview_url = os.getenv("VERCEL_URL")
+    if vercel_preview_url:
+        cors_origins.append(f"https://{vercel_preview_url}")
+    
+    # Remove duplicates while preserving order
+    cors_origins = list(dict.fromkeys(cors_origins))
 
 app.add_middleware(
     CORSMiddleware,
