@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     # JWT Configuration
     SECRET_KEY: str = "your-secret-key-change-in-production-use-openssl-rand-hex-32"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 20  # Short-lived access tokens
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 30    # Long-lived refresh tokens
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # Access tokens expire after 1 day (24 hours)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 1       # Refresh tokens expire after 1 day
 
     # Password Policy
     PASSWORD_MIN_LENGTH: int = 10

@@ -45,14 +45,22 @@ app.add_middleware(
 )
 
 # Add CORS middleware to allow frontend requests
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# In development, allow all origins to avoid connection issues
+if settings.ENVIRONMENT == "dev":
+    cors_origins = ["*"]  # Allow all origins in development
+else:
+    cors_origins = [
         "http://localhost:5173",  # Vite default port
         "http://localhost:3000",    # Alternative React port
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
-    ],
+        "http://localhost:5174",  # Vite alternative port
+        "http://127.0.0.1:5174",
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -269,10 +277,26 @@ async def health_check():
         return {"status": "ok", "database": db_status}
     except Exception as e:
         logger.warning(f"Database health check failed: {e}")
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"status": "degraded", "database": "disconnected", "error": str(e) if settings.ENVIRONMENT != "prod" else None},
-        )
+        # Return 200 OK even if database is disconnected - backend is still running
+        # This prevents frontend from thinking backend is down
+        return {
+            "status": "degraded", 
+            "database": "disconnected", 
+            "message": "Backend is running but database is unavailable",
+            "error": str(e) if settings.ENVIRONMENT != "prod" else None
+        }
+
+
+@app.get("/api/v1/test")
+async def test_endpoint():
+    """Simple test endpoint that doesn't require database - for connection testing."""
+    import datetime
+    return {
+        "status": "ok",
+        "message": "Backend API is accessible",
+        "cors": "enabled",
+        "timestamp": datetime.datetime.now().isoformat()
+    }
 
 
 # Register API v1 routers (they already include /api/v1 prefixes)
