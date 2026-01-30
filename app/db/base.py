@@ -53,3 +53,14 @@ from app.domains.chatbots.models import (  # noqa: F401, E402
     ChatbotModelUsage,
     UserCapabilityProgress,
 )
+
+# Import content ingestion models
+from app.domains.content_ingestion.models import (  # noqa: F401, E402
+    ContentPack,
+    Document,
+    PageText,
+    Chunk,
+    DocumentProcessingRun,
+    QAValidation,
+    WorksheetCache,
+)

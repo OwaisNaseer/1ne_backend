@@ -38,6 +38,51 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize backend on startup."""
+    import os
+    import platform
+    from pathlib import Path
+    
+    # Auto-discover Poppler path if not set
+    if not os.getenv("POPPLER_PATH") and platform.system() == "Windows":
+        user_home = os.path.expanduser("~")
+        poppler_paths = [
+            r"C:\poppler\poppler-25.12.0\Library\bin",
+            r"C:\poppler\Library\bin",
+            os.path.join(user_home, r"Downloads\Release-25.12.0-0 (1)\poppler-25.12.0\Library\bin"),
+            r"C:\Program Files\poppler\bin",
+        ]
+        
+        for path_str in poppler_paths:
+            poppler_dir = Path(path_str)
+            if poppler_dir.is_dir():
+                pdftoppm = poppler_dir / "pdftoppm.exe"
+                if pdftoppm.exists():
+                    os.environ["POPPLER_PATH"] = str(poppler_dir)
+                    # Prepend to PATH for DLL resolution
+                    current_path = os.environ.get("PATH", "")
+                    if str(poppler_dir) not in current_path:
+                        os.environ["PATH"] = f"{poppler_dir};{current_path}"
+                    logger.info(f"Auto-discovered Poppler at startup: {poppler_dir}")
+                    break
+    
+    # Auto-discover Tesseract if not set
+    if not os.getenv("TESSERACT_CMD") and platform.system() == "Windows":
+        tesseract_paths = [
+            r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+            r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+        ]
+        for path_str in tesseract_paths:
+            if Path(path_str).exists():
+                os.environ["TESSERACT_CMD"] = path_str
+                logger.info(f"Auto-discovered Tesseract at startup: {path_str}")
+                break
+    
+    logger.info("Backend startup initialization complete")
+
 # Add timeout middleware first (outermost) to catch all requests
 app.add_middleware(
     TimeoutMiddleware,
@@ -307,6 +352,23 @@ async def health_check():
         }
 
 
+@app.get("/api/routes")
+async def list_routes():
+    """List all registered routes for debugging."""
+    routes_info = []
+    for route in app.routes:
+        if hasattr(route, 'path') and hasattr(route, 'methods'):
+            routes_info.append({
+                "path": route.path,
+                "methods": list(route.methods),
+                "name": getattr(route, 'name', None)
+            })
+    return {
+        "total_routes": len(routes_info),
+        "routes": sorted(routes_info, key=lambda x: x["path"])
+    }
+
+
 @app.get("/api/v1/test")
 async def test_endpoint():
     """Simple test endpoint that doesn't require database - for connection testing."""
@@ -320,7 +382,16 @@ async def test_endpoint():
 
 
 # Register API v1 routers (they already include /api/v1 prefixes)
-app.include_router(v1_router)
+try:
+    app.include_router(v1_router)
+    logger.info("API v1 router registered successfully")
+    # Log registered routes for debugging
+    for route in app.routes:
+        if hasattr(route, 'path') and hasattr(route, 'methods'):
+            logger.debug(f"Registered route: {list(route.methods)} {route.path}")
+except Exception as e:
+    logger.error(f"Failed to register API v1 router: {e}", exc_info=True)
+    raise
 
 # Mount static files for profile pictures
 from app.core.config import settings

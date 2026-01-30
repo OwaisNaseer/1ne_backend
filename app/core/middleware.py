@@ -41,8 +41,10 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
         Returns:
             Response with timeout protection
         """
-        # Skip timeout for streaming endpoints (they may take longer)
+        # Skip timeout for streaming endpoints and long-running worksheet generation
         if request.url.path.endswith('/execute-stream') or '/stream' in request.url.path:
+            return await call_next(request)
+        if '/worksheets/generate' in request.url.path and request.method == 'POST':
             return await call_next(request)
         
         try:

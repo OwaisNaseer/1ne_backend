@@ -50,20 +50,33 @@ class ModelRouter:
         self.cost_tracker = cost_tracker
         self._providers: Dict[str, BaseProvider] = {}
         self._provider_health: Dict[str, bool] = {}
+        self._provider_init_error: Dict[str, str] = {}  # reason when init failed (sanitized)
         
         self._initialize_providers()
 
     def _initialize_providers(self) -> None:
         """Instantiate providers conditionally based on available API keys."""
+        # Config source (never log the key)
+        openai_key_status = "set" if (self.config.OPENAI_API_KEY and len(self.config.OPENAI_API_KEY.strip()) > 0) else ("empty" if getattr(self.config, "OPENAI_API_KEY", None) is not None else "missing")
+        openai_base = getattr(self.config, "OPENAI_BASE_URL", None) or ""
+        openai_base_display = openai_base if openai_base else "not set"
+        if openai_base and "opeanai" in openai_base.lower():
+            logger.warning("OPENAI_BASE_URL may have a typo (opeanai -> openai). API calls may fail.")
+
         # OpenAI
         try:
-            if self.config.OPENAI_API_KEY:
+            if self.config.OPENAI_API_KEY and self.config.OPENAI_API_KEY.strip():
                 self._providers["openai"] = OpenAIProvider()
                 self._provider_health["openai"] = True
                 logger.info("OpenAI provider initialized")
+            else:
+                self._provider_health["openai"] = False
+                self._provider_init_error["openai"] = "OPENAI_API_KEY missing or empty"
         except Exception as e:
-            logger.warning(f"Failed to initialize OpenAI provider: {e}")
+            err_msg = f"{type(e).__name__}: {str(e)}"[:200]
+            self._provider_init_error["openai"] = err_msg
             self._provider_health["openai"] = False
+            logger.warning(f"Failed to initialize OpenAI provider: {e}")
 
         # Anthropic
         try:
@@ -91,6 +104,13 @@ class ModelRouter:
         # Fallback (always available)
         self._providers["fallback"] = FallbackProvider()
         self._provider_health["fallback"] = True
+
+        # Single startup log: provider selection and why (never print keys)
+        openai_status = "available" if self._provider_health.get("openai") else f"unavailable ({self._provider_init_error.get('openai', 'not initialized')})"
+        logger.info(
+            f"LLM provider selection: openai={openai_status}, fallback=always. "
+            f"Config source: .env (OPENAI_API_KEY={openai_key_status}, OPENAI_BASE_URL={'set' if openai_base else 'not set'}, DEFAULT_MODEL_PROVIDER={getattr(self.config, 'DEFAULT_MODEL_PROVIDER', 'openai')})."
+        )
 
     async def generate(
         self,
@@ -164,11 +184,27 @@ class ModelRouter:
                     "model": fallback.get("model")
                 })
 
-        # Add final fallback if enabled
-        if self.config.FALLBACK_ENABLED:
+        # When OpenAI is explicitly requested and key is set, do NOT add fallback so we surface real errors
+        add_final_fallback = self.config.FALLBACK_ENABLED
+        if provider == "openai" and (self.config.OPENAI_API_KEY or "").strip():
+            add_final_fallback = False
+        if add_final_fallback:
             providers_to_try.append({"provider": "fallback", "model": "fallback"})
 
-        # 3. Try each provider in sequence
+        # 3. If OpenAI was requested and key is set but provider is unavailable, fail fast with clear error
+        if provider == "openai" and (self.config.OPENAI_API_KEY or "").strip():
+            if not self._provider_health.get("openai", False):
+                reason = self._provider_init_error.get("openai", "OpenAI provider init failed")
+                raise RuntimeError(
+                    f"OpenAI was requested but is unavailable. {reason}. "
+                    "Check OPENAI_API_KEY and OPENAI_BASE_URL in .env and restart."
+                )
+            if provider not in self._providers or not self._providers.get(provider):
+                raise RuntimeError(
+                    "OpenAI was requested but provider instance is missing. Check OPENAI_API_KEY and restart."
+                )
+
+        # 4. Try each provider in sequence
         last_error = None
         
         for attempt in providers_to_try:

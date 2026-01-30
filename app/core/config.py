@@ -66,6 +66,24 @@ class Settings(BaseSettings):
     SUPER_ADMIN_FIRST_NAME: str = "Super"
     SUPER_ADMIN_LAST_NAME: str = "Admin"
 
+    # Content Ingestion Configuration
+    OCR_ENGINE: str = "tesseract"  # tesseract | easyocr | mathpix
+    OCR_PROVIDER: str = "tesseract"  # tesseract | azure | google | mathpix
+    TEXT_EXTRACTOR_PROVIDER: str = "pdfplumber"  # pdfplumber | pymupdf | ...
+    EMBEDDING_PROVIDER: str = "fake"  # fake | local | openai (free mode: fake or local)
+    VECTOR_STORE: str = "pgvector"  # pgvector | qdrant | pinecone
+    MATH_PROVIDER: str = "baseline"  # baseline | mathpix (mathpix later)
+    CHUNK_SIZE_TOKENS: int = 500
+    CHUNK_OVERLAP_TOKENS: int = 50
+    MIN_CHARS_PER_PAGE: int = 100
+    MIN_CHARS_EXTRACT: int = 1  # Min total chars after extract/OCR to pass checkpoint
+    SCANNED_THRESHOLD_CHARS: int = 50  # Below this = scanned, needs OCR
+    MAX_FILE_SIZE_MB: int = 50  # Max document file size
+    DOCUMENTS_DIR: str = "uploads/documents"  # Document storage directory
+    # Free-mode embedding
+    FAKE_EMBEDDING_DIM: int = 384
+    LOCAL_EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -158,14 +158,21 @@ def require_role(role_name: str):
         from app.domains.auth.models import UserRole, Role, RoleName
         from sqlalchemy import or_
         
-        # Support backward compatibility: "institution_admin" can also match "school_admin" role
-        role_filter = Role.name == role_name
+        # Map institution_admin to school_admin since database enum doesn't have institution_admin
+        # IMPORTANT: Never use RoleName.INSTITUTION_ADMIN as it doesn't exist in the database enum
         if role_name == "institution_admin":
-            # Also check for school_admin (deprecated) for backward compatibility
-            role_filter = or_(Role.name == RoleName.INSTITUTION_ADMIN, Role.name == RoleName.SCHOOL_ADMIN)
+            # Map to school_admin (the actual enum value in DB)
+            role_filter = Role.name == RoleName.SCHOOL_ADMIN
         elif role_name == "school_admin":
-            # Map to institution_admin for forward compatibility
-            role_filter = or_(Role.name == RoleName.INSTITUTION_ADMIN, Role.name == RoleName.SCHOOL_ADMIN)
+            role_filter = Role.name == RoleName.SCHOOL_ADMIN
+        else:
+            # Use RoleName enum value if it exists
+            try:
+                role_enum = RoleName(role_name)
+                role_filter = Role.name == role_enum
+            except ValueError:
+                # If not a valid enum, this will fail - but shouldn't happen with valid role names
+                raise AuthorizationError(f"Invalid role name: {role_name}")
         
         user_role = db.query(UserRole).join(Role).filter(
             UserRole.user_id == current_user.id,
@@ -175,6 +182,101 @@ def require_role(role_name: str):
         
         if not user_role:
             raise AuthorizationError(f"Role required: {role_name}")
+        
+        return current_user
+    
+    return role_checker
+
+
+def require_any_role(*role_names: str):
+    """
+    Factory function to create a dependency that requires any one of the specified roles.
+    
+    Usage:
+        @router.get("/admin/content")
+        async def get_content(
+            current_user: User = Depends(require_any_role("org_admin", "institution_admin", "super_admin")),
+            ...
+        ):
+            ...
+    """
+    def role_checker(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> User:
+        # Check if user has any of the required roles in their tenant
+        from app.domains.auth.models import UserRole, Role, RoleName
+        from sqlalchemy import or_
+        
+        # CRITICAL FIX: The database enum does NOT have "institution_admin"
+        # We MUST replace it with "school_admin" BEFORE building any SQL queries
+        
+        # CRITICAL FIX: Database enum does NOT have "institution_admin"
+        # MUST replace "institution_admin" with "school_admin" BEFORE any SQL operations
+        # This prevents SQLAlchemy from passing invalid enum values to PostgreSQL
+        
+        # Step 1: Replace institution_admin with school_admin IMMEDIATELY
+        # CRITICAL: Log what we're processing for debugging
+        logger.debug(f"Processing roles: {role_names}")
+        processed_roles = []
+        for role_str in role_names:
+            if role_str == "institution_admin":
+                logger.info(f"Replacing 'institution_admin' with 'school_admin' (database enum fix)")
+                processed_roles.append("school_admin")  # Replace with valid DB enum
+            else:
+                processed_roles.append(role_str)
+        
+        # Step 2: Remove duplicates
+        processed_roles = list(dict.fromkeys(processed_roles))
+        logger.debug(f"Processed roles after normalization: {processed_roles}")
+        
+        # Step 3: Build SQL filters using ONLY valid database enum values
+        # NEVER use RoleName.INSTITUTION_ADMIN - it doesn't exist in database
+        role_filters = []
+        for role_str in processed_roles:
+            # Explicitly map each role to its enum - no try/except to catch issues early
+            if role_str == "school_admin":
+                enum_val = RoleName.SCHOOL_ADMIN
+            elif role_str == "org_admin":
+                enum_val = RoleName.ORG_ADMIN
+            elif role_str == "super_admin":
+                enum_val = RoleName.SUPER_ADMIN
+            elif role_str == "teacher":
+                enum_val = RoleName.TEACHER
+            elif role_str == "student":
+                enum_val = RoleName.STUDENT
+            elif role_str == "parent":
+                enum_val = RoleName.PARENT
+            else:
+                # Log and skip unknown roles
+                logger.warning(f"Unknown role '{role_str}' skipped - not in database enum")
+                continue
+            
+            # Add filter - SQLAlchemy will use enum.value which matches database
+            role_filters.append(Role.name == enum_val)
+        
+        # Safety check: Ensure we have at least one valid role filter
+        if not role_filters:
+            logger.error(f"No valid roles found after processing: {role_names}")
+            raise AuthorizationError(f"Invalid role configuration. Required roles: {', '.join(role_names)}")
+        
+        # Combine all filters with OR
+        combined_filter = or_(*role_filters)
+        
+        try:
+            user_role = db.query(UserRole).join(Role).filter(
+                UserRole.user_id == current_user.id,
+                UserRole.tenant_id == current_user.tenant_id,
+                combined_filter,
+            ).first()
+        except Exception as db_error:
+            # Log the actual database error for debugging
+            logger.error(f"Database error during role check: {db_error}", exc_info=True)
+            # Re-raise as a more user-friendly error
+            raise AuthorizationError(f"Database error during authorization check. Please try again.")
+        
+        if not user_role:
+            raise AuthorizationError(f"One of the following roles required: {', '.join(role_names)}")
         
         return current_user
     

@@ -1,0 +1,265 @@
+"""
+Pydantic schemas for content ingestion domain.
+"""
+from typing import Optional, Dict, Any, List
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
+
+
+# Content Pack Schemas
+class ContentPackCreate(BaseModel):
+    """Create content pack request."""
+    name: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = None
+    subject: Optional[str] = None
+    grade: Optional[str] = None
+    curriculum: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class ContentPackResponse(BaseModel):
+    """Content pack response."""
+    id: UUID
+    name: str
+    description: Optional[str] = None
+    subject: Optional[str] = None
+    grade: Optional[str] = None
+    curriculum: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None  # Will be populated from pack_metadata
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    document_count: Optional[int] = None  # Added by service
+    
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    
+    @model_validator(mode='before')
+    @classmethod
+    def map_pack_metadata(cls, data: Any) -> Any:
+        """Map pack_metadata to metadata, avoiding SQLAlchemy's built-in metadata attribute."""
+        if isinstance(data, dict):
+            # If it's already a dict, map pack_metadata to metadata if needed
+            if 'pack_metadata' in data and 'metadata' not in data:
+                data['metadata'] = data.pop('pack_metadata', None)
+            return data
+        elif hasattr(data, 'pack_metadata'):
+            # If it's a SQLAlchemy model, convert to dict mapping pack_metadata -> metadata
+            # This avoids SQLAlchemy's built-in 'metadata' attribute conflict
+            return {
+                'id': data.id,
+                'name': data.name,
+                'description': data.description,
+                'subject': data.subject,
+                'grade': data.grade,
+                'curriculum': data.curriculum,
+                'metadata': data.pack_metadata,  # Map pack_metadata to metadata
+                'is_active': data.is_active,
+                'created_at': data.created_at,
+                'updated_at': data.updated_at,
+                'document_count': getattr(data, 'document_count', None),
+            }
+        return data
+
+
+class ContentPackListItem(BaseModel):
+    """Content pack list item."""
+    id: UUID
+    name: str
+    description: Optional[str] = None
+    subject: Optional[str] = None
+    grade: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Document Schemas
+class DocumentUpload(BaseModel):
+    """Document upload request (metadata only, file via multipart)."""
+    pack_id: UUID
+    title: Optional[str] = None
+    author: Optional[str] = None
+    chapter_map: Optional[List[Dict[str, Any]]] = None  # Table of Contents
+    force_ocr: bool = False  # Force OCR even if text detected
+
+
+class DocumentResponse(BaseModel):
+    """Document response."""
+    id: UUID
+    pack_id: UUID
+    filename: str
+    file_path: str
+    file_size: Optional[int] = None
+    mime_type: Optional[str] = None
+    source_type: str
+    status: str
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None
+    remediation_hint: Optional[str] = None
+    processing_metadata: Optional[Dict[str, Any]] = None
+    chapter_map: Optional[List[Dict[str, Any]]] = None
+    title: Optional[str] = None
+    author: Optional[str] = None
+    total_pages: Optional[int] = None
+    document_hash: Optional[str] = None
+    version_label: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    processed_at: Optional[datetime] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentListItem(BaseModel):
+    """Document list item."""
+    id: UUID
+    pack_id: UUID
+    filename: str
+    status: str
+    total_pages: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentStatusResponse(BaseModel):
+    """Document status response for SSE streaming."""
+    document_id: UUID
+    status: str
+    progress: Optional["ProcessingProgress"] = None
+    steps_completed: List[str] = []
+    current_step: Optional[str] = None
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None
+    remediation_hint: Optional[str] = None
+
+
+class ProcessingProgress(BaseModel):
+    """Processing progress details."""
+    step: str
+    completed: int
+    total: int
+    percentage: int
+    estimated_time_remaining: Optional[str] = None
+
+
+# QA Validation Schemas
+class QAValidationRequest(BaseModel):
+    """Request to run QA validation."""
+    thresholds: Optional[Dict[str, Any]] = None  # Override default thresholds
+    golden_queries: Optional[List[str]] = None  # Custom golden queries
+
+
+class QAValidationResponse(BaseModel):
+    """QA validation response."""
+    id: UUID
+    document_id: UUID
+    qa_status: str
+    thresholds: Optional[Dict[str, Any]] = None
+    golden_query_results: Optional[List[Dict[str, Any]]] = None
+    page_coverage_check: Optional[bool] = None
+    text_density_check: Optional[bool] = None
+    embedding_completeness_check: Optional[bool] = None
+    vector_retrieval_check: Optional[bool] = None
+    metrics: Optional[Dict[str, Any]] = None
+    qa_notes: Optional[str] = None
+    created_at: datetime
+    reviewed_at: Optional[datetime] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Worksheet Schemas
+class WorksheetGenerateRequest(BaseModel):
+    """Worksheet generation request."""
+    pack_id: UUID
+    topic_id: Optional[str] = None
+    topic_text: Optional[str] = None  # Alternative to topic_id
+    grade: Optional[str] = None
+    subject: Optional[str] = None
+    difficulty_mix: Optional[Dict[str, float]] = Field(
+        default={"easy": 0.3, "medium": 0.5, "hard": 0.2},
+        description="Difficulty distribution (must sum to 1.0)"
+    )
+    num_questions: int = Field(default=10, ge=1, le=50)
+    question_types: Optional[List[str]] = Field(
+        default=["mcq", "short_answer"],
+        description="Question types: mcq, short_answer, essay, diagram, matching"
+    )
+    force_regenerate: Optional[bool] = Field(
+        default=False,
+        description="If True, skip cache and generate a fresh worksheet (for diagnostics/fresh pipeline)"
+    )
+
+
+class WorksheetQuestion(BaseModel):
+    """Worksheet question."""
+    id: str
+    type: str  # mcq, short_answer, essay, diagram, matching
+    question: str
+    options: Optional[List[str]] = None  # For MCQ
+    correct_answer: str
+    explanation: Optional[str] = None
+    points: int = 1
+    difficulty: str  # easy, medium, hard
+    math_content: bool = False  # Flag for frontend math rendering
+
+
+class WorksheetResponse(BaseModel):
+    """Worksheet generation response."""
+    id: UUID
+    pack_id: UUID
+    topic_id: Optional[str] = None
+    topic_text: Optional[str] = None
+    grade: Optional[str] = None
+    subject: Optional[str] = None
+    questions: List[WorksheetQuestion]
+    answer_key: Dict[str, str]  # question_id -> answer
+    marking_scheme: Dict[str, Dict[str, Any]]  # question_id -> {points, criteria, etc.}
+    citations: Optional[List[Dict[str, str]]] = None  # chunk_id, document_id, page_range
+    created_at: datetime
+    # Optional retrieval diagnostics (for topic-alignment checks)
+    chapter_page_range: Optional[str] = None
+    relevance_avg_sim: Optional[float] = None
+    relevance_keyword_hits: Optional[int] = None
+
+    @field_validator("citations", mode="before")
+    @classmethod
+    def citations_must_be_list(cls, v: Any) -> Optional[List[Dict[str, str]]]:
+        """Coerce citations to list: accept list, or dict (e.g. retrieval_metadata) -> use .get('citations', [])."""
+        if v is None:
+            return None
+        if isinstance(v, list):
+            return v
+        if isinstance(v, dict):
+            c = v.get("citations")
+            return c if isinstance(c, list) else []
+        return []
+
+
+# Document Processing Run Schemas
+class DocumentProcessingRunResponse(BaseModel):
+    """Document processing run response."""
+    id: UUID
+    document_id: UUID
+    status: str
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None
+    remediation_hint: Optional[str] = None
+    progress_percentage: Optional[int] = None
+    current_step: Optional[str] = None
+    completed_steps: Optional[List[str]] = None
+    pages_processed: Optional[int] = None
+    chunks_created: Optional[int] = None
+    vectors_stored: Optional[int] = None
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Update forward references
+DocumentStatusResponse.model_rebuild()

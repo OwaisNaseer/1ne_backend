@@ -24,11 +24,14 @@ class OpenAIProvider(BaseProvider):
         if not llm_settings.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY not set in environment variables")
         
-        # Support custom base URL if provided
+        # Support custom base URL if provided (correct common typo opeanai -> openai without changing .env)
         client_kwargs = {"api_key": llm_settings.OPENAI_API_KEY}
-        if hasattr(llm_settings, 'OPENAI_BASE_URL') and llm_settings.OPENAI_BASE_URL:
-            client_kwargs["base_url"] = llm_settings.OPENAI_BASE_URL
-        
+        if hasattr(llm_settings, "OPENAI_BASE_URL") and llm_settings.OPENAI_BASE_URL:
+            base_url = llm_settings.OPENAI_BASE_URL.strip()
+            if "opeanai" in base_url.lower():
+                base_url = base_url.replace("opeanai", "openai").replace("OPEANAI", "openai")
+            client_kwargs["base_url"] = base_url
+
         self.client = AsyncOpenAI(**client_kwargs)
         self.default_model = llm_settings.DEFAULT_MODEL
         self.default_temperature = llm_settings.DEFAULT_TEMPERATURE
