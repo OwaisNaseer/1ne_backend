@@ -1,7 +1,7 @@
 """
 Pydantic schemas for content ingestion domain.
 """
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Literal
 from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
@@ -181,17 +181,29 @@ class WorksheetGenerateRequest(BaseModel):
     grade: Optional[str] = None
     subject: Optional[str] = None
     difficulty_mix: Optional[Dict[str, float]] = Field(
-        default={"easy": 0.3, "medium": 0.5, "hard": 0.2},
-        description="Difficulty distribution (must sum to 1.0)"
+        default=None,
+        description="Difficulty distribution (must sum to 1.0). Ignored if difficulty is set."
     )
-    num_questions: int = Field(default=10, ge=1, le=50)
+    difficulty: Optional[Literal["easy", "medium", "hard"]] = Field(
+        default=None,
+        description="Single target difficulty. If set, overrides difficulty_mix (100% this level)."
+    )
+    num_questions: int = Field(default=10, ge=1, le=20, description="Number of questions (1–20).")
     question_types: Optional[List[str]] = Field(
         default=["mcq", "short_answer"],
-        description="Question types: mcq, short_answer, essay, diagram, matching"
+        description="Question types: mcq, short_answer, long_answer (diagram, matching future)"
     )
     force_regenerate: Optional[bool] = Field(
         default=False,
         description="If True, skip cache and generate a fresh worksheet (for diagnostics/fresh pipeline)"
+    )
+    skip_cache_write: Optional[bool] = Field(
+        default=False,
+        description="If True, generate and return worksheet but do not store in cache."
+    )
+    regenerate_key: Optional[str] = Field(
+        default=None,
+        description="If set (or force_regenerate=true), generate a new worksheet and avoid repeating/near-duplicate questions from prior worksheets for this user+pack+topic+difficulty."
     )
 
 
@@ -220,11 +232,18 @@ class WorksheetResponse(BaseModel):
     answer_key: Dict[str, str]  # question_id -> answer
     marking_scheme: Dict[str, Dict[str, Any]]  # question_id -> {points, criteria, etc.}
     citations: Optional[List[Dict[str, str]]] = None  # chunk_id, document_id, page_range
-    created_at: datetime
+    created_at: Optional[datetime] = None  # None when worksheet not persisted (e.g. cache disabled)
     # Optional retrieval diagnostics (for topic-alignment checks)
     chapter_page_range: Optional[str] = None
     relevance_avg_sim: Optional[float] = None
     relevance_keyword_hits: Optional[int] = None
+    # Difficulty handling (only when difficulty was requested on generate)
+    final_difficulty_used: Optional[str] = None  # easy | medium | hard
+    attempts_count: Optional[int] = None  # alias: attempts (for API consistency)
+    attempts: Optional[int] = None  # same as attempts_count; populated from it
+    validator_report_per_attempt: Optional[List[str]] = None
+    validator_reports: Optional[List[str]] = None  # optional debug alias
+    warnings: Optional[List[str]] = None
 
     @field_validator("citations", mode="before")
     @classmethod

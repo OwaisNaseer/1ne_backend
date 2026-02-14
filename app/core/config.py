@@ -84,6 +84,19 @@ class Settings(BaseSettings):
     FAKE_EMBEDDING_DIM: int = 384
     LOCAL_EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
 
+    # Worksheet generation: hard cap so requests never hang (seconds); configurable via env
+    WORKSHEET_GENERATION_TIMEOUT_SECONDS: float = 180.0
+    # When False: skip cache lookup and cache write (no worksheet_cache DB dependency)
+    WORKSHEET_CACHE_ENABLED: bool = False
+    # Max repair attempts for difficulty validation before downgrade or best-effort return
+    WORKSHEET_MAX_REPAIR_ATTEMPTS: int = 3
+    # When True, auto-downgrade difficulty (hard→medium→easy) if validation fails after repairs
+    WORKSHEET_ENABLE_DIFFICULTY_DOWNGRADE: bool = True
+    # Jaccard/similarity threshold above which a question is considered duplicate of a previous one (0–1)
+    WORKSHEET_DEDUPE_THRESHOLD: float = 0.85
+    # Token overlap threshold above which a question is considered copying pack text (0–1); rewrite if exceeded
+    WORKSHEET_COPY_OVERLAP_THRESHOLD: float = 0.35
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

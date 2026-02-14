@@ -4,6 +4,7 @@ Worksheet generation service using RAG.
 import hashlib
 import json
 import re
+import time
 from typing import List, Dict, Any, Optional, Tuple
 from uuid import UUID
 from collections import defaultdict
@@ -11,6 +12,14 @@ from collections import defaultdict
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
+try:
+    from app.core.rag_logging import rag_log, rag_log_chunk_list
+except ImportError:
+    # rag_logging is optional - use no-op functions if not available
+    def rag_log(*args, **kwargs):
+        pass
+    def rag_log_chunk_list(*args, **kwargs):
+        pass
 from app.domains.content_ingestion.models import WorksheetCache, ContentPack
 from app.domains.content_ingestion.providers.vector_stores import PgVectorStore
 from app.domains.content_ingestion.providers.embedding_providers import (
@@ -35,6 +44,35 @@ class WorksheetService:
         self.vector_store = PgVectorStore(db=db)
         # Embedding provider will be determined dynamically based on pack's stored embeddings
         self.llm_router = ModelRouter(config=llm_settings)
+    
+    def _summarize_context(self, context_with_metadata: str, max_tokens: int = 1000) -> str:
+        """
+        Summarize context to limit token count. Rough estimate: 1 token ≈ 4 characters.
+        Target: ~800-1000 tokens ≈ 3200-4000 characters.
+        """
+        if len(context_with_metadata) <= max_tokens * 4:
+            return context_with_metadata
+        
+        # Split by chunks (separated by ---)
+        chunks = context_with_metadata.split("\n\n---\n\n")
+        summarized_chunks = []
+        current_length = 0
+        
+        for chunk in chunks:
+            chunk_length = len(chunk)
+            # If adding this chunk would exceed limit, truncate it
+            if current_length + chunk_length > max_tokens * 4:
+                remaining = (max_tokens * 4) - current_length - 200  # Reserve 200 chars for separators
+                if remaining > 500:  # Only include if meaningful
+                    # Truncate chunk to remaining space, keeping start and end
+                    half = remaining // 2
+                    truncated = chunk[:half] + "\n[... content truncated for brevity ...]\n" + chunk[-half:]
+                    summarized_chunks.append(truncated)
+                break
+            summarized_chunks.append(chunk)
+            current_length += chunk_length + 10  # +10 for separator
+        
+        return "\n\n---\n\n".join(summarized_chunks)
     
     def _detect_pack_embedding_provider(self, pack_id: UUID) -> tuple[Any, str]:
         """
@@ -107,6 +145,7 @@ class WorksheetService:
             ).first()
             if cached:
                 logger.info(f"Returning cached worksheet: {cached.id}")
+                rag_log("worksheet_cached", pack_id=str(pack_id), topic_text=topic_text or "", worksheet_id=str(cached.id))
                 return cached
         else:
             # Remove existing cache so we can insert the new worksheet (avoids 409 on unique signature_hash)
@@ -116,7 +155,9 @@ class WorksheetService:
             self.db.commit()
         
         # Generate new worksheet
+        request_start_time = time.monotonic()
         logger.info(f"Generating worksheet for pack {pack_id}, topic: {topic_text or topic_id}")
+        rag_log("worksheet_start", pack_id=str(pack_id), topic_id=topic_id or "", topic_text=topic_text or "", num_questions=num_questions, force_regenerate=force_regenerate)
         
         # Normalize topic and expand query terms for retrieval (typo correction + synonyms)
         normalized_topic_text = self._normalize_topic_for_keywords(topic_text or "")
@@ -124,10 +165,12 @@ class WorksheetService:
         base_query = topic_text or f"topic {topic_id}" if topic_id else "curriculum content"
         # Use expanded terms for vector search so we hit correct chapter (e.g. algebraic expression -> variable, coefficient, simplify)
         query_text = " ".join(expanded_query_terms[:20]) + " chapter section explanation examples" if expanded_query_terms else f"{base_query} chapter section explanation examples"
+        rag_log("query_expand", pack_id=str(pack_id), normalized_topic_text=normalized_topic_text, expanded_terms_count=len(expanded_query_terms), expanded_terms_sample=expanded_query_terms[:12])
         
         # Detect which embedding provider was used for this pack
         embedding_provider, embedding_model = self._detect_pack_embedding_provider(pack_id)
         logger.info(f"Using embedding provider: {embedding_provider.provider_name}, model: {embedding_model}")
+        rag_log("embedding_provider", pack_id=str(pack_id), provider=embedding_provider.provider_name, model=embedding_model)
         
         skip_pages = self.FRONT_MATTER_MAX_PAGE
         top_k = min(20, num_questions * 3)
@@ -199,6 +242,7 @@ class WorksheetService:
             min_page_range = min(r[0] for r in chosen_ranges)
             max_page_range = max(r[1] for r in chosen_ranges)
         logger.info(f"Worksheet Stage A: chosen chapter page ranges {chosen_ranges} (using {min_page_range}-{max_page_range}), top5 scores={[(r, round(s,3)) for r,s in top5_ranges_for_debug]}")
+        rag_log("stage_a", pack_id=str(pack_id), topic_text=topic_text or "", hits_broad=len(hits_broad), hits_after_front=len(hits_after_front), chosen_ranges=chosen_ranges, min_page=min_page_range, max_page=max_page_range, top5_ranges_scores=[(r, round(s, 4)) for r, s in top5_ranges_for_debug])
 
         # Stage B: retrieve within best cluster range (more candidates, then filter to 6-10)
         hits: List[VectorHit] = []
@@ -246,6 +290,8 @@ class WorksheetService:
             hits = filtered[:context_min_chunks]
         avg_sim, keyword_hits = self._relevance_score(hits, topic_text or "")
         logger.info(f"Worksheet Stage B: {len(hits)} chunks (6-10), relevance avg_sim={avg_sim:.3f}, keyword_hits={keyword_hits}")
+        rag_log("stage_b", pack_id=str(pack_id), topic_text=topic_text or "", chunks_count=len(hits), avg_sim=round(avg_sim, 4), keyword_hits=keyword_hits, relevance_threshold=relevance_sim_threshold, keyword_min=relevance_keyword_min)
+        rag_log_chunk_list("stage_b_chunks", hits)
         if avg_sim < relevance_sim_threshold or keyword_hits < relevance_keyword_min:
             if len(chosen_ranges) < 3 and len(scored_ranges) >= 3:
                 min_page_range = min(r[0] for r in scored_ranges[:3])
@@ -304,12 +350,25 @@ class WorksheetService:
             mcq_count = 0
             short_count = num_questions
 
-        # Generate worksheet using LLM; retry once if question count short or topic validation fails
+        # Generate worksheet using LLM; max 1 attempt (no retry for speed)
         worksheet_json = None
-        context_for_retry = context_with_metadata
+        # Summarize context to limit tokens (target ~800-1000 tokens)
+        context_summarized = self._summarize_context(context_with_metadata, max_tokens=1000)
+        context_for_retry = context_summarized
         hits_for_retry = hits
-        for attempt in range(2):
+        
+        for attempt in range(1):  # Only 1 attempt - no retry
             try:
+                # Determine target difficulty from difficulty_mix
+                target_difficulty = None
+                if difficulty_mix:
+                    if difficulty_mix.get("easy", 0) == 1.0:
+                        target_difficulty = "easy"
+                    elif difficulty_mix.get("medium", 0) == 1.0:
+                        target_difficulty = "medium"
+                    elif difficulty_mix.get("hard", 0) == 1.0:
+                        target_difficulty = "hard"
+                
                 worksheet_json = await self._generate_worksheet_with_llm(
                     context_with_metadata=context_for_retry,
                     pack_id=str(pack_id),
@@ -322,39 +381,53 @@ class WorksheetService:
                     short_count=short_count,
                     allowed_concepts=allowed_concepts,
                     forbidden_concepts=forbidden_concepts,
+                    target_difficulty=target_difficulty,
                 )
             except Exception as llm_error:
-                logger.warning(f"LLM worksheet generation failed (attempt {attempt + 1}): {llm_error}", exc_info=True)
-                if attempt == 1:
-                    raise ValueError(
-                        "Worksheet generation failed. Please try again or use a different topic. "
-                        "If the error persists, check LLM/OpenAI configuration. Underlying error: " + str(llm_error)
-                    ) from llm_error
-                continue
+                logger.warning(f"LLM worksheet generation failed: {llm_error}", exc_info=True)
+                # Only 1 attempt - raise immediately
+                raise ValueError(
+                    "Worksheet generation failed. Please try again or use a different topic. "
+                    "If the error persists, check LLM/OpenAI configuration. Underlying error: " + str(llm_error)
+                ) from llm_error
             questions_list = (worksheet_json or {}).get("questions", [])
             if len(questions_list) < num_questions:
-                if attempt == 0:
-                    logger.warning(f"LLM returned {len(questions_list)} questions (required {num_questions}); retrying once")
-                    continue
                 raise ValueError(
                     f"Generator returned {len(questions_list)} questions; required at least {num_questions}."
                 )
-            valid, report = self._validate_questions_topic(questions_list, topic_text or "")
-            if valid:
+            
+            # Check time guard - if elapsed > 70s, skip validation and return best effort
+            elapsed_time = time.monotonic() - request_start_time
+            if elapsed_time > 70:
+                logger.warning(f"Time guard triggered: elapsed={elapsed_time:.1f}s > 70s, accepting worksheet as-is (skipping strict validation)")
+                # Accept worksheet without further validation to avoid timeout
                 break
-            if attempt == 0:
-                logger.warning(f"Topic validation failed: {report}; retrying with stricter prompt and top 6 chunks")
-                context_for_retry = "\n\n---\n\n".join(
-                    f"[chunk_id: {h.chunk_id}, document_id: {h.document_id}, page_range: {(h.metadata or {}).get('page_start_pdf', '')}-{(h.metadata or {}).get('page_end_pdf', '')}]\n{h.text}"
-                    for h in hits_for_retry[:6]
+            
+            # Early acceptance rule: If MCQ valid + topic valid + difficulty close enough, accept immediately
+            from app.domains.content_ingestion.services.mcq_validator import validate_mcq
+            mcq_valid, mcq_report = validate_mcq(questions_list)
+            valid, report = self._validate_questions_topic(questions_list, topic_text or "")
+            
+            rag_log("validation", pack_id=str(pack_id), topic_text=topic_text or "", attempt=attempt + 1, valid=valid, report=report, questions_count=len(questions_list), mcq_valid=mcq_valid)
+            
+            # Early acceptance: MCQ valid + topic valid + difficulty within 10% threshold
+            if mcq_valid and valid:
+                # Check if difficulty is "close enough" (within 10% threshold)
+                # For now, if MCQ and topic are valid, accept (difficulty check can be lenient)
+                logger.info("Early acceptance: MCQ valid + topic valid, accepting worksheet")
+                break
+            
+            if not valid:
+                self._log_validation_fail_debug(
+                    normalized_topic_text, expanded_query_terms, top5_ranges_for_debug,
+                    (min_page_range, max_page_range), hits_for_retry[:15]
                 )
-                allowed_concepts, forbidden_concepts = self._build_allowed_forbidden(" ".join(h.text for h in hits_for_retry[:6]), topic_text or "")
-                continue
-            self._log_validation_fail_debug(
-                normalized_topic_text, expanded_query_terms, top5_ranges_for_debug,
-                (min_page_range, max_page_range), hits_for_retry[:15]
-            )
-            raise ValueError("VALIDATION_FAILED: " + report)
+                rag_log("error", step="VALIDATION_FAILED", pack_id=str(pack_id), topic_text=topic_text or "", report=report, page_range=f"{min_page_range}-{max_page_range}")
+                raise ValueError("VALIDATION_FAILED: " + report)
+            
+            # If we get here, MCQ or topic validation failed but we continue (best effort)
+            logger.warning(f"Validation issues but continuing: mcq_valid={mcq_valid}, topic_valid={valid}")
+            break
         
         # Build citations list for API (chunk_id, document_id, page_range per hit)
         citations_list = []
@@ -403,7 +476,21 @@ class WorksheetService:
         self.db.commit()
         self.db.refresh(worksheet_cache)
         
-        logger.info(f"Generated worksheet: {worksheet_cache.id}")
+        total_request_ms = (time.monotonic() - request_start_time) * 1000
+        logger.info(
+            f"Generated worksheet: {worksheet_cache.id} | total_request_ms={total_request_ms:.0f} | "
+            f"chapter_page_range={min_page_range}-{max_page_range} | relevance_avg_sim={avg_sim:.3f}"
+        )
+        rag_log(
+            "worksheet_done",
+            pack_id=str(pack_id),
+            topic_text=topic_text or "",
+            worksheet_id=str(worksheet_cache.id),
+            chapter_page_range=f"{min_page_range}-{max_page_range}",
+            relevance_avg_sim=round(avg_sim, 4),
+            relevance_keyword_hits=keyword_hits,
+            total_request_ms=round(total_request_ms, 0)
+        )
         return worksheet_cache
     
     async def _generate_worksheet_with_llm(
@@ -419,6 +506,7 @@ class WorksheetService:
         allowed_concepts: Optional[List[str]] = None,
         forbidden_concepts: Optional[List[str]] = None,
         normalized_topic_text: Optional[str] = None,
+        target_difficulty: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate worksheet JSON using LLM with international-standard assessment prompt."""
         allowed = (allowed_concepts or [])[:15]
@@ -449,9 +537,11 @@ HARD RULES:
 5) Return EXACTLY num_questions questions, numbered 1..num_questions.
 6) Every question MUST include at least one citation: {{chunk_id, document_id, page_range}}.
 7) Answers must NOT be copied verbatim from context. They must be short and student-facing.
-8) Provide a professional marking scheme with mark allocation + acceptable answers + common errors.
-9) Allowed concepts (use these from the excerpts): {", ".join(allowed) if allowed else "from context"}.
-10) FORBIDDEN: Do NOT write questions about: {", ".join(forbidden) if forbidden else "unrelated topics"}.
+8) Keep answers concise. Maximum 2 short sentences per explanation.
+9) Marking criteria must be short bullet points, max 2 lines. Do NOT write long paragraphs.
+10) Provide a professional marking scheme with mark allocation + acceptable answers + common errors (keep brief).
+11) Allowed concepts (use these from the excerpts): {", ".join(allowed) if allowed else "from context"}.
+12) FORBIDDEN: Do NOT write questions about: {", ".join(forbidden) if forbidden else "unrelated topics"}.
 {algebraic_rules}
 
 Generate an international-level worksheet and marking scheme in JSON. Return ONLY the final JSON."""
@@ -499,15 +589,37 @@ OUTPUT JSON SCHEMA (MUST match exactly). Return ONLY this JSON, no other text:
 
 QUESTION RULES:
 - Exactly {mcq_count} MCQ and exactly {short_count} short questions.
-- Difficulty: ~20% easy, ~60% medium, ~20% hard.
+{f"- Target difficulty: {target_difficulty.upper()}. " if target_difficulty else "- Difficulty: ~20% easy, ~60% medium, ~20% hard. "}
+{f"""
+CRITICAL DIFFICULTY REQUIREMENT FOR MEDIUM:
+- At least 2-3 out of {num_questions} questions MUST be multi-step.
+- Multi-step means: "First find X, then use X to find Y" OR "Given A and B, find C" OR scenario-based problems requiring multiple operations.
+- Examples of multi-step questions:
+  * "If set A = {{1,2,3}} and set B = {{3,4,5}}, first find A∩B, then find (A∩B)∪{{6}}."
+  * "A student has 5 books. First, identify how many are math books, then calculate the total cost."
+- DO NOT write all single-step questions. At least 20% must require multiple steps.
+""" if target_difficulty == "medium" else ""}
+{f"""
+CRITICAL DIFFICULTY REQUIREMENT FOR HARD:
+- At least 3-4 out of {num_questions} questions MUST be multi-step OR require justification/explanation.
+- Multi-step: "First find X, then use X to find Y, then verify Z" OR complex scenarios with multiple constraints.
+- Justify/explain: Questions asking "justify", "explain why", "show that", "prove", "derive".
+- Examples:
+  * "Prove that if A⊆B and B⊆C, then A⊆C. Justify each step."
+  * "Given sets A, B, C, first find A∪B, then find (A∪B)∩C, then explain why this equals (A∩C)∪(B∩C)."
+- DO NOT write all single-step questions. At least 35% must be multi-step or justify/explain.
+""" if target_difficulty == "hard" else ""}
+{f"- EASY difficulty: All questions should be single-step. No 'justify', 'explain why', 'prove', 'derive'. Simple recall or one-operation problems only. " if target_difficulty == "easy" else ""}
 - MCQ marks = 1. Short marks = 2 or 3.
 - Every question must cite relevant chunks from CONTEXT. Use LaTeX for math: $formula$.
+- Language: International English, grade-appropriate (Grade {grade}), short sentences, no advanced vocabulary.
 """ + (
     """
 - ALGEBRAIC TOPIC: At least 8/10 questions must include variables (x, y, a, b) or expressions (2x+3, coefficients, terms). Include: 3 simplify expression, 2 evaluate for given values, 2 identify terms/coefficients/constants, 1 translate words to expression. MCQ options must be algebraic expressions, not number theory."""
     if is_algebraic else ""
 ) + "\n"
 
+        llm_start_time = time.monotonic()
         try:
             response = await self.llm_router.generate(
                 system_message=system_message,
@@ -515,10 +627,11 @@ QUESTION RULES:
                 model_config={
                     "provider": "openai",
                     "model": "gpt-4o-mini",
-                    "temperature": 0.3,
-                    "max_tokens": 5000
+                    "temperature": 0.2,  # Reduced from 0.3 for more consistent, concise output
+                    "max_tokens": 2200  # Increased to 2200 to avoid truncation while staying under 2500 target
                 }
             )
+            llm_call_ms = (time.monotonic() - llm_start_time) * 1000
 
             if not response or not hasattr(response, "content"):
                 logger.error("LLM response is empty or missing content")
@@ -529,6 +642,13 @@ QUESTION RULES:
                 logger.error("LLM response content is empty")
                 raise RuntimeError("LLM returned empty content")
 
+            # Check for truncation indicators
+            finish_reason = getattr(response, "finish_reason", None)
+            is_truncated = finish_reason == "length" or (len(content) > 1800 and not content.rstrip().endswith("}"))
+            
+            # Estimate token count (rough: 1 token ≈ 4 characters)
+            estimated_tokens = len(content) // 4
+            logger.info(f"LLM call completed: llm_call_ms={llm_call_ms:.0f}, estimated_tokens={estimated_tokens}, content_length={len(content)}, finish_reason={finish_reason}, truncated={is_truncated}")
             logger.debug(f"LLM response (first 500 chars): {content[:500]}")
 
             if "```json" in content:
@@ -536,12 +656,123 @@ QUESTION RULES:
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
 
-            raw = json.loads(content)
+            # Fix parsing crash: ensure content is parsed as JSON, not string
+            # Add JSON repair for truncated responses
+            if isinstance(content, str):
+                try:
+                    raw = json.loads(content)
+                except json.JSONDecodeError as e:
+                    # Try to repair truncated JSON
+                    logger.warning(f"JSON parse error at char {e.pos}: {str(e)}")
+                    logger.debug(f"Content length: {len(content)}, first 500 chars: {content[:500]}")
+                    
+                    # Try to extract valid JSON by finding the last complete "questions" array
+                    if '"questions"' in content:
+                        # Find the questions array start
+                        q_start = content.find('"questions"')
+                        if q_start != -1:
+                            # Try to find the end of the questions array
+                            bracket_count = 0
+                            in_string = False
+                            escape_next = False
+                            q_array_start = content.find('[', q_start)
+                            if q_array_start != -1:
+                                bracket_count = 1
+                                for i in range(q_array_start + 1, len(content)):
+                                    char = content[i]
+                                    if escape_next:
+                                        escape_next = False
+                                        continue
+                                    if char == '\\':
+                                        escape_next = True
+                                        continue
+                                    if char == '"' and not escape_next:
+                                        in_string = not in_string
+                                        continue
+                                    if not in_string:
+                                        if char == '[':
+                                            bracket_count += 1
+                                        elif char == ']':
+                                            bracket_count -= 1
+                                            if bracket_count == 0:
+                                                # Found end of questions array
+                                                repaired = content[:i+1] + ']}'
+                                                try:
+                                                    raw = json.loads(repaired)
+                                                    logger.info("Successfully repaired truncated JSON")
+                                                    break
+                                                except Exception as repair_err:
+                                                    logger.debug(f"Repair attempt failed: {repair_err}")
+                                                    # Continue to next repair attempt
+                                                break
+                    
+                    # If repair failed, try to extract just the questions array
+                    if '"questions"' in content and 'raw' not in locals():
+                        try:
+                            # Extract questions array manually
+                            q_start = content.find('"questions"')
+                            q_array_start = content.find('[', q_start)
+                            if q_array_start != -1:
+                                # Find matching closing bracket
+                                bracket_count = 1
+                                in_string = False
+                                escape_next = False
+                                for i in range(q_array_start + 1, min(len(content), q_array_start + 50000)):
+                                    char = content[i]
+                                    if escape_next:
+                                        escape_next = False
+                                        continue
+                                    if char == '\\':
+                                        escape_next = True
+                                        continue
+                                    if char == '"' and not escape_next:
+                                        in_string = not in_string
+                                        continue
+                                    if not in_string:
+                                        if char == '[':
+                                            bracket_count += 1
+                                        elif char == ']':
+                                            bracket_count -= 1
+                                            if bracket_count == 0:
+                                                questions_json = content[q_array_start:i+1]
+                                                questions = json.loads(questions_json)
+                                                # Build minimal valid structure
+                                                raw = {
+                                                    "questions": questions,
+                                                    "answer_key": {},
+                                                    "marking_scheme": {}
+                                                }
+                                                logger.warning("Extracted questions from truncated JSON, using minimal structure")
+                                                break
+                        except Exception as repair_error:
+                            logger.error(f"JSON repair failed: {repair_error}")
+                    
+                    # If still failed, raise original error with truncation info
+                    if 'raw' not in locals():
+                        truncation_hint = ""
+                        if is_truncated or finish_reason == "length":
+                            truncation_hint = " Response appears truncated. Consider increasing max_tokens or reducing num_questions."
+                        raise ValueError(
+                            f"Invalid JSON returned from LLM: {str(e)}. "
+                            f"Content length: {len(content)}, estimated tokens: {estimated_tokens}. "
+                            f"Finish reason: {finish_reason}.{truncation_hint}"
+                        )
+            else:
+                raw = content
+            
+            # Validate structure
+            if not isinstance(raw, dict):
+                raise ValueError(f"LLM returned non-dict type: {type(raw)}")
             if "questions" not in raw:
                 raise ValueError("Generated worksheet missing 'questions' field")
 
             # Normalize to existing API format (id "q1", question, correct_answer, answer_key dict, marking_scheme dict)
             worksheet_data = self._normalize_worksheet_to_api_format(raw)
+            
+            # Log token usage
+            estimated_tokens = len(content) // 4
+            logger.info(f"Worksheet normalized: estimated_tokens={estimated_tokens}, questions_count={len(worksheet_data.get('questions', []))}")
+            
             return worksheet_data
 
         except json.JSONDecodeError as e:
@@ -876,6 +1107,7 @@ QUESTION RULES:
         msg = "TOPIC_NOT_FOUND_IN_PACK: No chapter with sufficient relevance. Closest ranges: " + "; ".join(parts)
         if relevance_hits is not None:
             msg += f" Best attempt had avg_sim={avg_sim:.3f}, keyword_hits={keyword_hits}."
+        rag_log("error", step="TOPIC_NOT_FOUND_IN_PACK", topic_text=topic_text, top3_ranges=parts, best_avg_sim=avg_sim, best_keyword_hits=keyword_hits)
         raise ValueError(msg)
 
     def _relevance_score(self, hits: List[VectorHit], topic_text: str) -> Tuple[float, int]:

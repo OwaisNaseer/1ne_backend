@@ -6,6 +6,11 @@ from typing import Optional, Dict, Any, AsyncIterator
 
 from openai import OpenAI, AsyncOpenAI
 
+try:
+    import httpx
+except ImportError:
+    httpx = None  # type: ignore
+
 from app.core.logging import get_logger
 from app.llm.base import BaseProvider
 from app.llm.config import llm_settings
@@ -31,6 +36,13 @@ class OpenAIProvider(BaseProvider):
             if "opeanai" in base_url.lower():
                 base_url = base_url.replace("opeanai", "openai").replace("OPEANAI", "openai")
             client_kwargs["base_url"] = base_url
+        # Connect and read timeouts so we never hang
+        connect_timeout = getattr(llm_settings, "OPENAI_CONNECT_TIMEOUT", 10.0)
+        read_timeout = getattr(llm_settings, "OPENAI_READ_TIMEOUT", 60.0)
+        if httpx is not None:
+            client_kwargs["timeout"] = httpx.Timeout(connect_timeout, read=read_timeout)
+        else:
+            client_kwargs["timeout"] = read_timeout
 
         self.client = AsyncOpenAI(**client_kwargs)
         self.default_model = llm_settings.DEFAULT_MODEL

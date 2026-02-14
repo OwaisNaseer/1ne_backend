@@ -324,9 +324,26 @@ class WorksheetCache(Base):
     # Metadata
     chunk_ids_used = Column(JSONB, nullable=True)  # Array of chunk IDs used for generation
     retrieval_metadata = Column(JSONB, nullable=True)  # {query_vector, top_k, similarity_scores, etc.}
-    
+    user_id = Column(UUID(as_uuid=True), nullable=True, index=True)  # Optional: for regenerate dedupe (last worksheet per user+pack+topic)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     
     def __repr__(self) -> str:
         return f"<WorksheetCache(id={self.id}, signature_hash={self.signature_hash})>"
+
+
+class WorksheetQuestionHash(Base):
+    """Stores question hashes per user+pack+topic+difficulty for regeneration deduplication."""
+
+    __tablename__ = "worksheet_question_hashes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    pack_id = Column(UUID(as_uuid=True), ForeignKey("content_packs.id", ondelete="CASCADE"), nullable=False, index=True)
+    topic_signature = Column(String(64), nullable=False, index=True)  # hash of topic_id/topic_text + grade + subject
+    difficulty = Column(String(20), nullable=True, index=True)  # easy | medium | hard
+    question_hash = Column(String(64), nullable=False, index=True)  # sha256 of normalized question text
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    __table_args__ = (Index("ix_wqh_user_pack_topic_diff", "user_id", "pack_id", "topic_signature", "difficulty"),)

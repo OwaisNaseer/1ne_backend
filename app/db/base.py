@@ -63,4 +63,5 @@ from app.domains.content_ingestion.models import (  # noqa: F401, E402
     DocumentProcessingRun,
     QAValidation,
     WorksheetCache,
+    WorksheetQuestionHash,
 )

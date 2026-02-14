@@ -149,26 +149,25 @@ def test_worksheet_generation():
     print(f"   Method: POST")
     print()
     
+    # New API: single difficulty, num_questions 1-20, question_types (mcq/short_answer/long_answer)
     request_data = {
         "pack_id": pack_id,
         "topic_text": "Introduction to fractions and basic math",
         "grade": "6",
         "subject": "Mathematics",
-        "num_questions": 3,  # Small number for faster testing
-        "difficulty_mix": {
-            "easy": 0.4,
-            "medium": 0.4,
-            "hard": 0.2
-        },
+        "num_questions": 3,  # Small number for faster testing (max 20)
+        "difficulty": "medium",
         "question_types": ["mcq", "short_answer"]
     }
     
-    print("   Request payload:")
+    print("   Request payload (professional overhaul API):")
     print(f"   - Pack ID: {request_data['pack_id']}")
     print(f"   - Topic: {request_data['topic_text']}")
     print(f"   - Grade: {request_data['grade']}")
     print(f"   - Subject: {request_data['subject']}")
     print(f"   - Number of questions: {request_data['num_questions']}")
+    print(f"   - Difficulty: {request_data['difficulty']}")
+    print(f"   - Question types: {request_data['question_types']}")
     print()
     
     try:

@@ -83,16 +83,23 @@ async def startup_event():
     
     logger.info("Backend startup initialization complete")
 
-# Add timeout middleware first (outermost) to catch all requests
-app.add_middleware(
-    TimeoutMiddleware,
-    timeout=30.0,  # 30 seconds timeout to match frontend
-)
-
-# Add CORS middleware to allow frontend requests
-# In development, allow all origins to avoid connection issues
+# Add CORS middleware FIRST (before timeout) to handle preflight requests
+# CORS must be added before other middleware to properly handle OPTIONS requests
+# IMPORTANT: When allow_credentials=True, you CANNOT use ["*"] - must list specific origins
+# Since we use Authorization headers (not cookies), we can set allow_credentials=False
 if settings.ENVIRONMENT == "dev":
-    cors_origins = ["*"]  # Allow all origins in development
+    # In development, allow common localhost origins
+    cors_origins = [
+        "http://localhost:5173",  # Vite default port
+        "http://localhost:3000",  # React default port
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "http://localhost:5174",  # Vite alternative port
+        "http://127.0.0.1:5174",
+    ]
+    # Also allow all origins for maximum compatibility in dev
+    # But we'll use allow_credentials=False to make this work
+    use_wildcard = True
 else:
     # Get frontend URL from environment variable, fallback to localhost
     frontend_url = settings.FRONTEND_URL or "http://localhost:5173"
@@ -122,13 +129,34 @@ else:
     
     # Remove duplicates while preserving order
     cors_origins = list(dict.fromkeys(cors_origins))
+    use_wildcard = False
 
+# Configure CORS middleware
+# Note: allow_credentials=False because we use Authorization headers, not cookies
+# This allows us to use wildcard origins in dev mode if needed
+if use_wildcard and settings.ENVIRONMENT == "dev":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allow all origins in dev
+        allow_credentials=False,  # Must be False when using wildcard
+        allow_methods=["*"],  # Allow all HTTP methods (including OPTIONS)
+        allow_headers=["*"],  # Allow all headers (including Authorization)
+        expose_headers=["X-Worksheet-Cache", "X-Request-Id"],  # Expose custom headers to frontend
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=False,  # We use Authorization headers, not cookies
+        allow_methods=["*"],  # Allow all HTTP methods (including OPTIONS)
+        allow_headers=["*"],  # Allow all headers (including Authorization)
+        expose_headers=["X-Worksheet-Cache", "X-Request-Id"],  # Expose custom headers to frontend
+    )
+
+# Add timeout middleware AFTER CORS (so CORS handles preflight first)
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    TimeoutMiddleware,
+    timeout=30.0,  # 30 seconds timeout to match frontend
 )
 
 

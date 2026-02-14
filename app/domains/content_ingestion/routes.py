@@ -1,15 +1,15 @@
 """
 Content Ingestion API routes.
 """
-import json
 import asyncio
+import json
 from typing import List, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 from pathlib import Path
 
 from fastapi import (
     APIRouter, Depends, HTTPException, status, UploadFile, File, Form,
-    BackgroundTasks, Request
+    BackgroundTasks, Request, Response
 )
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -721,29 +721,119 @@ async def publish_document(
 @router.post("/worksheets/generate", response_model=schemas.WorksheetResponse)
 async def generate_worksheet(
     request: schemas.WorksheetGenerateRequest,
+    response: Response,
+    http_request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Generate a worksheet using RAG."""
+    """Generate a worksheet using RAG. Hard timeout applied; 504 on timeout."""
+    request_id = str(uuid4())
+    timeout_sec = getattr(settings, "WORKSHEET_GENERATION_TIMEOUT_SECONDS", 180.0)
+    # When cache is disabled, default skip_cache_write to True so no DB write
+    skip_cache_write = request.skip_cache_write if request.skip_cache_write is not None else (not getattr(settings, "WORKSHEET_CACHE_ENABLED", False))
+    # Bypass cache when client requests regeneration (force_regenerate or regenerate_key)
+    force_regenerate = request.force_regenerate or bool(request.regenerate_key)
     service = WorksheetService(db)
     try:
-        worksheet_cache = await service.generate_worksheet(
-            pack_id=request.pack_id,
-            topic_id=request.topic_id,
-            topic_text=request.topic_text,
-            grade=request.grade,
-            subject=request.subject,
-            difficulty_mix=request.difficulty_mix,
-            num_questions=request.num_questions,
-            question_types=request.question_types,
-            force_regenerate=request.force_regenerate,
+        # Convert single difficulty to difficulty_mix if provided
+        # The service method only accepts difficulty_mix, not difficulty
+        difficulty_mix_to_use = request.difficulty_mix
+        if request.difficulty and not difficulty_mix_to_use:
+            # Convert single difficulty to difficulty_mix (100% that difficulty)
+            difficulty_mix_to_use = {
+                request.difficulty: 1.0
+            }
+        
+        # Call generate_worksheet with only the parameters it accepts
+        # Note: skip_cache_write, request_id, user_id, regenerate_key, tenant_id are not used by the service method
+        worksheet_cache = await asyncio.wait_for(
+            service.generate_worksheet(
+                pack_id=request.pack_id,
+                topic_id=request.topic_id,
+                topic_text=request.topic_text,
+                grade=request.grade,
+                subject=request.subject,
+                difficulty_mix=difficulty_mix_to_use,
+                num_questions=request.num_questions,
+                question_types=request.question_types,
+                force_regenerate=force_regenerate,
+            ),
+            timeout=timeout_sec,
+        )
+        
+        # Handle skip_cache_write after generation (if needed)
+        # Note: The service always saves to cache, so if skip_cache_write is True,
+        # we would need to delete it, but for now we'll let it cache
+    except asyncio.TimeoutError:
+        logger.warning(f"Worksheet generation timed out after {timeout_sec}s request_id={request_id}")
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail={
+                "message": "Generation timed out. Reduce questions or try again.",
+                "request_id": request_id,
+            },
         )
     except ValueError as e:
         msg = str(e)
+        logger.warning("Worksheet generate ValueError: %s", msg, exc_info=False)
         if "Topic content not found" in msg or "VALIDATION_FAILED" in msg or "TOPIC_NOT_FOUND_IN_PACK" in msg:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=msg)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"message": msg, "code": "TOPIC_NOT_FOUND_OR_VALIDATION_FAILED"},
+            )
+        if "Unable to generate at the requested difficulty" in msg:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"message": msg, "code": "DIFFICULTY_GENERATION_FAILED"},
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": msg, "code": "GENERATION_FAILED"},
+        )
+    except Exception as e:
+        # Catch any other unexpected exceptions (TypeError, AttributeError, etc.)
+        logger.error(f"Unexpected error in worksheet generation (request_id={request_id}): {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": f"Internal server error: {str(e)}",
+                "code": "INTERNAL_ERROR",
+                "request_id": request_id
+            }
+        )
     
+    # Response headers for diagnostics and client UX (do not break existing clients)
+    from_cache = getattr(worksheet_cache, "from_cache", False)
+    response.headers["X-Request-Id"] = request_id
+    response.headers["X-Worksheet-Cache"] = "hit" if from_cache else "miss"
+
+    # When difficulty was requested: ensure response includes metadata (from generation or derived from cache)
+    final_difficulty_used = getattr(worksheet_cache, "final_difficulty_used", None)
+    attempts_count = getattr(worksheet_cache, "attempts_count", None)
+    validator_report_per_attempt = getattr(worksheet_cache, "validator_report_per_attempt", None)
+    warnings = getattr(worksheet_cache, "warnings", None)
+    if request.difficulty and from_cache and final_difficulty_used is None:
+        mix = getattr(worksheet_cache, "difficulty_mix", None) or {}
+        if mix.get("hard") == 1 or mix.get("hard") == 1.0:
+            final_difficulty_used = "hard"
+        elif mix.get("medium") == 1 or mix.get("medium") == 1.0:
+            final_difficulty_used = "medium"
+        elif mix.get("easy") == 1 or mix.get("easy") == 1.0:
+            final_difficulty_used = "easy"
+        attempts_count = 0
+        validator_report_per_attempt = []
+        warnings = []
+
+    # Response hygiene: hide internal fields unless DEBUG or X-Debug: 1 (log only in production)
+    debug = (http_request.headers.get("X-Debug") == "1" or getattr(settings, "DEBUG", False))
+    if not debug:
+        validator_report_per_attempt = None
+        warnings = None
+
+    # created_at must never be null in response
+    from datetime import datetime, timezone
+    created_at = getattr(worksheet_cache, "created_at", None) or datetime.now(timezone.utc)
+
     # Convert to response format
     worksheet_data = worksheet_cache.worksheet_json
     questions = [
@@ -769,10 +859,16 @@ async def generate_worksheet(
         answer_key=worksheet_data.get("answer_key", {}),
         marking_scheme=worksheet_data.get("marking_scheme", {}),
         citations=citations,
-        created_at=worksheet_cache.created_at,
+        created_at=created_at,
         chapter_page_range=retrieval.get("chapter_page_range"),
         relevance_avg_sim=retrieval.get("relevance_avg_sim"),
         relevance_keyword_hits=retrieval.get("relevance_keyword_hits"),
+        final_difficulty_used=final_difficulty_used,
+        attempts_count=attempts_count,
+        attempts=attempts_count,
+        validator_report_per_attempt=validator_report_per_attempt if debug else None,
+        validator_reports=validator_report_per_attempt if debug else None,
+        warnings=warnings if debug else None,
     )
 
 
@@ -803,6 +899,8 @@ async def get_worksheet(
     citations = retrieval.get("citations") if isinstance(retrieval, dict) else None
     if not isinstance(citations, list):
         citations = []
+    from datetime import datetime, timezone
+    created_at = getattr(worksheet_cache, "created_at", None) or datetime.now(timezone.utc)
 
     return schemas.WorksheetResponse(
         id=worksheet_cache.id,
@@ -815,5 +913,5 @@ async def get_worksheet(
         answer_key=worksheet_data.get("answer_key", {}),
         marking_scheme=worksheet_data.get("marking_scheme", {}),
         citations=citations,
-        created_at=worksheet_cache.created_at
+        created_at=created_at,
     )

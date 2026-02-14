@@ -42,6 +42,10 @@ class LLMSettings(BaseSettings):
     DEFAULT_TEMPERATURE: float = 0.7
     DEFAULT_MAX_TOKENS: int = 4000  # Increased from 2000 to 4000 to match Activity's approach (they use 3000, we use 4000 for safety)
 
+    # OpenAI client timeouts (seconds) - fail fast, no hang
+    OPENAI_CONNECT_TIMEOUT: float = 10.0
+    OPENAI_READ_TIMEOUT: float = 150.0  # Per-request read; worksheet route has total cap (e.g. 180s)
+
     # Feature flags
     USE_REAL_LLM: bool = False
     FALLBACK_ENABLED: bool = True  # Use FallbackProvider if all providers fail
