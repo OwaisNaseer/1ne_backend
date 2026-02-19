@@ -373,8 +373,8 @@ class TeacherSignupStrategy(SignupStrategy):
                 Tenant.is_active == True
             ).first()
             if not platform:
-                raise ValueError("Platform tenant not found")
-            
+                from app.domains.auth.services import TenantService
+                platform = TenantService(self.db).create_platform_tenant()
             tenant_id = platform.id
             # Personal workspace will be created after user creation
         

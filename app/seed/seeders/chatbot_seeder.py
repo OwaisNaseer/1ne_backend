@@ -589,6 +589,67 @@ Return ONLY the JSON, no other text.""",
                 },
             ],
         },
+
+
+{
+    "slug": "computer-science-mentor",
+    "name": "Computer Science Mentor",
+    "description": "Expert support for programming concepts, debugging, algorithms, and computer science fundamentals.",
+    "category": "subject",
+    "subject": "Computer",
+    "access_level": "premium",  # or "free"
+    "system_prompt": "You are an expert computer science tutor. Explain programming concepts clearly, help with debugging and algorithms, and support learning of CS fundamentals. Adapt to the student's level.",
+    "models": [
+        {
+            "provider": default_provider,
+            "model_name": default_model,
+            "priority": 0,
+            "is_primary": True
+        }
+    ],
+    "capabilities": [
+        {
+            "capability_key": "code_review",
+            "capability_name": "Code Review",
+            "capability_description": "Analyze code quality, identify bugs, suggest improvements, and provide best practices feedback for programming code.",
+            "capability_category": "analysis",
+            "icon_name": "Code",
+            "display_order": 1,
+            "is_primary": True,
+            "requires_input_type": "text",
+            "system_prompt_template": """You are an expert code reviewer specializing in clean code, best practices, and software engineering principles. Analyze the provided code and respond with ONLY a JSON object in this exact format:
+
+{
+  "overallScore": <number 0-100>,
+  "strengths": ["strength1", "strength2", "strength3"],
+  "issues": [
+    {
+      "type": "bug|performance|style|security|best_practice",
+      "severity": "critical|high|medium|low",
+      "line": <line_number_or_null>,
+      "description": "detailed description of the issue",
+      "suggestion": "specific suggestion on how to fix or improve"
+    }
+  ],
+  "suggestions": ["general improvement suggestion1", "suggestion2", "suggestion3"],
+  "bestPractices": ["best practice recommendation1", "recommendation2", "recommendation3"],
+  "complexity": "low|medium|high",
+  "readability": "excellent|good|fair|poor"
+}
+
+Guidelines:
+- Provide an overall score (0-100)
+- List 3-5 strengths
+- Identify 2-5 issues with suggestions
+- Include improvement suggestions
+- Recommend best practices
+- Assess complexity and readability
+- Return ONLY the JSON.
+""",
+            "processing_mode": "structured"
+        }
+    ]
+}
     ]
 
     for chatbot_info in chatbot_data:
