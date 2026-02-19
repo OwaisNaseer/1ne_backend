@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
@@ -19,17 +20,30 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add active_membership_id column to refresh_tokens table
-    op.add_column('refresh_tokens', 
-        sa.Column('active_membership_id', sa.UUID(), nullable=True)
-    )
-    op.create_index(op.f('ix_refresh_tokens_active_membership_id'), 'refresh_tokens', ['active_membership_id'], unique=False)
-    op.create_foreign_key(
-        'fk_refresh_tokens_active_membership_id',
-        'refresh_tokens', 'user_memberships',
-        ['active_membership_id'], ['id'],
-        ondelete='SET NULL'
-    )
+    """Add active_membership_id column to refresh_tokens table (idempotent)."""
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    existing_columns = [col["name"] for col in inspector.get_columns("refresh_tokens")]
+
+    if "active_membership_id" not in existing_columns:
+        op.add_column(
+            "refresh_tokens",
+            sa.Column("active_membership_id", sa.UUID(), nullable=True),
+        )
+        op.create_index(
+            op.f("ix_refresh_tokens_active_membership_id"),
+            "refresh_tokens",
+            ["active_membership_id"],
+            unique=False,
+        )
+        op.create_foreign_key(
+            "fk_refresh_tokens_active_membership_id",
+            "refresh_tokens",
+            "user_memberships",
+            ["active_membership_id"],
+            ["id"],
+            ondelete="SET NULL",
+        )
 
 
 def downgrade() -> None:

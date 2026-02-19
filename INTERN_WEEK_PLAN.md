@@ -1,7 +1,7 @@
 # Intern Week Plan — Next Week
 
-**Tobba:** Templates domain (later: add/update/change template output format as needed)  
-**Gazia:** Chatbot domain
+**Tooba:** Templates domain (later: add/update/change template output format as needed)  
+**Ghazia:** Chatbot domain
 
 ---
 

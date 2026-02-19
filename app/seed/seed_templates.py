@@ -625,6 +625,56 @@ def get_template_data() -> list[Dict[str, Any]]:
                 }
             }
         },
+            {
+            # TEMPLATE 13: Differentiation Planner
+            "template": {
+                "slug": "differentiation_planner",
+                "name": "Differentiation Planner",
+                "description": "Generate easy, normal, and advanced versions of the same lesson, plus extra support and extension ideas for different student levels.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    **get_base_input_schema(),
+                    "properties": {
+                        **get_base_input_schema()["properties"],
+                        "class_profile": {
+                            "type": "string",
+                            "title": "Class Profile",
+                            "description": "Briefly describe your class (e.g., number of students, range of abilities, any special needs)."
+                        },
+                        "weak_students_needs": {
+                            "type": "string",
+                            "title": "Needs of Weaker Students",
+                            "description": "What do weaker students struggle with? (e.g., reading level, basic concepts, attention)."
+                        },
+                        "strong_students_needs": {
+                            "type": "string",
+                            "title": "Needs of Stronger Students",
+                            "description": "What do stronger students need to stay challenged? (e.g., deeper reasoning, more independence)."
+                        },
+                    },
+                    "required": ["subject", "grade", "topic", "time_duration", "learning_objective", "bloom_level"]
+                },
+                "prompt_definition": {
+                    "description": (
+                        "Generate a differentiated lesson plan from a single topic and objective with:"
+                        " (1) an Easy version for struggling students,"
+                        " (2) a Normal version for average students,"
+                        " (3) an Advanced version for high-achieving students,"
+                        " plus Extra Support ideas and Extension ideas."
+                        " For each version, clearly describe learning goals, key activities, and expected outcomes."
+                    ),
+                    "context": (
+                        "The teacher has a mixed-ability class with weak, average, and very strong students."
+                        " Use the class profile and needs information to adjust the difficulty, scaffolding, and level of challenge."
+                        " Make the suggestions practical for real classrooms and aligned with good pedagogy."
+                    )
+                },
+            }
+        },
     ]
 
 

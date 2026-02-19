@@ -19,27 +19,60 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Create new enums
+    # Create new enums (idempotent - safe if they already exist)
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            CREATE TYPE institutiontype AS ENUM (
+                'k12_school', 'college', 'university', 'training_center', 'other'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END$$;
+        """
+    )
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            CREATE TYPE scopetype AS ENUM (
+                'institution', 'personal_workspace', 'organization'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END$$;
+        """
+    )
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            CREATE TYPE invitestatus AS ENUM (
+                'pending', 'accepted', 'expired', 'revoked'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END$$;
+        """
+    )
+
+    # Enum objects for table definitions (do NOT try to create again)
     institution_type_enum = postgresql.ENUM(
         'k12_school', 'college', 'university', 'training_center', 'other',
         name='institutiontype',
-        create_type=True
+        create_type=False,
     )
-    institution_type_enum.create(op.get_bind(), checkfirst=True)
-    
     scope_type_enum = postgresql.ENUM(
         'institution', 'personal_workspace', 'organization',
         name='scopetype',
-        create_type=True
+        create_type=False,
     )
-    scope_type_enum.create(op.get_bind(), checkfirst=True)
-    
     invite_status_enum = postgresql.ENUM(
         'pending', 'accepted', 'expired', 'revoked',
         name='invitestatus',
-        create_type=True
+        create_type=False,
     )
-    invite_status_enum.create(op.get_bind(), checkfirst=True)
     
     # Add INSTITUTION to TenantType enum
     op.execute("ALTER TYPE tenanttype ADD VALUE IF NOT EXISTS 'institution'")

@@ -382,6 +382,7 @@ class ExecutionService:
 
         # Check if we should use real LLM
         use_real_llm = llm_settings.USE_REAL_LLM
+        llm_response = None  # Initialize to avoid UnboundLocalError when USE_REAL_LLM=False
 
         if use_real_llm:
             # Use real LLM
