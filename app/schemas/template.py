@@ -137,6 +137,8 @@ class UniversalTemplateOutput(BaseModel):
 
     # For communication templates
     communication: Optional[CommunicationSection] = None
+        # Optional custom sections (headings + content) for any template
+    custom_sections: Optional[List[Dict[str, Any]]] = None
 
 
 # ---- Template Schemas ----

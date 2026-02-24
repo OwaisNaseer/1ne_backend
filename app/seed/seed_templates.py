@@ -132,7 +132,41 @@ def get_default_model_config() -> Dict[str, Any]:
     }
 
 
+def get_default_stub_config() -> Dict[str, Any]:
+    """Get default stub_config that will be used for all templates initially."""
+    return {
+        "overview_template": "{template_name} for {subject}: {topic}",
+        "learning_goals_template": [
+            "{learning_objective}",
+            "Help students engage deeply with {topic}."
+        ],
+        "materials": [
+            "Whiteboard or digital board",
+            "Student notebooks or devices",
+        ],
+        "step_titles": [
+            "Introduction & Activation of Prior Knowledge",
+            "Guided Practice",
+            "Independent or Small-Group Practice"
+        ],
+        "step_descriptions_template": "Briefly introduce {topic} and ask students what they already know.",
+        "differentiation": [
+            "Offer sentence stems or visual supports for students who need additional scaffolding.",
+            "Provide extension tasks for students who are ready for enrichment.",
+        ],
+        "teacher_notes": [
+            "Adjust pacing based on student responses and check-ins.",
+            "Capture examples of strong student thinking to highlight during debrief.",
+        ],
+        "assessment_checks": [
+            "Cold-call a few students to explain the concept.",
+            "Use exit tickets asking students to solve a short problem or respond to a prompt.",
+        ],
+    }
+
+
 def get_template_data() -> list[Dict[str, Any]]:
+
     """Get all 12 template definitions with their versions matching detailed criteria."""
     return [
         {
@@ -144,6 +178,49 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "category": "lesson_design",
                 "subject_default": None,
                 "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+                                "stub_config": {
+                    "overview_template": "{template_name} for {subject}: {topic}",
+                    "learning_goals_template": [
+                        "{learning_objective}",
+                        "Help students engage deeply with {topic}."
+                    ],
+                    "materials": [
+                        "Whiteboard or digital board",
+                        "Student notebooks or devices",
+                    ],
+                    "step_titles": [
+                        "Introduction & Activation of Prior Knowledge",
+                        "Guided Practice",
+                        "Independent or Small-Group Practice"
+                    ],
+                    "step_descriptions_template": "Briefly introduce {topic} and ask students what they already know.",
+                    "differentiation": [
+                        "Offer sentence stems or visual supports for students who need additional scaffolding.",
+                        "Provide extension tasks for students who are ready for enrichment.",
+                    ],
+                    "teacher_notes": [
+                        "Adjust pacing based on student responses and check-ins.",
+                        "Capture examples of strong student thinking to highlight during debrief.",
+                    ],
+                    "assessment_checks": [
+                        "Cold-call a few students to explain the concept.",
+                        "Use exit tickets asking students to solve a short problem or respond to a prompt.",
+                    ],
+                    "custom_sections": [
+                        {
+                            "title": "Success Criteria (TEST)",
+                            "content": "By the end of this lesson, students will be able to explain {topic} and apply it in a simple example. This is a custom section for testing structure change."
+                        },
+                        {
+                            "title": "Key Vocabulary (TEST)",
+                            "content": "Key terms for this lesson: introduce and define the main vocabulary related to {topic} in {subject}."
+                        },
+                        {
+                            "title": "Common Misconceptions (TEST)",
+                            "content": "Watch for: students may confuse related concepts. Address by using clear examples and checking understanding."
+                        }
+                    ]
+                }
             },
             "version": {
                 "input_schema": {
@@ -168,6 +245,7 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "category": "lesson_design",
                 "subject_default": None,
                 "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+                "stub_config": get_default_stub_config()
             },
             "version": {
                 "input_schema": {
@@ -204,6 +282,7 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "category": "lesson_design",
                 "subject_default": None,
                 "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+                "stub_config": get_default_stub_config()
             },
             "version": {
                 "input_schema": {
@@ -235,6 +314,7 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "category": "assessment",
                 "subject_default": None,
                 "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+                "stub_config": get_default_stub_config()
             },
             "version": {
                 "input_schema": {
@@ -278,6 +358,7 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "category": "assessment",
                 "subject_default": None,
                 "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+                "stub_config": get_default_stub_config()
             },
             "version": {
                 "input_schema": {
@@ -340,6 +421,7 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "category": "behavior",
                 "subject_default": None,
                 "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+                "stub_config": get_default_stub_config()
             },
             "version": {
                 "input_schema": {
@@ -373,6 +455,7 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "category": "behavior",
                 "subject_default": None,
                 "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+                "stub_config": get_default_stub_config()
             },
             "version": {
                 "input_schema": {
@@ -421,6 +504,7 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "category": "subject_specific",
                 "subject_default": "english",
                 "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+                "stub_config": get_default_stub_config()
             },
             "version": {
                 "input_schema": {
@@ -462,6 +546,7 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "category": "subject_specific",
                 "subject_default": "math",
                 "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+                "stub_config": get_default_stub_config()
             },
             "version": {
                 "input_schema": {
@@ -503,6 +588,7 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "category": "subject_specific",
                 "subject_default": "science",
                 "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+                "stub_config": get_default_stub_config()
             },
             "version": {
                 "input_schema": {
@@ -544,6 +630,7 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "category": "subject_specific",
                 "subject_default": "steam",
                 "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+                "stub_config": get_default_stub_config()
             },
             "version": {
                 "input_schema": {
@@ -587,6 +674,7 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "category": "communication",
                 "subject_default": None,
                 "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+                "stub_config": get_default_stub_config()
             },
             "version": {
                 "input_schema": {

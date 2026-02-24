@@ -101,58 +101,92 @@ class ExecutionService:
         topic = input_data.get("topic", template.name)
         learning_objective = input_data.get("learning_objective", "Support student learning.")
         subject = input_data.get("subject", getattr(template, "subject_default", "general"))
+        grade = input_data.get("grade", 5)
+        activity_type = input_data.get("activity_type", "hands_on")
 
-        overview = f"{template.name} for {subject}: {topic}"
+        # Get stub_config from template (if exists), otherwise use empty dict
+        stub_config = getattr(template, "stub_config", None) or {}
+
+        # Build overview using template from config or default
+        overview_template = stub_config.get("overview_template", "{template_name} for {subject}: {topic}")
+        overview = overview_template.format(
+            template_name=template.name,
+            subject=subject,
+            topic=topic
+        )
+
+        # Build learning_goals using template from config or default
+        learning_goals_templates = stub_config.get("learning_goals_template", [
+            "{learning_objective}",
+            "Help students engage deeply with {topic}."
+        ])
         learning_goals = [
-            learning_objective,
-            f"Help students engage deeply with {topic}.",
+            goal_template.format(
+                learning_objective=learning_objective,
+                topic=topic,
+                subject=subject,
+                activity_type=activity_type
+            )
+            for goal_template in learning_goals_templates
         ]
-        materials = [
+
+        # Build materials from config or default
+        materials = stub_config.get("materials", [
             "Whiteboard or digital board",
             "Student notebooks or devices",
-        ]
+        ])
 
-        steps = [
-            LessonStep(
-                title="Introduction & Activation of Prior Knowledge",
-                description=f"Briefly introduce {topic} and ask students what they already know.",
-            ),
-            LessonStep(
-                title="Guided Practice",
-                description=f"Model the core skill or concept related to {topic} and work through an example together.",
-            ),
-            LessonStep(
-                title="Independent or Small-Group Practice",
-                description="Students apply the concept with teacher circulating for support.",
-            ),
-        ]
+        # Build steps from config or default
+        step_titles = stub_config.get("step_titles", [
+            "Introduction & Activation of Prior Knowledge",
+            "Guided Practice",
+            "Independent or Small-Group Practice"
+        ])
+        step_desc_template = stub_config.get("step_descriptions_template",
+            "Briefly introduce {topic} and ask students what they already know.")
 
-        differentiation = [
+        steps = []
+        for step_title in step_titles:
+            # Format description template with variables
+            step_description = step_desc_template.format(
+                step_title=step_title,
+                topic=topic,
+                subject=subject,
+                learning_objective=learning_objective
+            )
+            steps.append(LessonStep(
+                title=step_title,
+                description=step_description
+            ))
+
+        # Build differentiation from config or default
+        differentiation = stub_config.get("differentiation", [
             "Offer sentence stems or visual supports for students who need additional scaffolding.",
             "Provide extension tasks for students who are ready for enrichment.",
-        ]
+        ])
 
-        teacher_notes = [
+        # Build teacher_notes from config or default
+        teacher_notes = stub_config.get("teacher_notes", [
             "Adjust pacing based on student responses and check-ins.",
             "Capture examples of strong student thinking to highlight during debrief.",
-        ]
+        ])
 
         bloom_alignment = [
             BloomAlignmentItem(
                 level=BloomLevel.UNDERSTAND,
-                description="Students explain the core idea in their own words.",
+                description=f"Students explain {topic} in their own words.",
             ),
             BloomAlignmentItem(
                 level=BloomLevel.APPLY,
-                description="Students use the concept in a new example.",
+                description=f"Students use {topic} in a new context.",
             ),
         ]
 
         assessment: Optional[AssessmentSection] = AssessmentSection(
-            checks_for_understanding=[
+            checks_for_understanding=stub_config.get("assessment_checks", [
                 "Cold-call a few students to explain the concept.",
                 "Use exit tickets asking students to solve a short problem or respond to a prompt.",
-            ],
+            ]),
             rubric=None,
         )
 
@@ -160,27 +194,36 @@ class ExecutionService:
         communication: Optional[CommunicationSection] = None
 
         if template.category == TemplateCategory.ASSESSMENT:
+            questions_config = stub_config.get("questions", [
+                {"question_text": f"Explain {topic} in your own words.", "type": "short_answer"},
+                {"question_text": f"Apply {topic} to a real-world scenario.", "type": "open_ended"},
+            ])
             questions = [
                 AssessmentQuestion(
-                    question_text=f"Explain {topic} in your own words.",
-                    type="short_answer",
-                ),
-                AssessmentQuestion(
-                    question_text=f"Apply {topic} to a real-world scenario.",
-                    type="open_ended",
-                ),
+                    question_text=q.get("question_text", "").format(topic=topic),
+                    type=q.get("type", "short_answer")
+                )
+                for q in questions_config
             ]
 
         if template.category == TemplateCategory.COMMUNICATION:
+            comm_config = stub_config.get("communication", {})
             communication = CommunicationSection(
-                subject_line=f"Update about our work on {topic}",
-                message_body=f"We are currently working on {topic}. Here is how you can support at home.",
-                key_details=[
+                subject_line=comm_config.get("subject_line_template",
+                    f"Update about our work on {topic}").format(topic=topic),
+                message_body=comm_config.get("message_body_template",
+                    f"We are currently working on {topic}. Here is how you can support at home.").format(topic=topic),
+                key_details=comm_config.get("key_details_template", [
                     f"Students are learning to: {learning_objective}",
                     "Look for opportunities to discuss this topic in everyday life.",
-                ],
-                call_to_action="Reply to this message if you have any questions or want specific suggestions.",
+                ]),
+                call_to_action=comm_config.get("call_to_action",
+                    "Reply to this message if you have any questions or want specific suggestions."),
             )
+                    # Optional custom sections from stub_config (for structure change)
+        custom_sections = stub_config.get("custom_sections")
+        if custom_sections is not None and not isinstance(custom_sections, list):
+            custom_sections = None
 
         return UniversalTemplateOutput(
             overview=overview,
@@ -193,6 +236,7 @@ class ExecutionService:
             bloom_alignment=bloom_alignment,
             questions=questions,
             communication=communication,
+            custom_sections=custom_sections,
         )
 
     @classmethod
@@ -382,6 +426,7 @@ class ExecutionService:
 
         # Check if we should use real LLM
         use_real_llm = llm_settings.USE_REAL_LLM
+        llm_response = None  # Initialize to avoid UnboundLocalError
 
         if use_real_llm:
             # Use real LLM
@@ -442,7 +487,7 @@ class ExecutionService:
             token_usage=token_usage_dict,
             cost_estimate=cost_estimate,
             latency_ms=latency_ms,
-            cache_hit=getattr(llm_response, 'cache_hit', False),
+            cache_hit=getattr(llm_response, 'cache_hit', False) if llm_response else False,
             alignment_flags=None,
         )
 

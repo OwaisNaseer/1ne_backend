@@ -410,6 +410,21 @@ def universal_output_to_markdown(data: Dict[str, Any]) -> str:
             note_text = note if isinstance(note, str) else str(note)
             lines.append(f"- {note_text}")
         lines.append("")
+        # Custom sections (optional - for template-specific headings and content)
+    custom_sections = data.get("custom_sections")
+    if custom_sections and isinstance(custom_sections, list):
+        for section in custom_sections:
+            if isinstance(section, dict):
+                title = section.get("title") or section.get("heading", "")
+                content = section.get("content") or section.get("text", "")
+                if title or content:
+                    if title:
+                        lines.append(f"## {title}")
+                    if content:
+                        lines.append(str(content).strip())
+                    lines.append("")
+
+    return "\n".join(lines).strip()    
     
-    return "\n".join(lines).strip()
+
 
