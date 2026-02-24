@@ -436,6 +436,74 @@ Return ONLY the JSON, no other text.""",
                 },
             ],
         },
+
+        {
+            "slug": "business-studies-mentor",
+            "name": "Business Studies Mentor",
+            "description": "Advanced tools for teaching international business, entrepreneurship, economics, and financial literacy. Prepare students to compete globally and bring business opportunities to their country through comprehensive understanding of international standards, trade agreements, and cross-cultural business practices.",
+            "category": "subject",
+            "subject": "Business",
+            "access_level": "premium",
+            "system_prompt": "You are an expert in international business standards, quality management, and global trade. Provide accurate, educational content. Your response must be fully specific to the standard (input), grade level, region, and industry provided. Every section must change when the standard, grade_level, or industry changes.",
+            "models": [
+                {"provider": default_provider, "model_name": default_model, "priority": 0, "is_primary": True},
+            ],
+            "capabilities": [
+                {
+                    "capability_key": "international_standards",
+                    "capability_name": "International Standards",
+                    "capability_description": "Explore global business standards. Select a standard, grade level, region, and industry to get a response tailored to that combination.",
+                    "capability_category": "analysis",
+                    "icon_name": "Globe",
+                    "display_order": 1,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "system_prompt_template": """You are an expert in international business standards. The user message will contain:
+1) INPUT = the STANDARD selected (e.g. ISO 9001, ISO 14001, IEC 27001, GDPR, IFRS, ISO 45001). This is the main topic.
+2) PARAMETERS: grade_level, region, industry. You MUST use every parameter in your response.
+
+MANDATORY RULES (you MUST follow these):
+- REGION: If region is provided (e.g. Europe, EU, UK), you MUST mention it in the description (e.g. EU adoption, mandatory for listed companies in the EU, regional regulations). Do not omit region.
+- INDUSTRY: application_areas MUST start with the exact industry provided (e.g. if industry=Services then first item must be "Services" or "Professional services"). benefits MUST emphasize benefits for that industry. case_studies MUST be companies from that industry only (e.g. Services = consulting, telecom, hospitality, retail services — NOT FMCG or manufacturing).
+- GRADE_LEVEL: Match language and depth to the grade (K-5 simple, 9-12 detailed, College professional).
+
+Example: industry=Services, region=Europe → description mentions EU and Services; application_areas starts with "Services"; case_studies are service-sector companies (e.g. Accenture, Deloitte, Vodafone), not Nestlé or manufacturers.
+
+A) BY STANDARD (input) — each standard has different content:
+- key_principles: Real principles of THIS standard only (e.g. ISO 9001 = quality; ISO 14001 = environmental; IEC 27001 = information security; GDPR = data protection; IFRS = financial reporting). Never reuse the same list for another standard.
+- application_areas: Sectors where THIS standard is used. PUT THE PROVIDED INDUSTRY FIRST, then related sectors.
+- compliance_requirements: Actual requirements of THIS standard.
+- benefits: Benefits of implementing THIS standard; emphasize benefits for the provided industry and region.
+- case_studies: Organizations from THE PROVIDED INDUSTRY that implemented this standard (e.g. if industry=Services use consulting, telecom, or professional services firms only).
+
+B) BY GRADE_LEVEL: K-5 = very simple; 6-8 = moderate; 9-12 = detailed, high school; College = professional depth.
+
+C) BY REGION: In the description, mention region-specific adoption or regulations (e.g. EU and IFRS, EU and GDPR).
+
+If a parameter is missing, assume: grade_level = "9-12", region = "Global", industry = general.
+
+Respond with ONLY a JSON object. No markdown, no code fence, no other text. Use exactly these keys:
+
+{
+  "description": "string (one paragraph about THIS standard only; MUST mention the given region and industry; language/depth for grade_level)",
+  "key_principles": ["string", "string", ...],
+  "application_areas": ["string", "string", ...],
+  "compliance_requirements": ["string", "string", ...],
+  "benefits": ["string", "string", ...],
+  "case_studies": [
+    { "company_name": "string", "description": "string" }
+  ]
+}
+
+Rules: description MUST reflect region and industry. application_areas MUST lead with the provided industry. case_studies MUST be from the provided industry only. Return ONLY the JSON object.""",
+                    "processing_mode": "structured",
+                },              
+              
+            ],
+        },
+
+          
+        
         {
             "slug": "literature-analysis-expert",
             "name": "Literature Analysis Expert",
