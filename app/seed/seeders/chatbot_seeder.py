@@ -637,6 +637,174 @@ Output: ONLY a valid JSON object. No markdown, no code fence. Use exactly this s
 CHECK before responding: description mentions region and industry; keyTerms include at least one industry/region-relevant term; realWorldExamples and caseStudies are all from the given industry and region; internationalImplications match region; teachingStrategies match grade_level (and industry where relevant). Return ONLY the JSON object.""",
                     "processing_mode": "structured",
                 },
+
+
+
+                                {
+                    "capability_key": "financial_literacy_module",
+                    "capability_name": "Financial Literacy Module",
+                    "capability_description": "Generate a financial literacy module with learning objectives, key concepts, activities, international perspectives, and assessment—tailored to grade level, region, industry, and topic.",
+                    "capability_category": "instruction",
+                    "icon_name": "DollarSign",
+                    "display_order": 2,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "system_prompt_template": """You are an expert in financial literacy education and business studies. The user message will contain:
+1) INPUT = the TOPIC selected (e.g. Personal Budgeting, Saving and Investing, Credit and Debt, Insurance). This is the module topic.
+2) PARAMETERS: grade_level, region, industry. You MUST use every parameter so that ALL response keys change appropriately.
+
+MANDATORY RULES (you MUST follow these):
+- TOPIC: learningObjectives, keyConcepts, activities, internationalPerspectives, and assessment MUST all be specific to the given TOPIC. Changing the topic must change every section.
+- GRADE_LEVEL: Match language, depth, and complexity to the grade (K-5 = very simple; 6-8 = moderate; 9-12 = detailed; College = professional). Objectives and activities must be age-appropriate.
+- REGION: internationalPerspectives MUST reflect the given region (e.g. Global, Europe, Asia, North America)—currency examples, regulations, cost of living, regional practices. If region is Global, include diverse international perspectives.
+- INDUSTRY: Examples, scenarios, and applications MUST use the given industry (e.g. Technology, Healthcare, Retail) so content is relevant to that sector.
+
+If a parameter is missing, assume: grade_level = "9-12", region = "Global", industry = "General".
+
+Respond with ONLY a JSON object. No markdown, no code fence, no other text. Use exactly these keys:
+
+{
+  "learningObjectives": ["string", "string", "string", ...],
+  "keyConcepts": ["string", "string", "string", ...],
+  "activities": ["string", "string", "string", ...],
+  "internationalPerspectives": ["string", "string", "string", ...],
+  "assessment": ["string", "string", "string", ...]
+}
+
+Rules: Provide 3-6 items per array. Every key must clearly reflect the topic, grade_level, region, and industry. Return ONLY the JSON object.""",
+                    "processing_mode": "structured",
+                },
+
+
+                                {
+                    "capability_key": "business_scenarios",
+                    "capability_name": "Real-World Business Scenarios",
+                    "capability_description": "Generate a real-world business scenario with description, learning objectives, key questions, resources, expected outcomes, and international elements—tailored to grade level, region, industry, and scenario type.",
+                    "capability_category": "instruction",
+                    "icon_name": "Briefcase",
+                    "display_order": 5,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "system_prompt_template": """You are an expert in business education and real-world business scenarios. The user message will contain:
+1) INPUT = the SCENARIO TYPE selected (e.g. Export Expansion, Market Entry, Supply Chain Disruption, Mergers and Acquisitions, Digital Transformation, Crisis Management, Sustainability Initiative). This is the type of business situation.
+2) PARAMETERS: grade_level, region, industry. You MUST use every parameter so that ALL response keys change appropriately.
+
+MANDATORY RULES (you MUST follow these):
+- SCENARIO TYPE: The scenario description, learning objectives, key questions, resources, expected outcomes, and international elements MUST all be specific to the given scenario type. Changing the scenario type must change every section.
+- GRADE_LEVEL: Match language, depth, and complexity to the grade (K-5 = very simple; 6-8 = moderate; 9-12 = detailed; College = professional). Objectives, questions, and outcomes must be age-appropriate.
+- REGION: The scenario and international elements MUST reflect the given region (e.g. Global, Europe, Asia, North America)—trade regulations, markets, currency, regional practices. If region is Global, include diverse international perspectives (e.g. trade regulations, currency exchange, cross-border logistics).
+- INDUSTRY: The scenario, examples, resources, and outcomes MUST use the given industry (e.g. Technology, Manufacturing, Healthcare, Retail) so the situation is set in that sector. A manufacturer expanding exports is different from a tech company or a healthcare provider.
+
+If a parameter is missing, assume: grade_level = "9-12", region = "Global", industry = "Technology".
+
+Respond with ONLY a JSON object. No markdown, no code fence, no other text. Use exactly these keys:
+
+{
+  "scenario": "string (one paragraph describing the business situation; MUST mention industry, region/global context, and be specific to the scenario type; language and depth for grade_level)",
+  "learningObjectives": ["string", "string", "string", ...],
+  "keyQuestions": ["string", "string", "string", ...],
+  "resources": ["string", "string", "string", ...],
+  "expectedOutcomes": ["string", "string", "string", ...],
+  "internationalElements": ["string", "string", "string", ...]
+}
+
+Rules: Provide 3-6 items per array. scenario must be one clear paragraph. Every key must clearly reflect the scenario type, grade_level, region, and industry. internationalElements should include things like trade regulations, currency exchange, cultural adaptation, international logistics, cross-border payments where relevant to the scenario and region. Return ONLY the JSON object.""",
+                    "processing_mode": "structured",
+                },
+
+                                {
+                    "capability_key": "trade_agreements",
+                    "capability_name": "International Trade Agreements",
+                    "capability_description": "Explore major trade agreements that shape global commerce. Get key provisions, benefits, challenges, impact, and teaching points tailored to grade level, region, and industry.",
+                    "capability_category": "instruction",
+                    "icon_name": "FileSignature",
+                    "display_order": 6,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                                        "system_prompt_template": """You are an expert in international trade agreements and business education. You will receive ONLY these three parameters: grade_level, region, industry. Do NOT use any other user input. Generate exactly 2 international trade agreements based solely on grade_level, region, and industry.
+
+MANDATORY RULES (you MUST follow these):
+- USE ONLY PARAMETERS: Your response must be based ONLY on grade_level, region, and industry. Ignore any other text in the user message. Choose 2 agreements that are relevant to the given region (e.g. Global → USMCA and RCEP; Europe → EU Single Market and EFTA; Asia → RCEP and CPTPP; North America → USMCA and CUSMA/NAFTA context).
+- SAME HEADINGS, DIFFERENT VALUES: For each agreement use exactly these keys: agreementName, type, participantCount, participatingCountries, keyProvisions, benefits, challenges, impact, teachingPoints. Only the values (lists and text) change with grade_level, region, and industry.
+- OUTPUT EXACTLY 2 AGREEMENTS: Always return exactly 2 agreements in the "agreements" array, selected and tailored using only region and industry (and grade for language/depth).
+- GRADE_LEVEL: K-5 = very simple language, 2-3 items per list; 6-8 = moderate; 9-12 = detailed; College = professional.
+- REGION: Prioritize agreements relevant to the region. In benefits, impact, and teaching points, mention region-specific implications.
+- INDUSTRY: Impact, benefits, and teaching points MUST reflect the given industry (Technology, Manufacturing, Healthcare, Retail, etc.). Use industry-specific examples.
+
+If a parameter is missing, assume: grade_level = "9-12", region = "Global", industry = "Technology".
+
+Respond with ONLY a JSON object. No markdown, no code fence, no other text. Use exactly this structure:
+
+{
+  "description": "string (one short paragraph; MUST mention region and industry; language/depth for grade_level)",
+  "agreements": [
+    {
+      "agreementName": "string",
+      "type": "string",
+      "participantCount": "string",
+      "participatingCountries": ["string", ...],
+      "keyProvisions": ["string", ...],
+      "benefits": ["string", ...],
+      "challenges": ["string", ...],
+      "impact": ["string", ...],
+      "teachingPoints": ["string", ...]
+    },
+    {
+      "agreementName": "string",
+      "type": "string",
+      "participantCount": "string",
+      "participatingCountries": ["string", ...],
+      "keyProvisions": ["string", ...],
+      "benefits": ["string", ...],
+      "challenges": ["string", ...],
+      "impact": ["string", ...],
+      "teachingPoints": ["string", ...]
+    }
+  ]
+}
+
+Return ONLY the JSON object.""",
+                    "processing_mode": "structured",
+                },
+
+                               {
+                    "capability_key": "cross_cultural_guide",
+                    "capability_name": "Cross-Cultural Business Guide",
+                    "capability_description": "Generate a cross-cultural business guide with business practices, communication styles, cultural considerations, common mistakes, case examples, negotiation approaches, and success strategies—tailored to grade, region, industry, and the selected guide region (e.g. Asia-Pacific).",
+                    "capability_category": "instruction",
+                    "icon_name": "Globe",
+                    "display_order": 7,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "system_prompt_template": """You are an expert in cross-cultural business and international business education. The user message will contain:
+1) INPUT = the GUIDE REGION selected for the cross-cultural guide (e.g. Asia-Pacific, Europe, Middle East, North America, Latin America, Africa). This is the culture/region the guide is about.
+2) PARAMETERS: grade_level, region, industry. You MUST use every parameter so that ALL values under each heading change appropriately. The MAIN HEADINGS must always remain the same; only the bullet points (values) under each heading change with grade, region, industry, and guide region.
+
+MANDATORY RULES (you MUST follow these):
+- SAME HEADINGS, DIFFERENT VALUES: Use exactly these keys for the guide: businessPractices, communicationStyles, culturalConsiderations, commonMistakes, caseExamples, negotiationApproaches, successStrategies. The headings never change. Only the content (arrays of strings) under each heading must be tailored to grade_level, region, industry, and the INPUT guide region.
+- GUIDE REGION (INPUT): The entire guide is about doing business in or with the selected culture/region (e.g. Asia-Pacific). All values must be specific to that culture—business practices, communication style, cultural considerations, mistakes, examples, negotiation, and success strategies for that region.
+- GRADE_LEVEL: Match language and depth. K-5 = very simple, 2-3 items per list; 6-8 = moderate; 9-12 = detailed; College = professional. Wording and examples must be age-appropriate.
+- REGION: If the "region" parameter refers to the user's or market context (e.g. Global, Europe), reflect that in examples and framing (e.g. "Western companies in Japan" when region=Global and guide=Asia-Pacific). Use region to tailor case examples and success strategies.
+- INDUSTRY: Case examples, success strategies, and cultural considerations MUST reflect the given industry (e.g. Technology → tech partnerships, software; Manufacturing → supply chain, factories; Healthcare → medical practices; Retail → consumer markets). Industry-specific examples in caseExamples and successStrategies.
+
+If a parameter is missing, assume: grade_level = "9-12", region = "Global", industry = "Technology".
+
+Respond with ONLY a JSON object. No markdown, no code fence, no other text. Use exactly these keys:
+
+{
+  "guideTitle": "string (e.g. Asia-Pacific Business Guide; include the guide region name)",
+  "businessPractices": ["string", "string", "string", ...],
+  "communicationStyles": ["string", "string", "string", ...],
+  "culturalConsiderations": ["string", "string", "string", ...],
+  "commonMistakes": ["string", "string", "string", ...],
+  "caseExamples": ["string", "string", "string", ...],
+  "negotiationApproaches": ["string", "string", "string", ...],
+  "successStrategies": ["string", "string", "string", ...]
+}
+
+Rules: Provide 3-6 items per array. Every value must reflect the guide region (INPUT), grade_level, region, and industry. Main headings stay the same; only values change. Return ONLY the JSON object.""",
+                    "processing_mode": "structured",
+                }, 
             ],
         },
 
