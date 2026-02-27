@@ -1,11 +1,102 @@
 """
 Convert TOON/JSON lesson plan data to markdown format for streaming display.
 Similar to Activity's lesson_plan_to_markdown function.
+
+Provides:
+- dict_to_markdown: generic converter that walks any dict (key -> heading, value -> content).
+- universal_output_to_markdown: legacy converter for the fixed universal output shape.
 """
 import logging
 from typing import Dict, Any, List, Optional
 
 logger = logging.getLogger(__name__)
+
+
+def _humanize_key(key: str) -> str:
+    """Turn schema key into a readable heading (e.g. learning_goals -> Learning Goals)."""
+    return key.replace("_", " ").strip().title()
+
+
+def _value_to_markdown(value: Any, parent_heading_level: int = 0) -> List[str]:
+    """
+    Convert a single value to markdown lines. parent_heading_level is used for nested dicts.
+    """
+    lines: List[str] = []
+
+    if value is None:
+        return []
+    if isinstance(value, bool):
+        return ["Yes" if value else "No"]
+    if isinstance(value, (int, float)):
+        return [str(value)]
+    if isinstance(value, str):
+        text = value.strip()
+        return [text] if text else []
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, str):
+                text = item.strip()
+                if text:
+                    lines.append(f"- {text}")
+            elif isinstance(item, dict):
+                lines.append("")
+                lines.extend(_dict_to_markdown_lines(item, parent_heading_level + 1))
+            else:
+                lines.append(f"- {item}")
+        return lines
+    if isinstance(value, dict):
+        lines.extend(_dict_to_markdown_lines(value, parent_heading_level + 1))
+        return lines
+    return [str(value)]
+
+
+def _dict_to_markdown_lines(data: Dict[str, Any], heading_level: int = 0) -> List[str]:
+    """
+    Walk a dict and produce markdown lines. Each key becomes a heading; value is rendered
+    as paragraph, bullets, or nested structure. Skips None and empty strings.
+    """
+    lines: List[str] = []
+    for key, value in list(data.items()):
+        if value is None:
+            continue
+        if isinstance(value, str) and not value.strip():
+            continue
+        heading = _humanize_key(key)
+        prefix = "#" * (heading_level + 1) + " "
+        lines.append("")
+        lines.append(f"{prefix}{heading}")
+        lines.append("")
+        chunk = _value_to_markdown(value, heading_level)
+        if chunk:
+            lines.extend(chunk)
+        else:
+            if isinstance(value, dict):
+                lines.extend(_dict_to_markdown_lines(value, heading_level + 1))
+            elif isinstance(value, list) and value:
+                for item in value:
+                    if isinstance(item, dict):
+                        lines.extend(_dict_to_markdown_lines(item, heading_level + 1))
+                    elif isinstance(item, str) and item.strip():
+                        lines.append(f"- {item.strip()}")
+            elif isinstance(value, str) and value.strip():
+                lines.append(value.strip())
+    return lines
+
+
+def dict_to_markdown(data: Dict[str, Any]) -> str:
+    """
+    Convert any output dictionary to markdown (generic, schema-agnostic).
+
+    - Each key becomes a heading (e.g. challenge_title -> ## Challenge Title).
+    - String values become paragraphs; list of strings become bullets.
+    - Nested objects and list-of-objects get sub-headings and content.
+    Works for any template output shape (lesson plan, STEAM challenge, etc.).
+    """
+    if not data or not isinstance(data, dict):
+        logger.warning("dict_to_markdown: invalid data (expected non-empty dict)")
+        return ""
+    lines = _dict_to_markdown_lines(data, heading_level=0)
+    return "\n".join(lines).strip() if lines else ""
 
 
 def universal_output_to_markdown(data: Dict[str, Any]) -> str:
@@ -410,6 +501,21 @@ def universal_output_to_markdown(data: Dict[str, Any]) -> str:
             note_text = note if isinstance(note, str) else str(note)
             lines.append(f"- {note_text}")
         lines.append("")
+        # Custom sections (optional - for template-specific headings and content)
+    custom_sections = data.get("custom_sections")
+    if custom_sections and isinstance(custom_sections, list):
+        for section in custom_sections:
+            if isinstance(section, dict):
+                title = section.get("title") or section.get("heading", "")
+                content = section.get("content") or section.get("text", "")
+                if title or content:
+                    if title:
+                        lines.append(f"## {title}")
+                    if content:
+                        lines.append(str(content).strip())
+                    lines.append("")
+
+    return "\n".join(lines).strip()    
     
-    return "\n".join(lines).strip()
+
 

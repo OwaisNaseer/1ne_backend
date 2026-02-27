@@ -33,6 +33,7 @@ class Template(Base):
     category = Column(SQLEnum(TemplateCategory, values_callable=lambda x: [e.value for e in x]), nullable=False)
     subject_default = Column(String(50), nullable=True)
     grade_bands_supported = Column(JSON, nullable=True)  # Array of grade bands
+    stub_config = Column(JSON, nullable=True)  # Template-specific stub output configuration
     is_system_template = Column(Boolean, default=False, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

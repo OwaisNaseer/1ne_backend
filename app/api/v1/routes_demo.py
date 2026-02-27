@@ -69,7 +69,7 @@ async def execute_demo_template(
         )
 
     # Note: We deliberately keep validation lightweight here as well.
-    execution, universal_output = await ExecutionService.execute(
+    execution, output_dict = await ExecutionService.execute(
         db,
         template=template,
         template_version=latest_version,
@@ -83,7 +83,7 @@ async def execute_demo_template(
         execution_id=execution.id,
         template_id=execution.template_id,
         template_version=execution.template_version or latest_version.version,
-        output=universal_output,
+        output=output_dict,
         model_used=execution.model_used,
         provider_used=execution.provider_used,
         token_usage=execution.token_usage,

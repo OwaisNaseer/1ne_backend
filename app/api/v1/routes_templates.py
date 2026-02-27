@@ -327,8 +327,8 @@ async def execute_template(
     user_id = current_user.id if current_user else None
     tenant_id = current_user.tenant_id if current_user else None
 
-    # Execute via execution service (async)
-    execution, universal_output = await ExecutionService.execute(
+    # Execute via execution service (async); output shape is from template's output_schema
+    execution, output_dict = await ExecutionService.execute(
         db,
         template=template,
         template_version=latest_version,
@@ -342,7 +342,7 @@ async def execute_template(
         execution_id=execution.id,
         template_id=execution.template_id,
         template_version=execution.template_version or latest_version.version,
-        output=universal_output,
+        output=output_dict,
         model_used=execution.model_used,
         provider_used=execution.provider_used,
         token_usage=execution.token_usage,
