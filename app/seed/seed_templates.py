@@ -1030,105 +1030,170 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "grade": {"type": "integer", "minimum": 0, "maximum": 12, "title": "Grade Level", "description": "Enter the grade level (0 for Kindergarten/K, 1-12 for grades 1-12). This ensures content is age-appropriate and aligns with international grade-level expectations (e.g., USA Common Core, UK National Curriculum, IB PYP/MYP/DP)."},
-                        "grade_band": {"type": "string", "enum": ["K-2", "3-5", "6-8", "9-12"], "title": "Grade Band (Optional)", "description": "Optional: Select a grade band for broader age-group alignment. Useful for multi-grade classrooms or when targeting developmental stages rather than specific grades."},
-                        "topic": {"type": "string", "title": "Topic or Learning Theme", "description": "Enter the specific topic, concept, or theme for this lesson/activity. Be specific and clear (e.g., 'Fractions and Decimals', 'The Water Cycle', 'Persuasive Writing', 'World War II'). This will be the central focus of the generated content."},
-                        "learning_objective": {"type": "string", "title": "Learning Objective", "description": "State the learning objective using SMART criteria (Specific, Measurable, Achievable, Relevant, Time-bound). Example: 'Students will be able to solve multi-step word problems involving fractions and decimals with 80% accuracy.' This should align with international curriculum standards and Bloom's Taxonomy levels."},
+                        "grade": {"type": "integer", "minimum": 0, "maximum": 12, "title": "Grade"},
                         "focus": {
                             "type": "string",
-                            "enum": ["writing", "reading", "vocabulary"],
-                            "title": "ELA Focus Area",
-                            "description": "Select the primary English Language Arts skill focus. Writing: Composition, grammar, and written expression aligned with international literacy standards (CCSS, UK National Curriculum, IB). Reading: Comprehension, analysis, and interpretation of texts (close reading, literary analysis). Vocabulary: Word knowledge, etymology, and language development (academic vocabulary, word roots). Choose based on your learning objectives and international curriculum alignment needs."
+                            "enum": ["reading", "writing", "vocabulary"],
+                            "title": "Focus"
                         },
-                        "bloom_level": {"type": "string", "enum": ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create", "Understand → Apply", "Analyze → Evaluate"], "title": "Bloom's Taxonomy Level", "description": "Select the cognitive level(s) from Bloom's Taxonomy that students will engage with. This ensures the content promotes appropriate levels of thinking: Remember (recall facts), Understand (comprehend meaning), Apply (use in new situations), Analyze (examine relationships), Evaluate (make judgments), Create (produce new work). You can select a progression (e.g., 'Understand → Apply') for lessons that build complexity."},
-                        "standard": {"type": "string", "title": "Educational Standard (Optional)", "description": "Optional: Enter specific educational standards to align with (e.g., 'CCSS.MATH.CONTENT.6.EE.A.2', 'UK National Curriculum Year 7', 'IB MYP Criterion A', 'NGSS MS-LS1-1'). This ensures the generated content aligns with recognized international curriculum frameworks."},
-                        "standards_framework": {"type": "string", "enum": ["CCSS", "UK_NATIONAL", "IB", "NGSS", "CAMBRIDGE", "EDEXCEL", "AQA", "AUSTRALIAN", "CANADIAN", "SINGAPORE", "OTHER"], "title": "Standards Framework (Optional)", "description": "Optional: Select the primary educational standards framework. This helps ensure content aligns with the appropriate international curriculum system (Common Core State Standards, UK National Curriculum, International Baccalaureate, Next Generation Science Standards, etc.)."},
-                        "output_language": {"type": "string", "enum": ["English", "Spanish", "French", "German", "Italian", "Portuguese", "Chinese", "Japanese", "Korean", "Russian", "Arabic", "Hindi", "Urdu", "Other"], "title": "Output Language", "description": "Select the language for the generated content. All headings, instructions, and content will be generated in this language. Choose 'Other' if you need a language not listed and specify it in the 'Language' field below."},
-                        "language": {"type": "string", "title": "Custom Language (if 'Other' selected)", "description": "If you selected 'Other' for Output Language, specify the language here. The system will attempt to generate content in this language."},
-                        "differentiation_needs": {"type": "boolean", "title": "Include Differentiation Strategies", "description": "Check this box if you need specific differentiation strategies included in the generated content. This will add support for struggling learners, advanced learners, English Language Learners, and students with diverse learning styles - essential for international classrooms with diverse student populations."},
-                        "differentiation_notes": {"type": "string", "title": "Differentiation Notes (Optional)", "description": "Optional: Provide specific information about student needs, learning differences, or accommodations required. This helps generate more targeted differentiation strategies (e.g., '3 ELL students at intermediate level', '2 students with ADHD need movement breaks', 'Advanced learners need extension activities')."},
-                        "materials": {"type": "string", "title": "Available Materials (Optional)", "description": "Optional: List the materials, resources, or equipment available for this lesson/activity. Be specific (e.g., 'Whiteboards, markers, calculators, graph paper, access to tablets'). This ensures the generated content uses realistic, available resources."}
+                        "topic": {"type": "string", "title": "Topic"},
+                        "learning_objective": {"type": "string", "title": "Learning Objective"},
+                        "time_duration_minutes": {"type": "integer", "minimum": 5, "maximum": 480, "title": "Time (minutes)"},
+                        "bloom_level": {"type": "string", "title": "Bloom Level"},
+                        "standards_framework": {"type": "string", "title": "Standards Framework (optional)"},
+                        "standard": {"type": "string", "title": "Standard code (optional)"},
+                        "differentiation_needs": {"type": "boolean", "title": "Differentiation on/off"},
+                        "differentiation_notes": {"type": "string", "title": "Differentiation notes (optional)"},
+                        "materials": {"type": "string", "title": "Materials (optional)"},
+                        "constraints": {"type": "string", "title": "Constraints (optional)"},
+                        "output_language": {"type": "string", "title": "Output language (optional)"},
+                        "language": {"type": "string", "title": "Custom language if Other (optional)"}
                     },
-                    "required": ["grade", "topic", "focus", "bloom_level"]
+                    "required": ["grade", "focus", "topic", "learning_objective", "time_duration_minutes", "bloom_level"]
                 },
                 "output_schema": {
                     "type": "object",
-                    "title": "UniversalTemplateOutput",
-                    "required": ["overview", "learning_goals", "materials", "steps"],
+                    "title": "EnglishSkillsBuilderOutput",
+                    "required": [
+                        "title",
+                        "overview",
+                        "learning_objectives",
+                        "success_criteria",
+                        "mini_lesson",
+                        "guided_practice",
+                        "independent_task",
+                        "assessment",
+                        "differentiation",
+                        "bloom_alignment",
+                        "teacher_notes"
+                    ],
                     "properties": {
-                        "overview": {"type": "string", "title": "Overview"},
-                        "learning_goals": {"type": "array", "title": "Learning Goals", "items": {"type": "string"}},
-                        "materials": {"type": "array", "title": "Materials", "items": {"type": "string"}},
-                        "steps": {
-                            "type": "array",
-                            "title": "Steps",
-                            "items": {
-                                "type": "object",
-                                "title": "LessonStep",
-                                "required": ["title", "description"],
-                                "properties": {"title": {"type": "string", "title": "Title"}, "description": {"type": "string", "title": "Description"}},
+                        "title": {"type": "string", "title": "Title"},
+                        "overview": {"type": "string", "title": "Overview / Skill focus"},
+                        "learning_objectives": {"type": "array", "title": "Learning objectives", "items": {"type": "string"}},
+                        "success_criteria": {"type": "array", "title": "Success criteria", "items": {"type": "string"}},
+                        "mini_lesson": {
+                            "type": "object",
+                            "title": "Mini-lesson",
+                            "properties": {
+                                "teacher_model": {"type": "string", "title": "Teacher script / model"},
+                                "key_point": {"type": "string", "title": "Key point"}
                             },
+                            "required": ["teacher_model", "key_point"]
                         },
-                        "differentiation": {"type": "array", "title": "Differentiation", "items": {"type": "string"}},
+                        "guided_practice": {
+                            "type": "object",
+                            "title": "Guided practice",
+                            "properties": {
+                                "activity": {"type": "string", "title": "Activity"},
+                                "teacher_prompts": {"type": "array", "title": "Teacher prompts", "items": {"type": "string"}}
+                            },
+                            "required": ["activity", "teacher_prompts"]
+                        },
+                        "independent_task": {
+                            "type": "object",
+                            "title": "Independent task",
+                            "properties": {
+                                "task": {"type": "string", "title": "Task"},
+                                "expected_answer_format": {"type": "string", "title": "Expected answer format"}
+                            },
+                            "required": ["task", "expected_answer_format"]
+                        },
                         "assessment": {
-                            "type": ["object", "null"],
-                            "title": "AssessmentSection",
+                            "type": "object",
+                            "title": "Assessment",
                             "properties": {
-                                "checks_for_understanding": {"type": "array", "items": {"type": "string"}},
-                                "rubric": {"type": ["object", "null"]},
+                                "type": {"type": "string", "title": "Type"},
+                                "criteria": {"type": "array", "title": "Criteria", "items": {"type": "string"}}
                             },
-                            "required": ["checks_for_understanding"],
+                            "required": ["type", "criteria"]
                         },
-                        "teacher_notes": {"type": "array", "title": "Teacher Notes", "items": {"type": "string"}},
+                        "differentiation": {
+                            "type": "object",
+                            "title": "Differentiation",
+                            "properties": {
+                                "support": {"type": "array", "title": "Support", "items": {"type": "string"}},
+                                "extension": {"type": "array", "title": "Extension", "items": {"type": "string"}}
+                            },
+                            "required": ["support", "extension"]
+                        },
                         "bloom_alignment": {
-                            "type": "array",
-                            "title": "Bloom Alignment",
-                            "items": {
-                                "type": "object",
-                                "title": "BloomAlignmentItem",
-                                "required": ["level", "description"],
-                                "properties": {
-                                    "level": {"type": "string", "enum": ["remember", "understand", "apply", "analyze", "evaluate", "create"]},
-                                    "description": {"type": "string", "title": "Description"},
-                                },
-                            },
+                            "type": "object",
+                            "title": "Bloom alignment",
+                            "properties": {"level": {"type": "string"}, "note": {"type": "string"}},
+                            "required": ["level", "note"]
                         },
-                        "questions": {
-                            "type": ["array", "null"],
-                            "title": "Questions",
-                            "items": {
-                                "type": "object",
-                                "title": "AssessmentQuestion",
-                                "required": ["question_text", "type"],
-                                "properties": {
-                                    "question_text": {"type": "string", "title": "Question Text"},
-                                    "type": {"type": "string", "title": "Type"},
-                                    "answer_key": {"type": ["string", "null"]},
-                                    "difficulty": {"type": ["string", "null"]},
-                                },
-                            },
-                        },
-                        "communication": {
-                            "type": ["object", "null"],
-                            "title": "CommunicationSection",
+                        "standards_alignment": {
+                            "type": "object",
+                            "title": "Standards alignment (if provided)",
                             "properties": {
-                                "subject_line": {"type": ["string", "null"]},
-                                "message_body": {"type": ["string", "null"]},
-                                "key_details": {"type": ["array", "null"], "items": {"type": "string"}},
-                                "call_to_action": {"type": ["string", "null"]},
-                            },
+                                "framework": {"type": "string"},
+                                "code": {"type": "string"},
+                                "note": {"type": "string"}
+                            }
                         },
-                    },
+                        "teacher_notes": {"type": "array", "title": "Teacher notes", "items": {"type": "string"}}
+                    }
                 },
                 "stub_config": {
-                    "overview_template": "{template_name} for {subject}: {topic}",
-                    "learning_goals_template": ["{learning_objective}", "Help students engage deeply with {topic}."],
-                    "materials": ["Whiteboard or digital board", "Student notebooks or devices"],
-                    "step_titles": ["Introduction & Activation of Prior Knowledge", "Guided Practice", "Independent or Small-Group Practice"],
-                    "step_descriptions_template": "Briefly introduce {topic} and ask students what they already know.",
-                    "differentiation": ["Offer sentence stems or visual supports for students who need additional scaffolding.", "Provide extension tasks for students who are ready for enrichment."],
-                    "teacher_notes": ["Adjust pacing based on student responses and check-ins.", "Capture examples of strong student thinking to highlight during debrief."],
-                    "assessment_checks": ["Cold-call a few students to explain the concept.", "Use exit tickets asking students to solve a short problem or respond to a prompt."],
+                    "title_template": "Tracking Character Change With Evidence",
+                    "overview_template": "Students read a short story excerpt and analyze how a main character changes from the beginning to the end for {topic}.",
+                    "learning_objectives_template": [
+                        "Identify key events that influence the character",
+                        "Explain how the character changes over time",
+                        "Support analysis with at least 2 direct quotes"
+                    ],
+                    "success_criteria": [
+                        "I can describe the character at the beginning and end",
+                        "I can include 2 accurate quotes",
+                        "I can explain how the quotes show change"
+                    ],
+                    "mini_lesson": {
+                        "teacher_model_template": "Read a short paragraph aloud and model thinking: 'At first, Jamal avoids responsibility... Later, he volunteers to help—this shows growth.' Focus on {topic}.",
+                        "key_point_template": "Character change is shown through actions, choices, and responses to conflict."
+                    },
+                    "guided_practice": {
+                        "activity_template": "Whole class completes a 'Beginning vs End' chart for the first half of the story.",
+                        "teacher_prompts": [
+                            "What action shows who the character is right now?",
+                            "Which event pressures the character to change?"
+                        ]
+                    },
+                    "independent_task": {
+                        "task_template": "Complete the chart for the ending. Add 2 quotes (one from early, one from late) and write a 6–8 sentence explanation of the change.",
+                        "expected_answer_format": "Chart + paragraph with evidence"
+                    },
+                    "assessment": {
+                        "type": "quick_rubric",
+                        "criteria": [
+                            "Evidence is accurate and relevant",
+                            "Explanation connects evidence to change",
+                            "Writing is clear and mostly complete"
+                        ]
+                    },
+                    "differentiation": {
+                        "support": [
+                            "Provide sentence starters: 'At the beginning, _ because _. Later, _ which shows _.'",
+                            "Highlight 2–3 key paragraphs for ELL students"
+                        ],
+                        "extension": [
+                            "Evaluate whether the change is believable and justify with evidence",
+                            "Compare the main character's change to a secondary character"
+                        ]
+                    },
+                    "bloom_alignment": {
+                        "level": "Analyze",
+                        "note_template": "Students examine relationships between events and character behavior, supported by evidence for {topic}."
+                    },
+                    "standards_alignment": {
+                        "framework_template": "{standards_framework}",
+                        "code_template": "{standard}",
+                        "note_template": "Students analyze character development and cite textual evidence."
+                    },
+                    "teacher_notes": [
+                        "Watch for summaries that don't explain change—require evidence + reasoning.",
+                        "Common error: students pick quotes but don't connect them to character traits."
+                    ]
                 },
                 "prompt_definition": {
                     "description": "Generate a rigorous English/ELA task aligned with international standards (CCSS, UK National Curriculum, IB, etc.) with: Mini-Lesson Goal, Skill Practice Activity, Guided Examples, Sentence Starters, Student Task, and Assessment Criteria. Ensure the task develops reading, writing, speaking, and listening skills. Include authentic texts and real-world applications. Provide clear assessment criteria that measure genuine literacy skills.",
