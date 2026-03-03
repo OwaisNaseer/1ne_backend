@@ -401,12 +401,19 @@ async def execute_capability(
             parameters=request.parameters,
             save_result=request.save_result,
         )
-        
+        # Ensure no bytes reach response serialization (safety net for any edge case)
+        safe_result = capability_service._ensure_json_serializable(result.get("result", {}))
+        safe_metadata = capability_service._ensure_json_serializable(result["metadata"]) if result.get("metadata") else None
+        safe_progress = capability_service._ensure_json_serializable(result["progress_update"]) if result.get("progress_update") else None
+        usage_id = result.get("usage_id")
+        if usage_id is not None and isinstance(usage_id, bytes):
+            usage_id = None
+
         return schemas.ExecuteCapabilityResponse(
-            result=result["result"],
-            metadata=result.get("metadata"),
-            usage_id=result.get("usage_id"),
-            progress_update=result.get("progress_update"),
+            result=safe_result,
+            metadata=safe_metadata,
+            usage_id=usage_id,
+            progress_update=safe_progress,
         )
     except ValueError as e:
         raise HTTPException(

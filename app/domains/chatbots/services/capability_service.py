@@ -115,15 +115,25 @@ class CapabilityService:
                 model_config=model_config,
             )
 
-            # 7. Parse response using TOON with fallback to JSON and regex-based parsing
+            # 7. Normalize LLM content to str (never pass bytes into parser)
+            raw_content = llm_response.content
+            if isinstance(raw_content, bytes):
+                try:
+                    raw_content = raw_content.decode("utf-8")
+                except Exception:
+                    raw_content = raw_content.decode("utf-8", errors="replace")
+
+            # Parse response using TOON with fallback to JSON and regex-based parsing
             result = self._parse_capability_response(
-                llm_response.content, 
+                raw_content,
                 capability.output_schema,
                 capability_key=capability_key,  # Pass capability_key for type-specific parsing
                 input_data=input_data  # Pass input_data for calculating word/sentence counts
             )
+            # Ensure parsed result is JSON-serializable (no bytes in any path: TOON, JSON, or fallback)
+            result = self._ensure_json_serializable(result)
 
-            # 8. Log model usage
+            # Log model usage
             usage_log = ChatbotModelUsage(
                 chatbot_id=chatbot_id,
                 provider=llm_response.provider,
@@ -135,23 +145,33 @@ class CapabilityService:
             )
             self.db.add(usage_log)
 
-            # 9. Update user progress if save_result
+            # Update user progress if save_result
             if save_result:
                 self._update_user_progress(user_id, capability.id)
 
             self.db.commit()
 
-            return {
+            # Coerce metadata fields to JSON-serializable types (provider/cache may return bytes)
+            def _str_or_int(val: Any) -> Any:
+                if isinstance(val, bytes):
+                    return val.decode("utf-8", errors="replace")
+                return val
+
+            response_payload = {
                 "result": result,
                 "metadata": {
-                    "processing_time_ms": llm_response.latency_ms,
-                    "tokens_used": llm_response.token_usage.total if llm_response.token_usage else 0,
-                    "model_used": llm_response.model_used,
+                    "processing_time_ms": _str_or_int(getattr(llm_response, "latency_ms", 0)),
+                    "tokens_used": _str_or_int(
+                        llm_response.token_usage.total if llm_response.token_usage else 0
+                    ),
+                    "model_used": _str_or_int(getattr(llm_response, "model_used", "")),
                     "capability_version": "1.0",
                 },
                 "usage_id": usage_log.id,
                 "progress_update": self._get_progress_update(user_id, capability.id),
             }
+            # Force round-trip through JSON so bytes / UUID / datetime cannot cause serialization errors
+            return self._force_json_safe_payload(response_payload)
 
         except Exception as e:
             logger.error(f"Error executing capability: {e}", exc_info=True)
@@ -165,6 +185,43 @@ class CapabilityService:
             self.db.commit()
             raise
 
+    def _ensure_json_serializable(self, data: Any) -> Any:
+        """Recursively convert any bytes objects to strings for JSON serialization."""
+        if isinstance(data, bytes):
+            try:
+                return data.decode("utf-8")
+            except Exception:
+                return data.decode("utf-8", errors="replace")
+        if isinstance(data, dict):
+            return {self._ensure_json_serializable(k): self._ensure_json_serializable(v) for k, v in data.items()}
+        if isinstance(data, (list, tuple)):
+            return [self._ensure_json_serializable(item) for item in data]
+        return data
+
+    def _force_json_safe_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Guarantee payload is JSON-serializable by round-tripping through JSON.
+        Default handler never raises so any unknown type becomes a string.
+        """
+        def _default(o: Any) -> Any:
+            if isinstance(o, bytes):
+                try:
+                    return o.decode("utf-8")
+                except Exception:
+                    return o.decode("utf-8", errors="replace")
+            if isinstance(o, UUID):
+                return str(o)
+            if hasattr(o, "isoformat"):  # datetime, date, time
+                return o.isoformat()
+            # Never raise: coerce any other type to string so response is always serializable
+            return str(o)
+
+        try:
+            return json.loads(json.dumps(payload, default=_default))
+        except (TypeError, ValueError) as e:
+            logger.warning(f"JSON round-trip failed ({e}), using recursive sanitizer")
+            return self._ensure_json_serializable(payload)
+
     def _parse_capability_response(
         self,
         content: str,
@@ -173,6 +230,11 @@ class CapabilityService:
         input_data: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Parse capability response using TOON with JSON fallback and type-specific parsing."""
+        if isinstance(content, bytes):
+            try:
+                content = content.decode("utf-8")
+            except Exception:
+                content = content.decode("utf-8", errors="replace")
         logger.info(f"Parsing capability response for key: {capability_key}, content length: {len(content)}")
         
         # Try TOON parsing first (more efficient, 70% token reduction)
@@ -242,7 +304,7 @@ class CapabilityService:
                 except json.JSONDecodeError:
                     pass
         except Exception as json_error:
-            logger.warning(f"JSON parsing failed: {json_error}")
+            logger.warning(f"JSON parsing failed: {json_error}. Converting content to JSON-serializable format.")
         
         # Fallback: type-specific regex parsing
         if capability_key == "text_complexity":
@@ -253,9 +315,10 @@ class CapabilityService:
         elif capability_key == "writing_feedback":
             return self._parse_writing_feedback_response(content)
         
-        # Default: return as content
+        # Default: return as content (ensure JSON-serializable to avoid bytes serialization error)
         logger.warning(f"No parsing method worked, returning content as dict")
-        return {"content": content}
+        processed_content = self._ensure_json_serializable(content)
+        return {"content": processed_content}
 
     def _update_user_progress(self, user_id: UUID, capability_id: UUID):
         """Update user's progress for a capability."""
