@@ -33,6 +33,9 @@ class ContentPack(Base):
     # Metadata (renamed to pack_metadata to avoid SQLAlchemy reserved name conflict)
     pack_metadata = Column('metadata', JSONB, nullable=True)  # Additional metadata as JSON
     
+    # OCR policy: math | non_math | auto (default auto for backward compatibility)
+    ocr_policy = Column(String(50), nullable=True, default="auto")
+    
     # Ownership
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -77,6 +80,8 @@ class Document(Base):
     
     # Chapter map (Table of Contents)
     chapter_map = Column(JSONB, nullable=True)  # Array of {id, title, level, parent_id, start_page, end_page, keywords}
+    # Structure map: page-range-based role overrides for role tagging (board-agnostic)
+    structure_map = Column(JSONB, nullable=True)  # e.g. [{"page_start": 10, "page_end": 15, "role": "worked_example"}]
     
     # Document metadata
     title = Column(String(500), nullable=True)

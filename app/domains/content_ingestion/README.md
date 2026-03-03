@@ -61,10 +61,38 @@ EMBEDDING_PROVIDER=openai  # openai | cohere | sentence-transformers
 VECTOR_STORE=pgvector  # pgvector | qdrant | pinecone
 
 # Processing Configuration
+# Global defaults (backwards-compat)
 CHUNK_SIZE_TOKENS=500
 CHUNK_OVERLAP_TOKENS=50
 MIN_CHARS_PER_PAGE=100
 SCANNED_THRESHOLD_CHARS=50
+
+# Adaptive chunking profiles
+# Digital documents (standard PDFs with text layer)
+CHUNK_SIZE_TOKENS_DIGITAL=500
+CHUNK_OVERLAP_TOKENS_DIGITAL=50
+# OCR / scanned documents (smaller chunks, more coverage; target 200–250)
+CHUNK_SIZE_TOKENS_OCR=220
+CHUNK_OVERLAP_TOKENS_OCR=50
+# Minimum number of chunks required for OCR docs before triggering rechunk
+OCR_MIN_CHUNKS_THRESHOLD=20
+# For small OCR docs (pages < OCR_MIN_PAGES_FOR_THRESHOLD): use lower threshold
+OCR_MIN_PAGES_FOR_THRESHOLD=30
+OCR_MIN_CHUNKS_THRESHOLD_SMALL=10
+# Deterministic rechunk size when below threshold
+OCR_RECHUNK_SIZE_TOKENS=200
+
+# Role-bucket retrieval: minimum chunks per bucket before backfill from remaining relevant chunks
+BUCKET_MIN_TARGET=4
+
+# Role Tagging (board-agnostic)
+# Roles: concept, worked_example, exercise_prompt, exam_question, solution, marking_scheme, unknown
+# Auto-tagging during ingestion; manual override via document.structure_map
+# Chunk metadata_json: {auto_role, auto_confidence, role, role_source}
+# processing_metadata.role_distribution: {concept: N, ...}
+# processing_metadata.role_tagging_metrics: {known_role_ratio, exercise_ratio, concept_ratio}
+# ROLE_MIN_CHARS_FOR_QUESTION_BLOCK=200 (anti false-positive for exercise/exam)
+# QA: python tools/qa_role_tagging_report.py <document_id>
 
 # File Storage
 DOCUMENTS_DIR=uploads/documents
@@ -269,6 +297,17 @@ CREATE EXTENSION IF NOT EXISTS vector;
 - Ensure document status is `PUBLISHED`
 - Verify chunks have embeddings (not NULL)
 - Check pack_id filter matches
+
+## Role Tagging QA
+
+1. **Upload math book** – Ingest a math textbook. Check `processing_metadata.role_distribution`:
+   - Expect more `exercise_prompt`, `worked_example`, `solution` than a non-math doc
+2. **Upload non-math book** – Ingest a prose/history book. Check role_distribution:
+   - Expect more `concept`, `unknown`; fewer exercise/solution
+3. **Generate worksheet (medium/hard)** – Check retrieval_metadata:
+   - `concept_context.preferred_count` and `assessment_context.preferred_count` should be > 0 when content has matching roles
+   - `assessment_context` should not be purely backfilled when doc has exercise/exam content
+4. **Manual override** – Set `document.structure_map` with page ranges and roles, then call `IngestionService.apply_structure_map_to_chunks(document_id)` to reapply without re-chunking
 
 ## Notes
 

@@ -118,6 +118,7 @@ async def update_content_pack(
         subject=data.subject,
         grade=data.grade,
         curriculum=data.curriculum,
+        ocr_policy=getattr(data, "ocr_policy", None),
         pack_metadata=data.metadata,
     )
     if not pack:
@@ -749,6 +750,7 @@ async def generate_worksheet(
         worksheet_cache = await asyncio.wait_for(
             service.generate_worksheet(
                 pack_id=request.pack_id,
+                pack_ids=request.pack_ids,
                 topic_id=request.topic_id,
                 topic_text=request.topic_text,
                 grade=request.grade,
@@ -757,6 +759,7 @@ async def generate_worksheet(
                 num_questions=request.num_questions,
                 question_types=request.question_types,
                 force_regenerate=force_regenerate,
+                teacher_prompt=request.teacher_prompt,
             ),
             timeout=timeout_sec,
         )

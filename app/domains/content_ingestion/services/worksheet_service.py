@@ -11,6 +11,7 @@ from collections import defaultdict
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.logging import get_logger
 try:
     from app.core.rag_logging import rag_log, rag_log_chunk_list
@@ -117,6 +118,8 @@ class WorksheetService:
         num_questions: int = 10,
         question_types: Optional[List[str]] = None,
         force_regenerate: bool = False,
+        pack_ids: Optional[List[UUID]] = None,
+        teacher_prompt: Optional[str] = None,
     ) -> WorksheetCache:
         """
         Generate a worksheet using RAG.
@@ -136,7 +139,8 @@ class WorksheetService:
         """
         # Check cache first (skip if force_regenerate)
         signature_hash = self._generate_signature_hash(
-            pack_id, topic_id, topic_text, grade, subject, difficulty_mix, num_questions
+            pack_id, topic_id, topic_text, grade, subject, difficulty_mix, num_questions,
+            pack_ids=pack_ids, teacher_prompt=teacher_prompt,
         )
         
         if not force_regenerate:
@@ -144,6 +148,8 @@ class WorksheetService:
                 WorksheetCache.signature_hash == signature_hash
             ).first()
             if cached:
+                # Used by API layer to set X-Worksheet-Cache header
+                setattr(cached, "from_cache", True)
                 logger.info(f"Returning cached worksheet: {cached.id}")
                 rag_log("worksheet_cached", pack_id=str(pack_id), topic_text=topic_text or "", worksheet_id=str(cached.id))
                 return cached
@@ -167,8 +173,10 @@ class WorksheetService:
         query_text = " ".join(expanded_query_terms[:20]) + " chapter section explanation examples" if expanded_query_terms else f"{base_query} chapter section explanation examples"
         rag_log("query_expand", pack_id=str(pack_id), normalized_topic_text=normalized_topic_text, expanded_terms_count=len(expanded_query_terms), expanded_terms_sample=expanded_query_terms[:12])
         
-        # Detect which embedding provider was used for this pack
-        embedding_provider, embedding_model = self._detect_pack_embedding_provider(pack_id)
+        # Effective packs for retrieval: multi-pack or single
+        effective_pack_ids = list(pack_ids) if pack_ids else [pack_id]
+        # Detect which embedding provider was used (first pack when multi-pack)
+        embedding_provider, embedding_model = self._detect_pack_embedding_provider(effective_pack_ids[0])
         logger.info(f"Using embedding provider: {embedding_provider.provider_name}, model: {embedding_model}")
         rag_log("embedding_provider", pack_id=str(pack_id), provider=embedding_provider.provider_name, model=embedding_model)
         
@@ -191,7 +199,8 @@ class WorksheetService:
                 if query_embeddings and len(query_embeddings) > 0:
                     hits_broad = await self.vector_store.query(
                         query_vector=query_embeddings[0],
-                        pack_id=str(pack_id),
+                        pack_id=str(effective_pack_ids[0]),
+                        pack_ids=[str(p) for p in effective_pack_ids] if len(effective_pack_ids) > 1 else None,
                         top_k=stage_a_top_k,
                         topic_id=topic_id,
                         embedding_model=embedding_model,
@@ -200,7 +209,11 @@ class WorksheetService:
                 logger.warning(f"Vector search failed: {e}, falling back to text search")
         if not hits_broad:
             hits_broad = self._text_based_search(
-                pack_id=pack_id, query_text=query_text, topic_id=topic_id, top_k=stage_a_top_k
+                pack_id=effective_pack_ids[0],
+                pack_ids=effective_pack_ids if len(effective_pack_ids) > 1 else None,
+                query_text=query_text,
+                topic_id=topic_id,
+                top_k=stage_a_top_k,
             )
         hits_after_front = [h for h in hits_broad if (h.metadata or {}).get("page_start_pdf", 0) > skip_pages]
         if not hits_after_front:
@@ -253,7 +266,8 @@ class WorksheetService:
                     if query_embeddings and len(query_embeddings) > 0:
                         hits = await self.vector_store.query(
                             query_vector=query_embeddings[0],
-                            pack_id=str(pack_id),
+                            pack_id=str(effective_pack_ids[0]),
+                            pack_ids=[str(p) for p in effective_pack_ids] if len(effective_pack_ids) > 1 else None,
                             top_k=25,
                             topic_id=topic_id,
                             embedding_model=embedding_model,
@@ -305,7 +319,24 @@ class WorksheetService:
                 if hits:
                     avg_sim, keyword_hits = self._relevance_score(hits, topic_text or "")
             if avg_sim < relevance_sim_threshold or keyword_hits < relevance_keyword_min:
-                self._raise_topic_not_found(top5_ranges_for_debug, chosen_ranges, hits_after_front, topic_text or "", hits, avg_sim, keyword_hits)
+                # Shallow-topic broadening: do not hard-fail; broaden retrieval and continue best-effort.
+                logger.warning(
+                    f"Low relevance for topic '{topic_text or topic_id}': avg_sim={avg_sim:.3f}, "
+                    f"keyword_hits={keyword_hits}. Broadening retrieval instead of raising."
+                )
+                rag_log(
+                    "topic_low_relevance_broaden",
+                    pack_id=str(pack_id),
+                    topic_text=topic_text or "",
+                    avg_sim=round(avg_sim, 4),
+                    keyword_hits=keyword_hits,
+                    chosen_ranges=chosen_ranges,
+                )
+                broaden_pool = hits_after_front[:] if hits_after_front else hits[:]
+                broaden_pool.sort(key=lambda h: -chunk_relevance(h)[0])
+                hits = broaden_pool[:context_max_chunks] if broaden_pool else hits
+                if hits:
+                    avg_sim, keyword_hits = self._relevance_score(hits, topic_text or "")
         for i, h in enumerate(hits[:5]):
             meta = h.metadata or {}
             logger.info(
@@ -313,9 +344,113 @@ class WorksheetService:
                 f"page_end_pdf={meta.get('page_end_pdf')} score={getattr(h, 'similarity_score', None)}"
             )
 
-        # Build context with metadata (chunk_id, document_id, page_range) so LLM can cite (hits already 6-10)
-        context_parts = []
-        for hit in hits:
+        # De-duplicate hits (especially important for multi-pack retrieval)
+        seen_hit_keys = set()
+        deduped_hits: List[VectorHit] = []
+        for h in hits:
+            key = (h.document_id, h.chunk_id)
+            if key in seen_hit_keys:
+                continue
+            seen_hit_keys.add(key)
+            # Ensure pack_id is always available for citations (multi-pack requirement)
+            meta = dict(h.metadata or {})
+            if "pack_id" not in meta:
+                meta["pack_id"] = str(pack_id)
+            h.metadata = meta
+            deduped_hits.append(h)
+        hits = deduped_hits
+
+        # Role-aware, two-context retrieval: concept vs assessment
+        concept_roles = ["concept", "worked_example"]
+        assessment_roles = ["exercise_prompt", "exam_question"]
+        concept_hits: List[VectorHit] = []
+        assessment_hits: List[VectorHit] = []
+
+        # If we have embeddings, run two targeted retrieval queries by role; otherwise split current hits by role.
+        try:
+            if embedding_provider.provider_name != "fake":
+                query_embeddings = await embedding_provider.embed([query_text])
+                query_vector = query_embeddings[0] if query_embeddings else None
+                if query_vector is not None:
+                    min_page_filter = max(int(skip_pages), int(min_page_range or 0))
+                    max_page_filter = int(max_page_range or 99999)
+                    concept_hits = await self.vector_store.query(
+                        query_vector=query_vector,
+                        pack_id=str(effective_pack_ids[0]),
+                        pack_ids=[str(p) for p in effective_pack_ids] if len(effective_pack_ids) > 1 else None,
+                        top_k=8,
+                        topic_id=topic_id,
+                        filters={"min_page": min_page_filter, "max_page": max_page_filter, "roles": concept_roles},
+                        embedding_model=embedding_model,
+                    )
+                    assessment_hits = await self.vector_store.query(
+                        query_vector=query_vector,
+                        pack_id=str(effective_pack_ids[0]),
+                        pack_ids=[str(p) for p in effective_pack_ids] if len(effective_pack_ids) > 1 else None,
+                        top_k=8,
+                        topic_id=topic_id,
+                        filters={"min_page": min_page_filter, "max_page": max_page_filter, "roles": assessment_roles},
+                        embedding_model=embedding_model,
+                    )
+        except Exception as e:
+            logger.warning(f"Role-aware retrieval failed; falling back to split hits: {e}")
+
+        if not concept_hits:
+            concept_hits = [h for h in hits if (h.metadata or {}).get("role") in concept_roles][:8]
+        if not assessment_hits:
+            assessment_hits = [h for h in hits if (h.metadata or {}).get("role") in assessment_roles][:8]
+
+        # Deduplicate within each context; allow overlap across contexts if corpus is small.
+        # (We dedupe citations later.)
+        # Backfill from top remaining chunks (by relevance) when bucket < BUCKET_MIN_TARGET
+        bucket_min_target = getattr(settings, "BUCKET_MIN_TARGET", 4)
+        fill_from_sorted = sorted(hits, key=lambda h: -getattr(h, "similarity_score", 0))
+
+        def _dedupe_and_fill(primary: List[VectorHit], *, fill_from: List[VectorHit], target_min: int, target_max: int) -> Tuple[List[VectorHit], int]:
+            seen = set()
+            out: List[VectorHit] = []
+            for h in primary:
+                key = (h.document_id, h.chunk_id)
+                if key in seen:
+                    continue
+                seen.add(key)
+                meta = dict(h.metadata or {})
+                meta.setdefault("pack_id", str(pack_id))
+                h.metadata = meta
+                out.append(h)
+                if len(out) >= target_max:
+                    return out[:target_max], 0
+            backfill_count = 0
+            if len(out) < target_min:
+                for h in fill_from:
+                    key = (h.document_id, h.chunk_id)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    meta = dict(h.metadata or {})
+                    meta.setdefault("pack_id", str(pack_id))
+                    h.metadata = meta
+                    out.append(h)
+                    backfill_count += 1
+                    if len(out) >= target_min:
+                        break
+            return out[:target_max], backfill_count
+
+        concept_deduped, concept_backfill = _dedupe_and_fill(
+            concept_hits, fill_from=fill_from_sorted, target_min=bucket_min_target, target_max=8
+        )
+        assessment_deduped, assessment_backfill = _dedupe_and_fill(
+            assessment_hits, fill_from=fill_from_sorted, target_min=bucket_min_target, target_max=8
+        )
+        concept_preferred_count = len(concept_deduped) - concept_backfill
+        assessment_preferred_count = len(assessment_deduped) - assessment_backfill
+        total_backfill = concept_backfill + assessment_backfill
+        logger.info(
+            f"Role buckets: concept_preferred={concept_preferred_count}, assessment_preferred={assessment_preferred_count}, "
+            f"backfill_count={total_backfill} (concept={concept_backfill}, assessment={assessment_backfill})"
+        )
+
+        def _format_hit_for_context(hit: VectorHit) -> str:
             meta = hit.metadata or {}
             start = meta.get("page_start_pdf")
             end = meta.get("page_end_pdf")
@@ -327,11 +462,21 @@ class WorksheetService:
                 page_range = str(end)
             else:
                 page_range = ""
-            context_parts.append(
-                f"[chunk_id: {hit.chunk_id}, document_id: {hit.document_id}, page_range: {page_range}]\n{hit.text}"
+            role = meta.get("role", "")
+            pack_id_for_hit = meta.get("pack_id", str(pack_id))
+            return (
+                f"[chunk_id: {hit.chunk_id}, document_id: {hit.document_id}, pack_id: {pack_id_for_hit}, "
+                f"page_range: {page_range}, role: {role}]\n{hit.text}"
             )
-        context_with_metadata = "\n\n---\n\n".join(context_parts)
-        context_chunks = [hit.text for hit in hits]
+
+        context_with_metadata = (
+            "CONCEPT CONTEXT (definitions, explanations):\n"
+            + "\n\n---\n\n".join(_format_hit_for_context(h) for h in concept_deduped)
+            + "\n\n\nASSESSMENT CONTEXT (examples, exercises, questions):\n"
+            + "\n\n---\n\n".join(_format_hit_for_context(h) for h in assessment_deduped)
+        )
+
+        context_chunks = [h.text for h in (concept_deduped + assessment_deduped)]
         context_text_flat = " ".join(context_chunks)
         allowed_concepts, forbidden_concepts = self._build_allowed_forbidden(context_text_flat, topic_text or "")
         logger.info(f"Worksheet prompt: allowed_concepts={allowed_concepts[:8]}, forbidden_concepts={forbidden_concepts[:8]}")
@@ -382,6 +527,7 @@ class WorksheetService:
                     allowed_concepts=allowed_concepts,
                     forbidden_concepts=forbidden_concepts,
                     target_difficulty=target_difficulty,
+                    teacher_prompt=teacher_prompt,
                 )
             except Exception as llm_error:
                 logger.warning(f"LLM worksheet generation failed: {llm_error}", exc_info=True)
@@ -431,7 +577,8 @@ class WorksheetService:
         
         # Build citations list for API (chunk_id, document_id, page_range per hit)
         citations_list = []
-        for hit in hits:
+        seen_citations = set()
+        for hit in (concept_deduped + assessment_deduped):
             meta = hit.metadata or {}
             start = meta.get("page_start_pdf")
             end = meta.get("page_end_pdf")
@@ -443,10 +590,15 @@ class WorksheetService:
                 page_range = str(end)
             else:
                 page_range = ""
+            ckey = (hit.document_id, hit.chunk_id, page_range, meta.get("pack_id", str(pack_id)))
+            if ckey in seen_citations:
+                continue
+            seen_citations.add(ckey)
             citations_list.append({
                 "chunk_id": hit.chunk_id,
                 "document_id": hit.document_id,
                 "page_range": page_range,
+                "pack_id": meta.get("pack_id", str(pack_id)),
             })
 
         # Create cache entry
@@ -460,21 +612,34 @@ class WorksheetService:
             difficulty_mix=difficulty_mix,
             num_questions=num_questions,
             worksheet_json=worksheet_json,
-            chunk_ids_used=[hit.chunk_id for hit in hits],
+            chunk_ids_used=[hit.chunk_id for hit in (concept_deduped + assessment_deduped)],
             retrieval_metadata={
                 "query": query_text,
                 "top_k": top_k,
-                "similarity_scores": [hit.similarity_score for hit in hits],
+                "similarity_scores": [hit.similarity_score for hit in (concept_deduped + assessment_deduped)],
                 "citations": citations_list,
                 "chapter_page_range": f"{min_page_range}-{max_page_range}",
                 "relevance_avg_sim": avg_sim,
                 "relevance_keyword_hits": keyword_hits,
+                "concept_context": {
+                    "roles": concept_roles,
+                    "chunks": len(concept_deduped),
+                    "preferred_count": concept_preferred_count,
+                    "backfill": concept_backfill,
+                },
+                "assessment_context": {
+                    "roles": assessment_roles,
+                    "chunks": len(assessment_deduped),
+                    "preferred_count": assessment_preferred_count,
+                    "backfill": assessment_backfill,
+                },
             }
         )
         
         self.db.add(worksheet_cache)
         self.db.commit()
         self.db.refresh(worksheet_cache)
+        setattr(worksheet_cache, "from_cache", False)
         
         total_request_ms = (time.monotonic() - request_start_time) * 1000
         logger.info(
@@ -507,6 +672,7 @@ class WorksheetService:
         forbidden_concepts: Optional[List[str]] = None,
         normalized_topic_text: Optional[str] = None,
         target_difficulty: Optional[str] = None,
+        teacher_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate worksheet JSON using LLM with international-standard assessment prompt."""
         allowed = (allowed_concepts or [])[:15]
@@ -617,7 +783,10 @@ CRITICAL DIFFICULTY REQUIREMENT FOR HARD:
     """
 - ALGEBRAIC TOPIC: At least 8/10 questions must include variables (x, y, a, b) or expressions (2x+3, coefficients, terms). Include: 3 simplify expression, 2 evaluate for given values, 2 identify terms/coefficients/constants, 1 translate words to expression. MCQ options must be algebraic expressions, not number theory."""
     if is_algebraic else ""
-) + "\n"
+) + "\n" + (
+    f"\nTEACHER STYLE / CONSTRAINTS (do not override topic or grade safety):\n{teacher_prompt.strip()}\n"
+    if teacher_prompt and teacher_prompt.strip() else ""
+)
 
         llm_start_time = time.monotonic()
         try:
@@ -625,8 +794,10 @@ CRITICAL DIFFICULTY REQUIREMENT FOR HARD:
                 system_message=system_message,
                 prompt=user_prompt,
                 model_config={
-                    "provider": "openai",
-                    "model": "gpt-4o-mini",
+                    # Do not hard-code provider/model so fallback routing works in local/test.
+                    # Defaults come from `llm_settings` (.env / environment).
+                    "provider": getattr(llm_settings, "DEFAULT_MODEL_PROVIDER", "openai"),
+                    "model": getattr(llm_settings, "DEFAULT_MODEL", "gpt-4o-mini"),
                     "temperature": 0.2,  # Reduced from 0.3 for more consistent, concise output
                     "max_tokens": 2200  # Increased to 2200 to avoid truncation while staying under 2500 target
                 }
@@ -875,14 +1046,18 @@ CRITICAL DIFFICULTY REQUIREMENT FOR HARD:
         grade: Optional[str],
         subject: Optional[str],
         difficulty_mix: Optional[Dict[str, float]],
-        num_questions: int
+        num_questions: int,
+        pack_ids: Optional[List[UUID]] = None,
+        teacher_prompt: Optional[str] = None,
     ) -> str:
         """Generate cache signature hash."""
         signature_data = {
             "pack_id": str(pack_id),
+            "pack_ids": sorted(str(p) for p in (pack_ids or [])),
             "topic_id": topic_id or "",
             "topic_text": topic_text or "",
             "grade": grade or "",
+            "teacher_prompt": (teacher_prompt or "")[:200],
             "subject": subject or "",
             "difficulty_mix": json.dumps(difficulty_mix, sort_keys=True) if difficulty_mix else "",
             "num_questions": num_questions,
@@ -897,7 +1072,8 @@ CRITICAL DIFFICULTY REQUIREMENT FOR HARD:
         pack_id: UUID,
         query_text: str,
         topic_id: Optional[str],
-        top_k: int
+        top_k: int,
+        pack_ids: Optional[List[UUID]] = None,
     ) -> List[VectorHit]:
         """
         Fallback text-based search when vector search isn't available (e.g., fake embeddings).
@@ -906,37 +1082,41 @@ CRITICAL DIFFICULTY REQUIREMENT FOR HARD:
         # Extract keywords from query text
         keywords = [w.lower().strip() for w in query_text.split() if len(w) > 2]
         
-        # Query chunks from published documents in this pack
-        query = self.db.query(Chunk).join(Document).filter(
-            Document.pack_id == pack_id,
+        # Query chunks from published documents in this pack (or packs)
+        base = self.db.query(Chunk, Document.pack_id).join(Document).filter(
             Document.status == "published",
             Chunk.embedding_v.isnot(None)  # Only chunks with embeddings
         )
+        if pack_ids and len(pack_ids) > 0:
+            base = base.filter(Document.pack_id.in_(pack_ids))
+        else:
+            base = base.filter(Document.pack_id == pack_id)
         
         if topic_id:
-            query = query.filter(Chunk.topic_id == topic_id)
+            base = base.filter(Chunk.topic_id == topic_id)
         
         # Score chunks by keyword matches
-        chunks = query.limit(top_k * 2).all()  # Get more to filter
+        rows = base.limit(top_k * 2).all()  # Get more to filter
         
         scored_chunks = []
-        for chunk in chunks:
+        for chunk, doc_pack_id in rows:
             text_lower = chunk.text.lower()
             score = sum(1 for kw in keywords if kw in text_lower)
             if score > 0 or not keywords:  # Include all if no keywords or if matches found
-                scored_chunks.append((score, chunk))
+                scored_chunks.append((score, chunk, doc_pack_id))
         
         # Sort by score (descending) and take top_k
         scored_chunks.sort(key=lambda x: x[0], reverse=True)
-        top_chunks = [chunk for _, chunk in scored_chunks[:top_k]]
+        top_chunks = [(chunk, doc_pack_id) for _, chunk, doc_pack_id in scored_chunks[:top_k]]
         
         # Convert to VectorHit format (include page range in metadata for citations)
         hits = []
-        for chunk in top_chunks:
+        for chunk, doc_pack_id in top_chunks:
             text_lower = chunk.text.lower()
             match_count = sum(1 for kw in keywords if kw in text_lower) if keywords else 1
             similarity = min(1.0, 0.5 + (match_count / max(len(keywords), 1)) * 0.5)
             meta = dict(chunk.metadata_json or {})
+            meta["pack_id"] = str(doc_pack_id or pack_id)
             if chunk.page_start_pdf is not None:
                 meta["page_start_pdf"] = chunk.page_start_pdf
             if chunk.page_end_pdf is not None:

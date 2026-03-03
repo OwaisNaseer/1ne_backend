@@ -34,6 +34,7 @@ class ContentPackService:
             subject=data.subject,
             grade=data.grade,
             curriculum=data.curriculum,
+            ocr_policy=getattr(data, "ocr_policy", None),
             pack_metadata=data.metadata,  # Map schema 'metadata' to model 'pack_metadata'
             tenant_id=tenant_id,
             created_by=created_by

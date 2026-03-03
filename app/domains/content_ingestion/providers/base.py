@@ -3,7 +3,22 @@ Base provider interfaces for content ingestion.
 """
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+
+@dataclass
+class OCRPageResult:
+    """Single page result from OCR (unified across providers)."""
+    page_no: int
+    text: str
+    latex_text: Optional[str] = None  # Optional for math-heavy providers
+
+
+@dataclass
+class OCRResult:
+    """Unified OCR result (international-grade, provider-agnostic)."""
+    pages: List[OCRPageResult]
+    meta: Dict[str, Any] = field(default_factory=dict)  # provider, duration_ms, warnings
 
 
 @dataclass

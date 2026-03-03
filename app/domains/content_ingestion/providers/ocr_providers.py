@@ -396,3 +396,28 @@ class MathpixOCRProvider(OCRProvider):
             "Mathpix OCR is not implemented in MVP. "
             "Set OCR_ENGINE=tesseract for free OCR, or implement Mathpix integration."
         )
+
+
+class GoogleDocumentAIOCRProvider(OCRProvider):
+    """Google Document AI OCR provider (API, optional). Never crashes if keys missing."""
+    
+    provider_name = "google_document_ai"
+    
+    def __init__(self):
+        self._credentials = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        self._api_key = os.getenv("DOCUMENT_AI_API_KEY")
+    
+    def validate_config(self) -> bool:
+        return bool(self._credentials or self._api_key)
+    
+    async def run_ocr(
+        self,
+        pdf_path: str,
+        language: str = "eng",
+        **kwargs
+    ) -> List[PageText]:
+        """Run OCR via Google Document AI. Stub: not implemented; use Tesseract fallback."""
+        raise NotImplementedError(
+            "Google Document AI OCR is not implemented. "
+            "Set OCR_FALLBACK_ENGINE=tesseract or use another engine."
+        )

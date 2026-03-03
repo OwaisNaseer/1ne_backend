@@ -164,11 +164,14 @@ class PgVectorStore(VectorStore):
         topic_id: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,
         embedding_model: Optional[str] = None,
+        pack_ids: Optional[List[str]] = None,
         **kwargs
     ) -> List[VectorHit]:
         """
         Query pgvector for similar chunks.
         If embedding_model is specified, use embedding_v column; else legacy embedding.
+        pack_id: single pack (backward compat). pack_ids: optional list for multi-pack search.
+        filters["roles"]: optional list of role strings (concept, worked_example, etc.).
         """
         db = self._get_db()
         try:
@@ -192,12 +195,21 @@ class PgVectorStore(VectorStore):
                 where_vec = "chunks.embedding IS NOT NULL"
                 params_extra = {}
 
-            where_conditions = [
-                "documents.pack_id = :pack_id",
-                "documents.status = 'published'",
-                where_vec
-            ]
-            params = {"pack_id": str(pack_id), "top_k": top_k, **params_extra}
+            # Pack filter: multi-pack (pack_ids) or single pack_id
+            if pack_ids and len(pack_ids) > 0:
+                where_conditions = [
+                    "documents.pack_id = ANY(:pack_ids)",
+                    "documents.status = 'published'",
+                    where_vec,
+                ]
+                params = {"pack_ids": pack_ids, "top_k": top_k, **params_extra}
+            else:
+                where_conditions = [
+                    "documents.pack_id = :pack_id",
+                    "documents.status = 'published'",
+                    where_vec,
+                ]
+                params = {"pack_id": str(pack_id), "top_k": top_k, **params_extra}
 
             if topic_id:
                 where_conditions.append("chunks.topic_id = :topic_id")
@@ -211,6 +223,9 @@ class PgVectorStore(VectorStore):
             if filters and "max_page" in filters:
                 where_conditions.append("chunks.page_start_pdf <= :max_page")
                 params["max_page"] = int(filters["max_page"])
+            if filters and "roles" in filters and filters["roles"]:
+                where_conditions.append("chunks.metadata_json->>'role' = ANY(:roles)")
+                params["roles"] = list(filters["roles"])
 
             where_clause = " AND ".join(where_conditions)
             results_with_distance = db.execute(
@@ -222,6 +237,7 @@ class PgVectorStore(VectorStore):
                         chunks.text,
                         chunks.page_start_pdf,
                         chunks.page_end_pdf,
+                        documents.pack_id,
                         {vec_column},
                         chunks.metadata_json,
                         {vec_column} <=> '{vector_str}'::vector as distance
@@ -236,17 +252,15 @@ class PgVectorStore(VectorStore):
             
             hits = []
             for row in results_with_distance:
-                # Calculate similarity from distance
-                # pgvector cosine distance: 0 = identical, 2 = opposite
-                # Similarity = 1 - (distance / 2)
                 distance = float(row.distance) if row.distance is not None else 2.0
                 similarity = max(0.0, 1.0 - (distance / 2.0))
-                # Merge page range into metadata for citations (worksheet response)
                 meta = dict(row.metadata_json or {})
                 if getattr(row, "page_start_pdf", None) is not None:
                     meta["page_start_pdf"] = row.page_start_pdf
                 if getattr(row, "page_end_pdf", None) is not None:
                     meta["page_end_pdf"] = row.page_end_pdf
+                if getattr(row, "pack_id", None) is not None:
+                    meta["pack_id"] = str(row.pack_id)
                 hits.append(VectorHit(
                     chunk_id=row.chunk_id,
                     document_id=str(row.document_id),
@@ -255,7 +269,8 @@ class PgVectorStore(VectorStore):
                     metadata=meta if meta else None
                 ))
             
-            logger.info(f"Query returned {len(hits)} results for pack {pack_id}")
+            log_pack = pack_ids if pack_ids else pack_id
+            logger.info(f"Query returned {len(hits)} results for pack(s) {log_pack}")
             return hits
             
         except Exception as e:

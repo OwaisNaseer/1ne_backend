@@ -69,15 +69,34 @@ class Settings(BaseSettings):
     # Content Ingestion Configuration
     OCR_ENGINE: str = "tesseract"  # tesseract | easyocr | mathpix
     OCR_PROVIDER: str = "tesseract"  # tesseract | azure | google | mathpix
+    # Professional OCR: policy-driven control (international, multi-board)
+    OCR_MODE: str = "local"  # local = never call external APIs; api = allow API engines if keys present
+    OCR_ENGINE_DEFAULT: str = "tesseract"  # default when pack has ocr_policy=auto
+    OCR_FALLBACK_ENGINE: str = "tesseract"  # fallback when API keys missing
     TEXT_EXTRACTOR_PROVIDER: str = "pdfplumber"  # pdfplumber | pymupdf | ...
     EMBEDDING_PROVIDER: str = "fake"  # fake | local | openai (free mode: fake or local)
     VECTOR_STORE: str = "pgvector"  # pgvector | qdrant | pinecone
     MATH_PROVIDER: str = "baseline"  # baseline | mathpix (mathpix later)
+    # Chunking profiles
+    # Digital documents (PDF with reliable text layer)
+    CHUNK_SIZE_TOKENS_DIGITAL: int = 500
+    CHUNK_OVERLAP_TOKENS_DIGITAL: int = 50
+    # OCR / scanned documents (smaller chunks to increase coverage; target 200–250)
+    CHUNK_SIZE_TOKENS_OCR: int = 220
+    CHUNK_OVERLAP_TOKENS_OCR: int = 50
+    # Global defaults (backwards-compat; used if profile-specific vars are not referenced)
     CHUNK_SIZE_TOKENS: int = 500
     CHUNK_OVERLAP_TOKENS: int = 50
     MIN_CHARS_PER_PAGE: int = 100
     MIN_CHARS_EXTRACT: int = 1  # Min total chars after extract/OCR to pass checkpoint
     SCANNED_THRESHOLD_CHARS: int = 50  # Below this = scanned, needs OCR
+    # Adaptive chunking: minimum chunks for OCR documents before rechunking
+    OCR_MIN_CHUNKS_THRESHOLD: int = 20
+    # For small OCR docs (pages < OCR_MIN_PAGES_FOR_THRESHOLD): use lower threshold
+    OCR_MIN_PAGES_FOR_THRESHOLD: int = 30
+    OCR_MIN_CHUNKS_THRESHOLD_SMALL: int = 10
+    # Rechunk size when below threshold (deterministic; no guesswork)
+    OCR_RECHUNK_SIZE_TOKENS: int = 200
     MAX_FILE_SIZE_MB: int = 50  # Max document file size
     DOCUMENTS_DIR: str = "uploads/documents"  # Document storage directory
     # Free-mode embedding
@@ -96,6 +115,10 @@ class Settings(BaseSettings):
     WORKSHEET_DEDUPE_THRESHOLD: float = 0.85
     # Token overlap threshold above which a question is considered copying pack text (0–1); rewrite if exceeded
     WORKSHEET_COPY_OVERLAP_THRESHOLD: float = 0.35
+    # Role-bucket retrieval: minimum chunks per bucket before backfill; backfill from remaining relevant chunks
+    BUCKET_MIN_TARGET: int = 4
+    # Role tagging: min chars for exercise/exam blocks (anti false-positive)
+    ROLE_MIN_CHARS_FOR_QUESTION_BLOCK: int = 200
 
     model_config = SettingsConfigDict(
         env_file=".env",

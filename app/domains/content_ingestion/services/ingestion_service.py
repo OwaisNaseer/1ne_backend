@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.logging import get_logger
 from app.core.config import settings
 from app.domains.content_ingestion.models import (
-    Document, PageText, Chunk, DocumentProcessingRun
+    Document, PageText, Chunk, DocumentProcessingRun, ContentPack
 )
 from app.domains.content_ingestion.enums import DocumentStatus
 from app.domains.content_ingestion.detection import (
@@ -42,6 +42,17 @@ from app.domains.content_ingestion.providers.math_providers import (
     compute_math_density,
 )
 from app.domains.content_ingestion.providers.ocr_preflight import OcrPreflight, OcrPreflightError
+from app.domains.content_ingestion.services.role_tagger import (
+    assign_chunk_roles,
+    compute_role_distribution,
+    compute_role_tagging_metrics,
+)
+from app.domains.content_ingestion.ocr.decision import (
+    decide_ocr_required,
+    resolve_ocr_engine,
+    get_ocr_provider_for_engine,
+    page_text_list_to_ocr_result,
+)
 
 logger = get_logger(__name__)
 MATH_DENSITY_THRESHOLD = 0.5  # per-page threshold for content_type_hint=math
@@ -192,15 +203,23 @@ class IngestionService:
             processing_run.pages_processed = len(pages)
             self.db.commit()
             
-            # Step 2: OCR (if needed)
-            # Check if OCR is needed: total_chars==0 OR avg_chars<threshold OR force_ocr
+            # Step 2: OCR (if needed) — central policy-driven decision
             total_chars = sum(p.char_count for p in pages)
-            needs_ocr = self._needs_ocr(pages, document.source_type)
             force_ocr = (document.processing_metadata or {}).get("force_ocr", False)
+            skip_ocr = (document.processing_metadata or {}).get("skip_ocr", False)
+            needs_ocr, ocr_decision_reason = decide_ocr_required(
+                force_ocr=force_ocr,
+                skip_ocr=skip_ocr,
+                pages=pages,
+                source_type=document.source_type or "pdf",
+            )
+            ocr_engine_used = None
+            ocr_mode_used = None
+            ocr_warnings = []
             
             # Run preflight checks if OCR is needed
             preflight_result = None
-            if needs_ocr or force_ocr:
+            if needs_ocr:
                 try:
                     preflight_result = OcrPreflight.check()
                     # Store preflight results in metadata
@@ -232,7 +251,7 @@ class IngestionService:
                         )
                     
                     # If OCR is required but binaries are missing, fail with actionable error
-                    if (needs_ocr or force_ocr) and preflight_result["errors"]:
+                    if needs_ocr and preflight_result["errors"]:
                         error_msg = "\n".join(preflight_result["errors"])
                         raise OcrPreflightError(error_msg)
                 except OcrPreflightError:
@@ -240,7 +259,22 @@ class IngestionService:
                 except Exception as e:
                     logger.warning(f"Preflight check failed: {e}, continuing with provider validation")
             
-            ocr_provider_ok = self.ocr_provider.validate_config()
+            # Resolve engine from pack policy + config (central decision)
+            pack = self.db.query(ContentPack).filter(ContentPack.id == document.pack_id).first()
+            pack_ocr_policy = getattr(pack, "ocr_policy", None) if pack else None
+            ocr_engine_override = (document.processing_metadata or {}).get("ocr_engine_override")
+            ocr_decision = (
+                resolve_ocr_engine(pack_ocr_policy=pack_ocr_policy, ocr_engine_override=ocr_engine_override)
+                if needs_ocr
+                else None
+            )
+            if ocr_decision and ocr_decision.warning:
+                ocr_warnings.append(ocr_decision.warning)
+            if ocr_decision:
+                ocr_engine_used = ocr_decision.engine_resolved
+                ocr_mode_used = ocr_decision.ocr_mode
+            ocr_provider = get_ocr_provider_for_engine(ocr_engine_used or getattr(settings, "OCR_ENGINE_DEFAULT", "tesseract")) if needs_ocr else self.ocr_provider
+            ocr_provider_ok = ocr_provider.validate_config() if needs_ocr else False
             if needs_ocr and not ocr_provider_ok:
                 raise RuntimeError(
                     f"OCR required for document {document_id} (scanned/low-text PDF or image) but OCR provider is not available. "
@@ -250,21 +284,17 @@ class IngestionService:
                 )
             ocr_attempted = False
             total_chars_before_ocr = total_chars  # Store before OCR
-            if (needs_ocr or force_ocr) and ocr_provider_ok:
+            if needs_ocr and ocr_provider_ok:
                 ocr_attempted = True
                 t0 = time.perf_counter()
                 await self._update_status(document_id, DocumentStatus.OCR_RUNNING.value, processing_run)
                 try:
-                    # Run OCR in batches so we don't hold all page images in memory
-                    # and so we can persist progress incrementally (avoids "stuck at 0 pages").
                     batch_size = int(os.getenv("OCR_BATCH_SIZE") or 10)
                     dpi = int(os.getenv("OCR_DPI") or 300)
                     thread_count = os.getenv("OCR_THREAD_COUNT")
-
                     total_pages = len(pages) if pages else (document.total_pages or 0)
                     if total_pages <= 0:
-                        # Fallback: if we cannot infer pages, run OCR in one pass
-                        pages = await self._run_ocr(document, pages)
+                        pages = await ocr_provider.run_ocr(document.file_path, language="eng")
                         total_pages = len(pages)
                     else:
                         ocr_pages: List[Any] = []
@@ -278,9 +308,10 @@ class IngestionService:
                                     "end_page": end_page,
                                     "dpi": dpi,
                                     "batch_size": batch_size,
+                                    "engine": getattr(ocr_provider, "provider_name", "unknown"),
                                 },
                             )
-                            batch = await self.ocr_provider.run_ocr(
+                            batch = await ocr_provider.run_ocr(
                                 document.file_path,
                                 language="eng",
                                 first_page=start_page,
@@ -288,7 +319,6 @@ class IngestionService:
                                 dpi=dpi,
                                 thread_count=thread_count,
                             )
-                            # Update page_texts for this batch and commit immediately
                             for page in batch:
                                 page_text = self.db.query(PageText).filter(
                                     PageText.document_id == document_id,
@@ -297,8 +327,8 @@ class IngestionService:
                                 if page_text:
                                     page_text.text = page.text
                                     page_text.char_count = page.char_count
-                                    page_text.ocr_confidence = page.ocr_confidence
-                                    page_text.ocr_engine = page.ocr_engine
+                                    page_text.ocr_confidence = getattr(page, "ocr_confidence", None)
+                                    page_text.ocr_engine = getattr(page, "ocr_engine", None) or getattr(ocr_provider, "provider_name", None)
                             ocr_pages.extend(batch)
                             processing_run.pages_processed = min(end_page, total_pages)
                             self.db.commit()
@@ -312,15 +342,14 @@ class IngestionService:
                                     "total_pages": total_pages,
                                 },
                             )
-
                         pages = ocr_pages
-
                     duration_ms = int((time.perf_counter() - t0) * 1000)
+                    ocr_engine_used = getattr(ocr_provider, "provider_name", ocr_engine_used)
+                    ocr_mode_used = ocr_mode_used or getattr(settings, "OCR_MODE", "local")
                     logger.info(
                         "step_complete",
-                        extra={"document_id": str(document_id), "step": "ocr_running", "duration_ms": duration_ms, "pages": len(pages), "provider": getattr(self.ocr_provider, "provider_name", "unknown")},
+                        extra={"document_id": str(document_id), "step": "ocr_running", "duration_ms": duration_ms, "pages": len(pages), "provider": ocr_engine_used},
                     )
-                    # Recalculate total chars after OCR
                     total_chars = sum(p.char_count for p in pages)
                     logger.info(
                         "ocr_complete",
@@ -328,16 +357,39 @@ class IngestionService:
                             "document_id": str(document_id),
                             "total_chars_before_ocr": total_chars_before_ocr,
                             "total_chars_after_ocr": total_chars,
-                            "preflight_result": preflight_result,
-                            "ocr_attempted": True,
+                            "ocr_engine_used": ocr_engine_used,
+                            "ocr_decision_reason": ocr_decision_reason,
                         },
                     )
+                    # Store OCR decision metadata in document (explainable, deterministic)
+                    meta = dict(document.processing_metadata or {})
+                    meta["ocr_used"] = True
+                    meta["ocr_engine_used"] = ocr_engine_used
+                    meta["ocr_mode"] = ocr_mode_used
+                    meta["ocr_decision_reason"] = ocr_decision_reason
+                    if ocr_warnings:
+                        meta["ocr_warnings"] = ocr_warnings
+                    document.processing_metadata = meta
+                    self.db.commit()
                 except Exception as ocr_error:
                     logger.error(f"OCR failed for document {document_id}: {ocr_error}", exc_info=True)
                     raise RuntimeError(
                         f"OCR failed: {ocr_error}. Install Tesseract and Poppler (pdf2image). "
                         "Fail loudly; do not continue with empty pages."
                     ) from ocr_error
+            else:
+                # No OCR used — store decision metadata
+                meta = dict(document.processing_metadata or {})
+                meta["ocr_used"] = False
+                meta["ocr_decision_reason"] = ocr_decision_reason
+                if ocr_engine_used:
+                    meta["ocr_engine_used"] = ocr_engine_used
+                if ocr_mode_used:
+                    meta["ocr_mode"] = ocr_mode_used
+                if ocr_warnings:
+                    meta["ocr_warnings"] = ocr_warnings
+                document.processing_metadata = meta
+                self.db.commit()
             
             # MIN_CHARS_EXTRACT checkpoint: Run AFTER OCR attempt
             # This ensures OCR has a chance to extract text before we fail
@@ -379,19 +431,63 @@ class IngestionService:
                 self.db.commit()
                 normalized_pages = [BaselineMathExtractionProvider.inject_markers_into_text(p) for p in normalized_pages]
             
-            # Step 4: Chunking
+            # Step 4: Chunking (adaptive profiles for OCR vs digital)
             t0 = time.perf_counter()
             await self._update_status(document_id, DocumentStatus.CHUNKING.value, processing_run)
+            meta_for_chunk = dict(document.processing_metadata or {})
+            ocr_used_flag = bool(meta_for_chunk.get("ocr_used"))
+            chunk_profile = "ocr_profile" if ocr_used_flag else "digital_profile"
+            base_chunk_size = settings.CHUNK_SIZE_TOKENS_OCR if ocr_used_flag else settings.CHUNK_SIZE_TOKENS_DIGITAL
+            base_overlap = settings.CHUNK_OVERLAP_TOKENS_OCR if ocr_used_flag else settings.CHUNK_OVERLAP_TOKENS_DIGITAL
+            # Adaptive threshold: small docs use lower min-chunks
+            pages_count = len(normalized_pages)
+            min_pages_for_threshold = getattr(settings, "OCR_MIN_PAGES_FOR_THRESHOLD", 30)
+            if ocr_used_flag and pages_count < min_pages_for_threshold:
+                min_chunks_threshold = getattr(settings, "OCR_MIN_CHUNKS_THRESHOLD_SMALL", 10)
+                effective_threshold_used = min_chunks_threshold
+            else:
+                min_chunks_threshold = getattr(settings, "OCR_MIN_CHUNKS_THRESHOLD", 0)
+                effective_threshold_used = min_chunks_threshold
+
+            # Primary chunking pass
             chunks = self.chunker.chunk(
                 normalized_pages,
-                chunk_size_tokens=settings.CHUNK_SIZE_TOKENS,
-                overlap_tokens=settings.CHUNK_OVERLAP_TOKENS,
-                chapter_map=document.chapter_map
+                chunk_size_tokens=base_chunk_size,
+                overlap_tokens=base_overlap,
+                chapter_map=document.chapter_map,
             )
+            total_chunks = len(chunks) if chunks else 0
+
+            # Minimum chunk guarantee for OCR/scanned documents: rechunk with deterministic size if needed
+            rechunk_attempted = False
+            if ocr_used_flag and min_chunks_threshold and total_chunks < min_chunks_threshold:
+                rechunk_attempted = True
+                chunk_profile = "ocr_profile_rechunk"
+                rechunk_size = getattr(settings, "OCR_RECHUNK_SIZE_TOKENS", 200)
+                chunks = self.chunker.chunk(
+                    normalized_pages,
+                    chunk_size_tokens=rechunk_size,
+                    overlap_tokens=base_overlap,
+                    chapter_map=document.chapter_map,
+                )
+                total_chunks = len(chunks) if chunks else 0
+                base_chunk_size = rechunk_size
+
             duration_ms = int((time.perf_counter() - t0) * 1000)
             logger.info(
                 "step_complete",
-                extra={"document_id": str(document_id), "step": "chunking", "duration_ms": duration_ms, "chunks": len(chunks) if chunks else 0, "pages": len(normalized_pages)},
+                extra={
+                    "document_id": str(document_id),
+                    "step": "chunking",
+                    "duration_ms": duration_ms,
+                    "chunks": total_chunks,
+                    "pages": len(normalized_pages),
+                    "chunk_profile_used": chunk_profile,
+                    "chunk_size_tokens": base_chunk_size,
+                    "chunk_overlap_tokens": base_overlap,
+                    "rechunk_attempted": rechunk_attempted,
+                    "effective_threshold_used": effective_threshold_used if ocr_used_flag else None,
+                },
             )
             if not chunks:
                 non_empty = sum(1 for p in normalized_pages if (p.text or "").strip())
@@ -399,7 +495,30 @@ class IngestionService:
                 raise ValueError(
                     f"Chunking checkpoint failed: chunks=0. pages={len(normalized_pages)}, non_empty_pages={non_empty}, sample_snippet={sample!r}"
                 )
-            processing_run.chunks_created = len(chunks)
+            # Role tagging: assign chunk.metadata from structure_map or auto-heuristics
+            min_chars_q = getattr(settings, "ROLE_MIN_CHARS_FOR_QUESTION_BLOCK", 200)
+            assign_chunk_roles(
+                chunks,
+                getattr(document, "structure_map", None),
+                min_chars_for_question_block=min_chars_q,
+            )
+            # Role distribution + QA metrics
+            role_dist = compute_role_distribution(chunks)
+            total_chunks = len(chunks)
+            role_metrics = compute_role_tagging_metrics(role_dist, total_chunks)
+            meta = dict(document.processing_metadata or {})
+            meta["role_distribution"] = role_dist
+            meta["role_tagging_metrics"] = role_metrics
+            document.processing_metadata = meta
+            logger.info(
+                "role_tagging",
+                extra={
+                    "document_id": str(document_id),
+                    "role_distribution": role_dist,
+                    "role_tagging_metrics": role_metrics,
+                },
+            )
+            processing_run.chunks_created = total_chunks
             self.db.commit()
 
             # Before embedding: filter empty chunks
@@ -713,3 +832,54 @@ class IngestionService:
         
         self.db.commit()
         logger.info(f"Updated document {document_id} status to {status}")
+
+    def apply_structure_map_to_chunks(self, document_id: UUID) -> int:
+        """
+        Reapply structure_map to existing chunks. Updates role in metadata_json.
+        Does NOT re-run OCR or chunking. Returns count of chunks updated.
+        """
+        from app.domains.content_ingestion.services.role_tagger import (
+            get_role_from_structure_map,
+            compute_role_distribution,
+            compute_role_tagging_metrics,
+            CHUNK_ROLES,
+        )
+        document = self.db.query(Document).filter(Document.id == document_id).first()
+        if not document:
+            raise ValueError(f"Document {document_id} not found")
+        structure_map = document.structure_map
+        if not structure_map or not isinstance(structure_map, list):
+            logger.info(f"No structure_map for document {document_id}; nothing to apply")
+            return 0
+        chunks = self.db.query(Chunk).filter(Chunk.document_id == document_id).all()
+        updated = 0
+        for ch in chunks:
+            override = get_role_from_structure_map(
+                ch.page_start_pdf,
+                ch.page_end_pdf,
+                structure_map,
+            )
+            if not override or override not in CHUNK_ROLES:
+                continue
+            meta = dict(ch.metadata_json or {})
+            old_role = meta.get("role", "unknown")
+            meta["role"] = override
+            meta["role_source"] = "manual"
+            if "auto_role" not in meta:
+                meta["auto_role"] = old_role
+            if "auto_confidence" not in meta:
+                meta["auto_confidence"] = 0.0
+            ch.metadata_json = meta
+            updated += 1
+        if updated:
+            role_dist = compute_role_distribution([
+                type("_", (), {"metadata": ch.metadata_json})() for ch in chunks
+            ])
+            role_metrics = compute_role_tagging_metrics(role_dist, len(chunks))
+            proc = dict(document.processing_metadata or {})
+            proc["role_distribution"] = role_dist
+            proc["role_tagging_metrics"] = role_metrics
+            document.processing_metadata = proc
+        self.db.commit()
+        logger.info(f"apply_structure_map_to_chunks: document_id={document_id}, updated={updated}")
+        return updated

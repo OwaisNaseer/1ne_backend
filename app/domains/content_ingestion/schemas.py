@@ -15,6 +15,10 @@ class ContentPackCreate(BaseModel):
     subject: Optional[str] = None
     grade: Optional[str] = None
     curriculum: Optional[str] = None
+    ocr_policy: Optional[Literal["auto", "math", "non_math"]] = Field(
+        default=None,
+        description="OCR policy for this pack. auto=use defaults; math=prefer math OCR engines when allowed; non_math=prefer local/general OCR.",
+    )
     metadata: Optional[Dict[str, Any]] = None
 
 
@@ -26,6 +30,7 @@ class ContentPackResponse(BaseModel):
     subject: Optional[str] = None
     grade: Optional[str] = None
     curriculum: Optional[str] = None
+    ocr_policy: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None  # Will be populated from pack_metadata
     is_active: bool
     created_at: datetime
@@ -53,6 +58,7 @@ class ContentPackResponse(BaseModel):
                 'subject': data.subject,
                 'grade': data.grade,
                 'curriculum': data.curriculum,
+                'ocr_policy': getattr(data, "ocr_policy", None),
                 'metadata': data.pack_metadata,  # Map pack_metadata to metadata
                 'is_active': data.is_active,
                 'created_at': data.created_at,
@@ -100,6 +106,7 @@ class DocumentResponse(BaseModel):
     remediation_hint: Optional[str] = None
     processing_metadata: Optional[Dict[str, Any]] = None
     chapter_map: Optional[List[Dict[str, Any]]] = None
+    structure_map: Optional[List[Dict[str, Any]]] = None  # Page-range role overrides
     title: Optional[str] = None
     author: Optional[str] = None
     total_pages: Optional[int] = None
@@ -175,7 +182,11 @@ class QAValidationResponse(BaseModel):
 # Worksheet Schemas
 class WorksheetGenerateRequest(BaseModel):
     """Worksheet generation request."""
-    pack_id: UUID
+    pack_id: UUID  # Primary pack (backward compat). Ignored if pack_ids provided.
+    pack_ids: Optional[List[UUID]] = Field(
+        default=None,
+        description="Optional multi-pack: search across these packs. If set, overrides pack_id for retrieval."
+    )
     topic_id: Optional[str] = None
     topic_text: Optional[str] = None  # Alternative to topic_id
     grade: Optional[str] = None
@@ -204,6 +215,14 @@ class WorksheetGenerateRequest(BaseModel):
     regenerate_key: Optional[str] = Field(
         default=None,
         description="If set (or force_regenerate=true), generate a new worksheet and avoid repeating/near-duplicate questions from prior worksheets for this user+pack+topic+difficulty."
+    )
+    teacher_prompt: Optional[str] = Field(
+        default=None,
+        description="Optional style/constraint instructions appended to the generator prompt. Must not override topic or grade safety."
+    )
+    teacher_reference_images: Optional[List[str]] = Field(
+        default=None,
+        description="Placeholder for future: reference image URLs for vision-aware generation. Not implemented."
     )
 
 

@@ -38,68 +38,16 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# Add timeout middleware first (outermost) to catch all requests
+app.add_middleware(
+    TimeoutMiddleware,
+    timeout=30.0,  # 30 seconds timeout to match frontend
+)
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize backend on startup."""
-    import os
-    import platform
-    from pathlib import Path
-    
-    # Auto-discover Poppler path if not set
-    if not os.getenv("POPPLER_PATH") and platform.system() == "Windows":
-        user_home = os.path.expanduser("~")
-        poppler_paths = [
-            r"C:\poppler\poppler-25.12.0\Library\bin",
-            r"C:\poppler\Library\bin",
-            os.path.join(user_home, r"Downloads\Release-25.12.0-0 (1)\poppler-25.12.0\Library\bin"),
-            r"C:\Program Files\poppler\bin",
-        ]
-        
-        for path_str in poppler_paths:
-            poppler_dir = Path(path_str)
-            if poppler_dir.is_dir():
-                pdftoppm = poppler_dir / "pdftoppm.exe"
-                if pdftoppm.exists():
-                    os.environ["POPPLER_PATH"] = str(poppler_dir)
-                    # Prepend to PATH for DLL resolution
-                    current_path = os.environ.get("PATH", "")
-                    if str(poppler_dir) not in current_path:
-                        os.environ["PATH"] = f"{poppler_dir};{current_path}"
-                    logger.info(f"Auto-discovered Poppler at startup: {poppler_dir}")
-                    break
-    
-    # Auto-discover Tesseract if not set
-    if not os.getenv("TESSERACT_CMD") and platform.system() == "Windows":
-        tesseract_paths = [
-            r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-            r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-        ]
-        for path_str in tesseract_paths:
-            if Path(path_str).exists():
-                os.environ["TESSERACT_CMD"] = path_str
-                logger.info(f"Auto-discovered Tesseract at startup: {path_str}")
-                break
-    
-    logger.info("Backend startup initialization complete")
-
-# Add CORS middleware FIRST (before timeout) to handle preflight requests
-# CORS must be added before other middleware to properly handle OPTIONS requests
-# IMPORTANT: When allow_credentials=True, you CANNOT use ["*"] - must list specific origins
-# Since we use Authorization headers (not cookies), we can set allow_credentials=False
+# Add CORS middleware to allow frontend requests
+# In development, allow all origins to avoid connection issues
 if settings.ENVIRONMENT == "dev":
-    # In development, allow common localhost origins
-    cors_origins = [
-        "http://localhost:5173",  # Vite default port
-        "http://localhost:3000",  # React default port
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-        "http://localhost:5174",  # Vite alternative port
-        "http://127.0.0.1:5174",
-    ]
-    # Also allow all origins for maximum compatibility in dev
-    # But we'll use allow_credentials=False to make this work
-    use_wildcard = True
+    cors_origins = ["*"]  # Allow all origins in development
 else:
     # Get frontend URL from environment variable, fallback to localhost
     frontend_url = settings.FRONTEND_URL or "http://localhost:5173"
@@ -129,34 +77,13 @@ else:
     
     # Remove duplicates while preserving order
     cors_origins = list(dict.fromkeys(cors_origins))
-    use_wildcard = False
 
-# Configure CORS middleware
-# Note: allow_credentials=False because we use Authorization headers, not cookies
-# This allows us to use wildcard origins in dev mode if needed
-if use_wildcard and settings.ENVIRONMENT == "dev":
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # Allow all origins in dev
-        allow_credentials=False,  # Must be False when using wildcard
-        allow_methods=["*"],  # Allow all HTTP methods (including OPTIONS)
-        allow_headers=["*"],  # Allow all headers (including Authorization)
-        expose_headers=["X-Worksheet-Cache", "X-Request-Id"],  # Expose custom headers to frontend
-    )
-else:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=cors_origins,
-        allow_credentials=False,  # We use Authorization headers, not cookies
-        allow_methods=["*"],  # Allow all HTTP methods (including OPTIONS)
-        allow_headers=["*"],  # Allow all headers (including Authorization)
-        expose_headers=["X-Worksheet-Cache", "X-Request-Id"],  # Expose custom headers to frontend
-    )
-
-# Add timeout middleware AFTER CORS (so CORS handles preflight first)
 app.add_middleware(
-    TimeoutMiddleware,
-    timeout=30.0,  # 30 seconds timeout to match frontend
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
