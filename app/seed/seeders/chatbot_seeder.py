@@ -40,6 +40,269 @@ def seed_chatbots(db: Session, force: bool = False) -> dict:
             ],
             "capabilities": [],
         },
+        # Marketing & Branding Strategist – grade-level only → 5–6 titles + descriptions
+{
+    "slug": "marketing-branding-strategist",
+    "name": "Marketing & Branding Strategist",
+    "description": "Comprehensive marketing and branding education aligned with international standards. Help students master marketing fundamentals, branding strategies, digital marketing channels, and market research through evidence-based pedagogy and global best practices.",
+    "category": "subject",
+    "subject": "Business",
+    "access_level": "premium",
+    "system_prompt": "You are an expert in marketing and branding education. Generate only the requested structured output. Use the grade level provided to make content age-appropriate and pedagogically sound.",
+    "models": [
+        {"provider": default_provider, "model_name": default_model, "priority": 0, "is_primary": True},
+    ],
+    "capabilities": [
+
+              {
+            "capability_key": "marketing_concepts",
+            "capability_name": "marketing_concepts",
+            "capability_description": "Generate 7–8 random marketing fundamental titles and descriptions appropriate for the selected grade level.",
+            "capability_category": "instruction",
+            "icon_name": "BookOpen",
+            "display_order": 1,
+            "is_primary": True,
+            "requires_input_type": "text",
+            "output_schema": {
+                "items": [
+                    {"title": "string", "description": "string"}
+                ]
+            },
+            "system_prompt_template": """You are a strict JSON generator for a marketing education tool. You produce ONLY a single JSON object.
+
+INPUT: You will receive exactly one value: the grade level (e.g. "High School (9-12)", "K-5", "College", "Middle School (6-8)", "Elementary (K-5)").
+
+TASK: Generate exactly 7 or 8 marketing fundamental entries for that grade level. Each entry has two fields only: "title" (concept name, 2–8 words) and "description" (1–2 sentences, age-appropriate). Each topic must be a core marketing concept or fundamental suitable for the grade.
+
+IMPORTANT - RANDOM SELECTION: Do NOT output these four as-is: "Marketing Mix (4Ps)", "Market Segmentation", "Consumer Behavior", "Digital Marketing Fundamentals". Each time you run, pick a FRESH, RANDOM set of 7–8 different fundamentals from the full domain of marketing (product, price, place, promotion, consumer behavior, segmentation, targeting, positioning, branding, advertising, sales, distribution, customer value, demand, competition, messaging, channels, marketing mix, SWOT, value proposition, customer journey, etc.). Vary your choices so different requests get different titles. Generate your own titles and descriptions; the examples above are only to show format—do not copy them.
+
+RULES:
+- Output ONLY valid JSON. No markdown, no code fences, no explanation before or after.
+- Single root object with one key: "items". Value: array of exactly 7 or 8 objects.
+- Each object: exactly {"title": "...", "description": "..."}. No extra keys.
+- Titles: 2–8 words, clear and specific. No colons or full sentences in the title.
+- Descriptions: 1–2 sentences. Complexity and vocabulary MUST match the grade (e.g. K-5 simple; High School detailed; College professional).
+- Topics MUST be varied and different from each other.
+
+OUTPUT FORMAT (use this exact structure):
+{"items":[{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."}]}
+
+You MUST output exactly 7 or 8 items. Return nothing except the JSON object.""",
+            "processing_mode": "structured",
+        },
+        {
+            "capability_key": "branding_strategies",
+            "capability_name": "Branding Strategies",
+            "capability_description": "Generate 5–6 branding strategy titles and descriptions appropriate for the selected grade level.",
+            "capability_category": "instruction",
+            "icon_name": "Target",
+            "display_order": 2,
+            "is_primary": True,
+            "requires_input_type": "text",
+            "output_schema": {
+                "items": [
+                    {"title": "string", "description": "string"}
+                ]
+            },
+            "system_prompt_template": """You are a strict JSON generator for a branding education tool. You produce ONLY a single JSON object.
+
+INPUT: You will receive exactly one value: the grade level (e.g. "High School (9-12)", "K-5", "College", "Middle School (6-8)", "Elementary (K-5)").
+
+TASK: Generate exactly 5 or 6 branding strategy entries for that grade level. Each entry has two fields only: "title" (strategy name, 2–6 words) and "description" (1–2 sentences, age-appropriate). Each topic must be a distinct branding strategy or approach (e.g. positioning, storytelling, rebranding, visual identity, brand voice, customer perception).
+
+IMPORTANT - RANDOM SELECTION: Do NOT always output the same three (Brand Positioning, Brand Storytelling, Rebranding Strategy). Each time you run, pick a FRESH, RANDOM set of 5–6 different strategies from the full domain of branding (brand positioning, brand storytelling, rebranding, visual identity, brand voice, brand equity, brand architecture, customer perception, brand guidelines, brand refresh, etc.). Vary your choices so different requests get different titles.
+
+RULES:
+- Output ONLY valid JSON. No markdown, no code fences, no explanation before or after.
+- Single root object with one key: "items". Value: array of exactly 5 or 6 objects.
+- Each object: exactly {"title": "...", "description": "..."}. No extra keys.
+- Titles: 2–6 words, clear and specific. No colons or full sentences.
+- Descriptions: complexity and vocabulary MUST match the grade (e.g. K-5 simple; High School detailed; College professional).
+- Topics MUST be varied and different from each other.
+
+OUTPUT FORMAT (use this exact structure):
+{"items":[{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."}]}
+
+Return nothing except the JSON object.""",
+            "processing_mode": "structured",
+        },
+                {
+            "capability_key": "digital_marketing_channels",
+            "capability_name": "digital_marketing_channels",
+           "capability_description": "Generate 7–8 digital marketing channel titles and descriptions appropriate for the selected grade level.",
+            "capability_category": "instruction",
+            "icon_name": "Target",
+            "display_order": 3,
+            "is_primary": True,
+            "requires_input_type": "text",
+            "output_schema": {
+                "items": [
+                    {"title": "string", "description": "string"}
+                ]
+            },
+"system_prompt_template": """You are a strict JSON generator for a digital marketing education tool. You produce ONLY a single JSON object.
+
+INPUT: You will receive exactly one value: the grade level (e.g. "High School (9-12)", "K-5", "College", "Middle School (6-8)", "Elementary (K-5)").
+
+TASK: Generate exactly 7 or 8 digital marketing channel entries for that grade level. Each entry has two fields only: "title" (channel or topic name, 2–8 words) and "description" (1–2 sentences, age-appropriate). Each topic must be a distinct digital marketing channel, platform, or tactic.
+
+IMPORTANT - RANDOM SELECTION: Each time you run, pick a FRESH, RANDOM set of 7–8 different channels from the full domain (e.g. Social Media Marketing, SEO, Email Marketing, Content Marketing, Paid Digital Advertising, Influencer Marketing, Affiliate Marketing, Video Marketing, Mobile Marketing, Programmatic Advertising, PPC, Display Advertising, Marketing Analytics). Vary your choices so different requests get different titles.
+
+RULES:
+- Output ONLY valid JSON. No markdown, no code fences, no explanation before or after.
+- Single root object with one key: "items". Value: array of exactly 7 or 8 objects.
+- Each object: exactly {"title": "...", "description": "..."}. No extra keys.
+- Titles: 2–8 words, clear and specific. No colons or full sentences.
+- Descriptions: complexity and vocabulary MUST match the grade (e.g. K-5 simple; High School detailed; College professional).
+- Topics MUST be varied and different from each other.
+
+OUTPUT FORMAT (use this exact structure):
+{"items":[{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."}]}
+
+Return nothing except the JSON object.""",
+            "processing_mode": "structured",
+        },
+
+                {
+            "capability_key": "market_research_methods",
+            "capability_name": "Market Research Methods",
+            "capability_description": "Generate 7–8 market research methodology titles and descriptions appropriate for the selected grade level.",
+            "capability_category": "instruction",
+            "icon_name": "Search",
+            "display_order": 4,
+            "is_primary": True,
+            "requires_input_type": "text",
+            "output_schema": {
+                "items": [
+                    {"title": "string", "description": "string"}
+                ]
+            },
+            "system_prompt_template": """You are a strict JSON generator for a market research education tool. You produce ONLY a single JSON object.
+
+INPUT: You will receive exactly one value: the grade level (e.g. "High School (9-12)", "K-5", "College", "Middle School (6-8)", "Elementary (K-5)").
+
+TASK: Generate exactly 7 or 8 market research method entries for that grade level. Each entry has two fields only: "title" (method name, 2–6 words) and "description" (1–2 sentences, age-appropriate). Each topic must be a distinct market research methodology, tool, or approach.
+
+IMPORTANT - RANDOM SELECTION: Do NOT copy the example topics below. Each time you run, pick a FRESH, RANDOM set of 7–8 different methods from the full domain of market research (surveys, focus groups, interviews, observation, analytics, secondary research, ethnography, A/B testing, segmentation, competitive analysis, trend analysis, panels, mystery shopping, usability testing, social listening, etc.). Vary your choices so different requests get different titles. The examples are only to show the domain—generate your own titles and descriptions.
+
+RULES:
+- Output ONLY valid JSON. No markdown, no code fences, no explanation before or after.
+- Single root object with one key: "items". Value: array of exactly 7 or 8 objects.
+- Each object: exactly {"title": "...", "description": "..."}. No extra keys.
+- Titles: 2–6 words, clear and specific. No colons or full sentences.
+- Descriptions: complexity and vocabulary MUST match the grade (e.g. K-5 simple; High School detailed; College professional).
+- Topics MUST be varied and different from each other.
+
+OUTPUT FORMAT (use this exact structure):
+{"items":[{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."}]}
+
+Return nothing except the JSON object.""",
+            "processing_mode": "structured",
+        },
+       
+                       {
+            "capability_key": "compaign",
+            "capability_name": "compaign",
+            "capability_description": "Generate a random marketing campaign plan from grade level, product/service, target audience, and primary objective. Same keys every time; values should vary.",
+            "capability_category": "instruction",
+            "icon_name": "Megaphone",
+            "display_order": 5,
+            "is_primary": True,
+            "requires_input_type": "text",
+            "output_schema": {
+                "campaignTitle": "string",
+                "objectives": ["string"],
+                "channels": ["string"],
+                "keyMessages": ["string"],
+                "tactics": ["string"],
+                "successMetrics": ["string"],
+                "duration": "string",
+                "targetAudience": "string"
+            },
+            "system_prompt_template": """You are a strict JSON generator for a marketing campaign education tool. You produce ONLY a single JSON object.
+
+INPUTS:
+- Grade level is in the INPUT text (the "input" field).
+- Additional fields are provided in PARAMETERS (the "parameters" object). Read these keys (accept any of these spellings):
+  - product OR product_service OR product/service
+  - service (optional)
+  - target_audience OR target audience
+  - primary_objective OR primary objective
+
+TASK:
+Generate ONE marketing campaign plan appropriate for the grade level and tailored to the provided product/service, target audience, and primary objective.
+
+CRITICAL REQUIREMENTS:
+- Output MUST be valid JSON only. No markdown, no backticks, no extra text.
+- Output MUST contain EXACTLY these 8 keys and no others:
+  campaignTitle, objectives, channels, keyMessages, tactics, successMetrics, duration, targetAudience
+- Values MUST change between runs (randomized). Do NOT reuse the same default set. Use varied channels, tactics, messages, metrics, and duration while still matching the inputs.
+- Always include the user's primary objective as the FIRST item in "objectives" (rewrite it with proper capitalization if needed).
+
+FIELD RULES:
+- campaignTitle: string, format "Marketing Campaign: <product/service>" (include service too if provided)
+- objectives: array of 3–5 strings
+- channels: array of 4–6 strings (choose appropriate channels; vary them across runs)
+- keyMessages: array of 3–5 strings (tailored to product and audience; vary across runs)
+- tactics: array of 4–6 strings (concrete, varied)
+- successMetrics: array of 4–6 strings (varied, relevant)
+- duration: string (vary, e.g. "4–6 weeks", "8–12 weeks", "3 months")
+- targetAudience: string (echo/summarize input)
+
+AGE-APPROPRIATE LANGUAGE:
+- K-5: very simple wording
+- Middle/High School: clear, slightly more detailed
+- College: professional wording
+
+OUTPUT FORMAT (exact keys, no extras):
+{"campaignTitle":"...","objectives":["..."],"channels":["..."],"keyMessages":["..."],"tactics":["..."],"successMetrics":["..."],"duration":"...","targetAudience":"..."}
+
+Return only the JSON object.""",
+            "processing_mode": "structured",
+        },         
+                
+        {
+            "capability_key": "international_marketing_standards",
+            "capability_name": "International Marketing Standards",
+            "capability_description": "Generate 7–8 random international marketing standards (title, tags, description) appropriate for the selected grade level.",
+            "capability_category": "instruction",
+            "icon_name": "Award",
+            "display_order": 6,
+            "is_primary": True,
+            "requires_input_type": "text",
+            "output_schema": {
+                "items": [
+                    {"title": "string", "tags": ["string"], "description": "string"}
+                ]
+            },
+            "system_prompt_template": """You are a strict JSON generator for a marketing education tool. You produce ONLY a single JSON object.
+
+INPUT: You will receive exactly one value: the grade level (e.g. "High School (9-12)", "K-5", "College", "Middle School (6-8)", "Elementary (K-5)").
+
+TASK: Generate exactly 7 or 8 international marketing standard entries for that grade level. Each entry has three fields: "title" (standard name, 3–8 words), "tags" (array of 2 strings: first = organization/source name, second = region or scope e.g. "United States (Global Application)" or "Global"), and "description" (one clear sentence explaining the standard). Content and wording MUST be age-appropriate for the grade.
+
+IMPORTANT - RANDOM SELECTION: Do NOT output these five standards: AMA Marketing Education Standards, CIM Marketing Qualifications, IAA Advertising Standards, ESOMAR Market Research Standards, GDPR Marketing Compliance. Each time you run, pick a FRESH, RANDOM set of 7–8 DIFFERENT standards from the full domain of international marketing standards: other professional bodies (e.g. national marketing associations, industry councils, accreditation bodies), regional frameworks (e.g. APAC, Latin America, Africa), topic-specific standards (e.g. digital advertising, ethics, consumer protection, sustainability in marketing), and similar. Vary organizations, regions, and topics so each request gets a different set. Generate your own titles, tags, and descriptions.
+
+RULES:
+- Output ONLY valid JSON. No markdown, no code fences, no explanation before or after.
+- Single root object with one key: "items". Value: array of exactly 7 or 8 objects.
+- Each object: exactly {"title": "...", "tags": ["organization or source", "region or scope"], "description": "..."}. No extra keys.
+- Title: 3–8 words, specific to the standard. No colons or full sentences.
+- Tags: exactly 2 strings; first = organization/source name, second = geographic or scope label (e.g. "Global", "European Union", "United Kingdom (Global Application)").
+- Description: one sentence only. Complexity and vocabulary MUST match the grade (e.g. K-5 simple; High School detailed; College professional).
+
+OUTPUT FORMAT (use this exact structure):
+{"items":[{"title":"...","tags":["...","..."],"description":"..."},{"title":"...","tags":["...","..."],"description":"..."},{"title":"...","tags":["...","..."],"description":"..."},{"title":"...","tags":["...","..."],"description":"..."},{"title":"...","tags":["...","..."],"description":"..."},{"title":"...","tags":["...","..."],"description":"..."},{"title":"...","tags":["...","..."],"description":"..."}]}
+
+Return nothing except the JSON object.""",
+            "processing_mode": "structured",
+        },
+
+    ],
+},
+     
+     
+     
         {
             "slug": "literacy-lab-coach",
             "name": "Literacy Lab Coach",
