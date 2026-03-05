@@ -1,5 +1,5 @@
 """
-Seed script for 15 core system templates with detailed input/output specifications.
+Seed script for 20 core system templates with detailed input/output specifications.
 """
 from datetime import datetime
 from typing import Dict, Any
@@ -21,7 +21,7 @@ def get_default_model_config() -> Dict[str, Any]:
 
 
 def get_template_data() -> list[Dict[str, Any]]:
-    """Get all 15 template definitions with their versions matching detailed criteria."""
+    """Get all 20 template definitions with their versions matching detailed criteria."""
     return [
         {
             # TEMPLATE 1: General Lesson Planner
@@ -1973,7 +1973,427 @@ def get_template_data() -> list[Dict[str, Any]]:
             }
         },
         {
-            # TEMPLATE 15: Communication Generator
+            # TEMPLATE 15: Sustainability Systems Thinking Lesson Builder
+            "template": {
+                "slug": "sustainability_systems_lesson",
+                "name": "Sustainability Systems Thinking Lesson Builder",
+                "description": "Build lessons on complex environmental systems (climate, biodiversity, water cycles) using systems mapping and causal reasoning.",
+                "category": "subject_specific",
+                "subject_default": "science",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {"type": "string", "title": "Grade level", "description": "e.g. Year 9, Grade 7"},
+                        "topic": {"type": "string", "title": "Topic", "description": "e.g. Urban Heat Islands, biodiversity, water cycles"},
+                        "bloom_level": {"type": "string", "title": "Bloom level", "description": "e.g. Analyze, Evaluate, Analyze / Evaluate"},
+                        "lesson_duration": {"type": "string", "title": "Lesson duration", "description": "e.g. 60 minutes"},
+                        "local_context": {"type": "string", "title": "Local context (optional)", "description": "e.g. Perth, Western Australia"},
+                        "standards_framework": {"type": "string", "title": "Standards framework (optional)", "description": "e.g. Australian Curriculum Science"}
+                    },
+                    "required": ["grade_level", "topic", "bloom_level", "lesson_duration"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SustainabilitySystemsLessonOutput",
+                    "required": [
+                        "learning_objectives",
+                        "systems_map_activity",
+                        "guided_inquiry_questions",
+                        "mini_case_study",
+                        "assessment_rubric"
+                    ],
+                    "properties": {
+                        "learning_objectives": {"type": "array", "title": "Learning objectives", "items": {"type": "string"}},
+                        "systems_map_activity": {
+                            "type": "object",
+                            "title": "Systems map activity",
+                            "properties": {
+                                "description": {"type": "string", "title": "Activity description"},
+                                "cause_effect_elements": {"type": "array", "title": "Cause-effect loop elements", "items": {"type": "string"}}
+                            },
+                            "required": ["description", "cause_effect_elements"]
+                        },
+                        "guided_inquiry_questions": {"type": "array", "title": "Guided inquiry questions", "items": {"type": "string"}},
+                        "mini_case_study": {"type": "string", "title": "Mini-case study (localized)"},
+                        "assessment_rubric": {
+                            "type": "object",
+                            "title": "Assessment rubric (aligned with Bloom)",
+                            "properties": {
+                                "type": {"type": "string", "title": "Type"},
+                                "criteria": {"type": "array", "title": "Criteria", "items": {"type": "string"}}
+                            },
+                            "required": ["type", "criteria"]
+                        }
+                    }
+                },
+                "stub_config": {
+                    "learning_objectives_template": [
+                        "Analyze how urban materials affect temperature absorption.",
+                        "Evaluate mitigation strategies for urban heat."
+                    ],
+                    "systems_map_activity": {
+                        "description_template": "Students create a cause-effect loop diagram for {topic} including the following components and their relationships.",
+                        "cause_effect_elements": [
+                            "Concrete surfaces",
+                            "Reduced vegetation",
+                            "Heat absorption",
+                            "Air temperature",
+                            "Energy consumption"
+                        ]
+                    },
+                    "guided_inquiry_questions": [
+                        "How does replacing trees with asphalt affect thermal dynamics?",
+                        "Which feedback loops amplify heat?"
+                    ],
+                    "mini_case_study_template": "Perth summer temperature data (provided). Localized context: {local_context}. Use this to ground the lesson in {topic}.",
+                    "assessment_rubric": {
+                        "type": "bloom_aligned",
+                        "criteria": [
+                            "Identifies system components (Analyze)",
+                            "Explains feedback loops (Analyze)",
+                            "Proposes justified intervention (Evaluate)"
+                        ]
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a sustainability systems thinking lesson with: Learning objectives (Analyze/Evaluate), Systems map activity (cause-effect loop diagram with key components), Guided inquiry questions, Mini-case study localized to the given context, and Assessment rubric aligned with Bloom's level.",
+                    "context": "This lesson will be used to teach complex environmental systems (climate, biodiversity, water cycles) using systems mapping and causal reasoning. Support optional curriculum standards when provided."
+                }
+            }
+        },
+        {
+            # TEMPLATE 16: Field Investigation Planner (Outdoor / Environmental Study)
+            "template": {
+                "slug": "field_investigation_planner",
+                "name": "Field Investigation Planner (Outdoor / Environmental Study)",
+                "description": "Streamlines preparation for field-based ecological studies with protocol, data table, and reflection.",
+                "category": "subject_specific",
+                "subject_default": "science",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {"type": "string", "title": "Grade level", "description": "e.g. Year 7"},
+                        "ecosystem_type": {"type": "string", "title": "Ecosystem type", "description": "e.g. Wetland, Forest"},
+                        "investigation_focus": {"type": "string", "title": "Investigation focus", "description": "e.g. Water Quality, Biodiversity"},
+                        "tools_available": {"type": "array", "items": {"type": "string"}, "title": "Tools available"},
+                        "bloom_level": {"type": "string", "title": "Bloom level", "description": "e.g. Apply, Analyze"},
+                        "risk_level": {"type": "string", "title": "Risk level", "description": "e.g. Low, Medium"}
+                    },
+                    "required": ["grade_level", "ecosystem_type", "investigation_focus", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "FieldInvestigationPlannerOutput",
+                    "required": [
+                        "fieldwork_objective",
+                        "step_by_step_protocol",
+                        "data_collection_table",
+                        "data_analysis_prompts",
+                        "reflection_systems_link"
+                    ],
+                    "properties": {
+                        "fieldwork_objective": {"type": "string", "title": "Fieldwork objective"},
+                        "step_by_step_protocol": {"type": "array", "title": "Step-by-step field protocol", "items": {"type": "string"}},
+                        "data_collection_table": {
+                            "type": "object",
+                            "title": "Data collection table (printable)",
+                            "properties": {
+                                "headers": {"type": "array", "title": "Column headers", "items": {"type": "string"}},
+                                "description": {"type": "string", "title": "Table description"}
+                            },
+                            "required": ["headers", "description"]
+                        },
+                        "data_analysis_prompts": {"type": "array", "title": "Data analysis prompts", "items": {"type": "string"}},
+                        "reflection_systems_link": {"type": "string", "title": "Reflection + systems link"}
+                    }
+                },
+                "stub_config": {
+                    "fieldwork_objective_template": "Students measure abiotic factors and interpret ecosystem health for {ecosystem_type} ({investigation_focus}).",
+                    "step_by_step_protocol": [
+                        "Measure water temperature.",
+                        "Test pH levels.",
+                        "Record visible biodiversity."
+                    ],
+                    "data_collection_table": {
+                        "headers": ["Sample Point", "Temp (°C)", "pH", "Observations"],
+                        "description_template": "Printable data collection table for {investigation_focus} in {ecosystem_type}."
+                    },
+                    "data_analysis_prompts": [
+                        "What patterns emerge across sample points?",
+                        "Does pH suggest ecological stress?"
+                    ],
+                    "reflection_systems_link_template": "How might urban runoff impact this {ecosystem_type}?"
+                },
+                "prompt_definition": {
+                    "description": "Generate a field investigation plan with: Fieldwork objective, Step-by-step field protocol, Printable data collection table, Data analysis prompts, and Reflection linking to systems (e.g. human impact). Tailor to ecosystem type, investigation focus, and tools available.",
+                    "context": "This planner supports outdoor/environmental studies. Ensure protocol is safe for the given risk level and appropriate for the grade and tools available."
+                }
+            }
+        },
+        {
+            # TEMPLATE 17: Climate Data Literacy Activity Generator
+            "template": {
+                "slug": "climate_data_literacy",
+                "name": "Climate Data Literacy Activity Generator",
+                "description": "Teaches students to interpret real climate or environmental datasets with graph interpretation, critical thinking, and evidence-based writing.",
+                "category": "subject_specific",
+                "subject_default": "science",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {"type": "string", "title": "Grade level", "description": "e.g. Year 10"},
+                        "dataset_type": {"type": "string", "title": "Dataset type", "description": "e.g. Temperature Trends, Precipitation"},
+                        "location": {"type": "string", "title": "Location", "description": "e.g. Western Australia"},
+                        "years_range": {"type": "string", "title": "Years range", "description": "e.g. 1980-2020"},
+                        "bloom_level": {"type": "string", "title": "Bloom level", "description": "e.g. Analyze, Evaluate"},
+                        "assessment_type": {"type": "string", "title": "Assessment type", "description": "e.g. Short Report, Essay"}
+                    },
+                    "required": ["grade_level", "dataset_type", "location", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ClimateDataLiteracyOutput",
+                    "required": [
+                        "dataset_summary",
+                        "graph_interpretation_questions",
+                        "critical_thinking_prompts",
+                        "writing_task",
+                        "rubric"
+                    ],
+                    "properties": {
+                        "dataset_summary": {"type": "string", "title": "Dataset summary (auto-generated)"},
+                        "graph_interpretation_questions": {"type": "array", "title": "Graph interpretation questions", "items": {"type": "string"}},
+                        "critical_thinking_prompts": {"type": "array", "title": "Critical thinking prompts", "items": {"type": "string"}},
+                        "writing_task": {"type": "string", "title": "Writing task"},
+                        "rubric": {
+                            "type": "object",
+                            "title": "Rubric",
+                            "properties": {
+                                "criteria": {"type": "array", "title": "Criteria", "items": {"type": "string"}}
+                            },
+                            "required": ["criteria"]
+                        }
+                    }
+                },
+                "stub_config": {
+                    "dataset_summary_template": "Overview of long-term temperature increase for {dataset_type} in {location} ({years_range}).",
+                    "graph_interpretation_questions": [
+                        "Identify the trend.",
+                        "Calculate average increase per decade."
+                    ],
+                    "critical_thinking_prompts": [
+                        "What factors might explain anomalies?",
+                        "Is correlation equal to causation?"
+                    ],
+                    "writing_task_template": "Write a 400-word evidence-based analysis evaluating climate trends for {dataset_type} in {location}.",
+                    "rubric": {
+                        "criteria": [
+                            "Accurate data interpretation",
+                            "Logical reasoning",
+                            "Evidence-based conclusion"
+                        ]
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a climate data literacy activity with: Dataset summary (overview of the data), Graph interpretation questions, Critical thinking prompts (e.g. causation vs correlation), Writing task (evidence-based analysis), and Rubric. Tailor to dataset type, location, years range, and assessment type.",
+                    "context": "This activity teaches students to interpret real climate or environmental datasets. Ensure questions and task align with Bloom level and assessment type."
+                }
+            }
+        },
+        {
+            # TEMPLATE 18: Sustainability Design Challenge (Engineering + Environmental)
+            "template": {
+                "slug": "sustainability_design_challenge",
+                "name": "Sustainability Design Challenge (Engineering + Environmental)",
+                "description": "Project-based learning integrating science and engineering with design thinking stages and sustainability constraints.",
+                "category": "subject_specific",
+                "subject_default": "steam",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {"type": "string", "title": "Grade level", "description": "e.g. Year 8"},
+                        "challenge_theme": {"type": "string", "title": "Challenge theme", "description": "e.g. Reduce Plastic Waste"},
+                        "constraints": {"type": "array", "items": {"type": "string"}, "title": "Constraints"},
+                        "duration": {"type": "string", "title": "Duration", "description": "e.g. 2 weeks"},
+                        "bloom_level": {"type": "string", "title": "Bloom level", "description": "e.g. Create"},
+                        "team_size": {"type": "integer", "minimum": 1, "maximum": 20, "title": "Team size"}
+                    },
+                    "required": ["grade_level", "challenge_theme", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SustainabilityDesignChallengeOutput",
+                    "required": [
+                        "challenge_brief",
+                        "design_thinking_stages",
+                        "engineering_constraints",
+                        "deliverables",
+                        "evaluation_rubric"
+                    ],
+                    "properties": {
+                        "challenge_brief": {"type": "string", "title": "Challenge brief"},
+                        "design_thinking_stages": {
+                            "type": "array",
+                            "title": "Design thinking stages",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "stage": {"type": "string", "title": "Stage"},
+                                    "description": {"type": "string", "title": "Description"}
+                                },
+                                "required": ["stage", "description"]
+                            }
+                        },
+                        "engineering_constraints": {"type": "array", "title": "Engineering constraints", "items": {"type": "string"}},
+                        "deliverables": {"type": "array", "title": "Deliverables", "items": {"type": "string"}},
+                        "evaluation_rubric": {
+                            "type": "object",
+                            "title": "Evaluation rubric (creation level)",
+                            "properties": {
+                                "criteria": {"type": "array", "title": "Criteria", "items": {"type": "string"}}
+                            },
+                            "required": ["criteria"]
+                        }
+                    }
+                },
+                "stub_config": {
+                    "challenge_brief_template": "Design a school-based solution to reduce single-use plastics for {challenge_theme}.",
+                    "design_thinking_stages": [
+                        {"stage": "Empathize", "description": "Survey students."},
+                        {"stage": "Define", "description": "Identify biggest waste sources."},
+                        {"stage": "Ideate", "description": "Brainstorm 10 ideas."},
+                        {"stage": "Prototype", "description": "Model or presentation."},
+                        {"stage": "Test", "description": "Peer feedback."}
+                    ],
+                    "engineering_constraints": [
+                        "Budget under $100",
+                        "Must be sustainable"
+                    ],
+                    "deliverables": [
+                        "Proposal document",
+                        "Prototype",
+                        "5-minute pitch"
+                    ],
+                    "evaluation_rubric": {
+                        "criteria": [
+                            "Innovation",
+                            "Feasibility",
+                            "Environmental impact reasoning"
+                        ]
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a sustainability design challenge with: Challenge brief, Design thinking stages (Empathize, Define, Ideate, Prototype, Test), Engineering constraints, Deliverables, and Evaluation rubric at Create level. Integrate science and engineering for project-based learning.",
+                    "context": "This challenge is for project-based learning integrating science and engineering. Tailor to challenge theme, constraints, duration, and team size."
+                }
+            }
+        },
+        {
+            # TEMPLATE 19: Biodiversity Impact Simulation & Role Play
+            "template": {
+                "slug": "biodiversity_role_play",
+                "name": "Biodiversity Impact Simulation & Role Play",
+                "description": "Helps students understand environmental trade-offs via role-play debate with stakeholder roles and structured debate format.",
+                "category": "subject_specific",
+                "subject_default": "science",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {"type": "string", "title": "Grade level", "description": "e.g. Year 9"},
+                        "issue": {"type": "string", "title": "Issue", "description": "e.g. Coastal Development vs Marine Protection"},
+                        "roles": {"type": "array", "items": {"type": "string"}, "title": "Roles", "description": "Stakeholder roles for the debate"},
+                        "bloom_level": {"type": "string", "title": "Bloom level", "description": "e.g. Evaluate"},
+                        "format": {"type": "string", "title": "Format", "description": "e.g. Structured Debate"}
+                    },
+                    "required": ["grade_level", "issue", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "BiodiversityRolePlayOutput",
+                    "required": [
+                        "background_brief",
+                        "role_assignment_sheets",
+                        "debate_structure",
+                        "reflection_prompts",
+                        "assessment"
+                    ],
+                    "properties": {
+                        "background_brief": {"type": "string", "title": "Background brief"},
+                        "role_assignment_sheets": {
+                            "type": "array",
+                            "title": "Role assignment sheets",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "role": {"type": "string", "title": "Role"},
+                                    "stakeholder_goals": {"type": "string", "title": "Stakeholder goals"},
+                                    "key_arguments": {"type": "array", "title": "Key arguments", "items": {"type": "string"}},
+                                    "data_references": {"type": "array", "title": "Data references", "items": {"type": "string"}}
+                                },
+                                "required": ["role", "stakeholder_goals", "key_arguments", "data_references"]
+                            }
+                        },
+                        "debate_structure": {"type": "array", "title": "Debate structure", "items": {"type": "string"}},
+                        "reflection_prompts": {"type": "array", "title": "Reflection prompts", "items": {"type": "string"}},
+                        "assessment": {
+                            "type": "object",
+                            "title": "Assessment",
+                            "properties": {
+                                "criteria": {"type": "array", "title": "Criteria", "items": {"type": "string"}}
+                            },
+                            "required": ["criteria"]
+                        }
+                    }
+                },
+                "stub_config": {
+                    "background_brief_template": "Overview of coastal ecosystem importance and the tension between development and protection for {issue}.",
+                    "role_assignment_sheets": [
+                        {"role": "Developer", "stakeholder_goals": "Advocate for economic development and jobs.", "key_arguments": ["Job creation", "Local revenue"], "data_references": ["Employment projections", "Tax revenue estimates"]},
+                        {"role": "Environmental Scientist", "stakeholder_goals": "Present evidence on biodiversity and ecosystem services.", "key_arguments": ["Habitat loss", "Species decline"], "data_references": ["Marine surveys", "IUCN data"]},
+                        {"role": "Local Resident", "stakeholder_goals": "Represent community quality of life and access.", "key_arguments": ["Livelihoods", "Cultural value"], "data_references": ["Community surveys"]},
+                        {"role": "Government", "stakeholder_goals": "Balance regulation and sustainable use.", "key_arguments": ["Policy options", "Compliance"], "data_references": ["Existing regulations", "Impact assessments"]}
+                    ],
+                    "debate_structure": [
+                        "Opening statements",
+                        "Rebuttals",
+                        "Evidence round",
+                        "Final vote"
+                    ],
+                    "reflection_prompts": [
+                        "What trade-offs were most difficult?",
+                        "How should policy balance economics and ecology?"
+                    ],
+                    "assessment": {
+                        "criteria": [
+                            "Reasoning",
+                            "Evidence use",
+                            "Ethical consideration"
+                        ]
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a biodiversity impact simulation/role play with: Background brief (ecosystem context), Role assignment sheets (stakeholder goals, key arguments, data references per role), Debate structure, Reflection prompts, and Assessment (reasoning, evidence use, ethical consideration).",
+                    "context": "This activity helps students understand environmental trade-offs via role-play debate. Tailor to the issue and roles provided; support structured debate format."
+                }
+            }
+        },
+        {
+            # TEMPLATE 20: Communication Generator
             "template": {
                 "slug": "parent_communication",
                 "name": "Communication Generator",
