@@ -1050,60 +1050,64 @@ Respond with ONLY a JSON object. No markdown, no code fence. Use exactly this st
 Rules: Exactly 8 objects. Every competencyTitle must be industry-specific and must NOT be any of the 8 forbidden titles. Return ONLY the JSON object.""",
     "processing_mode": "structured",
 }, 
-                                {
-                    "capability_key": "industry_insights",
-                    "capability_name": "Industry Insights & Market Intelligence",
-                    "capability_description": "Get industry-specific insights: global opportunities, required skills, certifications, salary ranges, career pathways, geographic hotspots, and future outlook. Uses the coach-level industry as general context; insights are generated for the separately selected insight industry (can differ from general). Content is tailored to grade level, region, and career level.",
-                    "capability_category": "instruction",
-                    "icon_name": "TrendingUp",
-                    "display_order": 4,
-                    "is_primary": True,
-                    "requires_input_type": "text",
-                                       "system_prompt_template": """You are an expert in industry analysis and labor market intelligence.
 
-CRITICAL — TARGET INDUSTRY: The FIRST line of the user message will be "TARGET INDUSTRY FOR ALL INSIGHT CONTENT (use this industry only): [IndustryName]". You MUST use that exact industry for 100% of your response. Every field (industryLabel, globalOpportunities, requiredSkills, certifications, salaryRanges, careerPathways, geographicHotspots, futureOutlook) must describe ONLY that industry. If the line says Healthcare, output Healthcare roles, clinical skills, nursing/physician pathways, medical certifications, hospital hubs—never Technology or any other industry. If it says Technology, output tech roles, software, DevOps, tech certifications, Silicon Valley–style hubs. Wrong industry = invalid response.
-
-Output a single insights object. Use exactly these top-level keys; only values change with the TARGET INDUSTRY and other parameters (grade_level, region, career_level).
-
-RULES:
-- industryLabel: Must be "[TARGET INDUSTRY from first line] (Growth descriptor)", e.g. "Healthcare (STEADY Growth)" or "Technology (HIGH Growth)".
-- globalOpportunities: Job/role titles and opportunities in the TARGET industry only.
-- requiredSkills: Skills for careers in the TARGET industry only.
-- certifications: Credentials/certifications for the TARGET industry only (e.g. Healthcare: BLS, CNA, RN, medical coding; Technology: CompTIA, AWS, Azure).
-- salaryRanges: Typical ranges for the TARGET industry in the given region (entryLevel, midLevel, senior).
-- careerPathways: Entry, progression, and senior roles in the TARGET industry only.
-- geographicHotspots: Locations where the TARGET industry is strong (region-aware).
-- futureOutlook: Trends and outlook for the TARGET industry only.
-- REGION: Use for salary currency/norms and geographic hotspots.
-- GRADE_LEVEL: Language and depth (K-5 simple; 9-12 detailed; College professional).
-- CAREER_LEVEL: Align pathways and salary emphasis with entry/mid/senior.
-
-If the first line is missing, use industry_insight from parameters, then industry, then "Technology". Other defaults: grade_level = "9-12", region = "United States", career_level = "Entry".
-
-Respond with ONLY a JSON object. No markdown, no code fence:
 
 {
-  "industryLabel": "string (TARGET INDUSTRY name + growth level)",
-  "globalOpportunities": ["string", "string", "string", "string", "string"],
-  "requiredSkills": ["string", "string", "string", "string", "string"],
-  "certifications": ["string", "string", "string", "string"],
-  "salaryRanges": {
-    "entryLevel": "string",
-    "midLevel": "string",
-    "senior": "string"
-  },
-  "careerPathways": {
-    "entry": "string",
-    "progression": "string",
-    "senior": "string"
-  },
-  "geographicHotspots": ["string", "string", "string", "string", "string", "string"],
-  "futureOutlook": ["string", "string", "string", "string"]
+    "capability_key": "industry_insights",
+    "capability_name": "Industry Insights & Market Intelligence",
+    "capability_description": "Get industry-specific insights: global opportunities, required skills, certifications, salary ranges, career pathways, geographic hotspots, and future outlook. Uses the coach-level industry as major context; if industry_insight is a sub-industry of the major industry then respond for the sub-industry, otherwise respond for the major industry. Content is tailored to grade level, region, and career level.",
+    "capability_category": "instruction",
+    "icon_name": "TrendingUp",
+    "display_order": 4,
+    "is_primary": True,
+    "requires_input_type": "text",
+    "system_prompt_template": """You are an expert in industry analysis and labor market intelligence.
+
+ABSOLUTE OUTPUT RULES:
+- Return ONLY a single valid JSON object.
+- The FIRST character must be { and the LAST character must be }.
+- No markdown, no backticks, no explanations, no extra keys.
+
+INPUTS YOU WILL RECEIVE:
+- INPUT (string): may contain a first line in the exact form:
+  "TARGET INDUSTRY FOR ALL INSIGHT CONTENT (use this industry only): <target>"
+- PARAMETERS (object): grade_level, region, career_level, industry (major), industry_insight (optional)
+
+TARGET INDUSTRY SELECTION (must follow exactly):
+1) If the INPUT contains the TARGET INDUSTRY first line, then <target> from that line is the ONLY industry you may use.
+2) If the TARGET line is missing, use this fallback:
+   - If industry_insight is a sub-industry of industry (major), then target = industry_insight
+   - Else target = industry (major)
+3) If still missing, default target="Technology".
+
+CRITICAL CONSISTENCY CHECK (hard requirement):
+- Every field MUST describe ONLY the target industry (no mixing industries).
+- If target is a sub-industry (e.g., Cybersecurity), keep roles/skills/certs strictly within that sub-industry context.
+
+ADAPTATION RULES:
+- GRADE_LEVEL: K-5 very simple; 6-8 simple/moderate; 9-12 detailed; College professional.
+- REGION: salary currency and hotspots must match region norms.
+- CAREER_LEVEL: align pathways and salary emphasis to Entry/Mid/Senior.
+
+Return exactly this structure (keys must match exactly, arrays must have exactly these lengths):
+{
+  "industryLabel": "string (TARGET industry + growth descriptor, e.g. 'Technology (HIGH Growth)')",
+  "globalOpportunities": ["string","string","string","string","string"],
+  "requiredSkills": ["string","string","string","string","string"],
+  "certifications": ["string","string","string","string"],
+  "salaryRanges": { "entryLevel": "string", "midLevel": "string", "senior": "string" },
+  "careerPathways": { "entry": "string", "progression": "string", "senior": "string" },
+  "geographicHotspots": ["string","string","string","string","string","string"],
+  "futureOutlook": ["string","string","string","string"]
 }
 
-All values must reflect the TARGET INDUSTRY from the first line. Return ONLY the JSON object.""",
-                    "processing_mode": "structured",
-                },
+FINAL CHECK BEFORE YOU OUTPUT:
+- All items clearly match the TARGET industry only.
+- Salary ranges are plausible for the REGION and CAREER_LEVEL.
+- Output ONLY the JSON object.""",
+    "processing_mode": "structured",
+},
+                   
                                 {
                     "capability_key": "career_pathway_planning",
                     "capability_name": "Career Pathway Planning",
