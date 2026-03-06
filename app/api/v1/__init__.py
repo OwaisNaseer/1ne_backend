@@ -12,11 +12,15 @@ try:
     from app.domains.subscriptions import routes as subscription_routes
     from app.domains.chatbots import routes as chatbot_routes
     from app.domains.content_ingestion import routes as content_ingestion_routes
+    from app.domains.external_context import routes as metadata_routes
     
     router = APIRouter()
     
     # Authentication routes
     router.include_router(auth_routes.router)
+    
+    # Metadata (countries, regions, subjects, etc.) and profile context
+    router.include_router(metadata_routes.router)
     
     # Subscription routes
     router.include_router(subscription_routes.router)

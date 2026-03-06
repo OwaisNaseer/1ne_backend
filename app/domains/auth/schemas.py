@@ -1,7 +1,7 @@
 """
 Pydantic schemas for authentication and authorization.
 """
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any  # noqa: F401 - Dict, Any used in UserProfile
 from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
@@ -156,8 +156,10 @@ class UserRoleInfo(BaseModel):
 
 
 class UserProfile(UserResponse):
-    """Extended user profile schema."""
+    """Extended user profile schema (includes teacher context when present)."""
     last_login_at: Optional[datetime] = None
+    teacher_context: Optional[Dict[str, Any]] = None
+    context_resolution_status: Optional[str] = None
     # profile_picture_url is already included via UserResponse inheritance
 
 

@@ -63,6 +63,8 @@ from app.domains.auth.services import (
 from app.domains.auth.services.signup_service import SignupService
 from app.domains.auth.services.membership_service import MembershipService
 from app.domains.auth.services.session_service import SessionService
+from app.domains.external_context.schemas import ProfileUpdateRequest, ProfileUpdateResponse
+from sqlalchemy.orm import joinedload
 
 logger = get_logger(__name__)
 
@@ -937,6 +939,34 @@ async def get_current_user_profile(
             "roles": roles_data if roles_data else [],
         }
         
+        # Attach teacher profile context if present
+        from app.domains.auth.models import TeacherProfileContext
+        from app.domains.external_context.service import TeacherContextService
+        ctx_service = TeacherContextService(db)
+        teacher_ctx = ctx_service.get_by_user_id(current_user.id)
+        if teacher_ctx:
+            profile_data["teacher_context"] = {
+                "country": teacher_ctx.country,
+                "region": teacher_ctx.region,
+                "school_type": teacher_ctx.school_type,
+                "grade_band": teacher_ctx.grade_band,
+                "subjects": teacher_ctx.subjects or [],
+                "language_preference": teacher_ctx.language_preference,
+                "school_name": teacher_ctx.school_name,
+                "city": teacher_ctx.city,
+                "postal_code": teacher_ctx.postal_code,
+                "curriculum_framework": teacher_ctx.curriculum_framework,
+                "years_experience": teacher_ctx.years_experience,
+                "professional_goals": teacher_ctx.professional_goals or [],
+                "context_resolution_status": teacher_ctx.context_resolution_status,
+                "created_at": teacher_ctx.created_at,
+                "updated_at": teacher_ctx.updated_at,
+            }
+            profile_data["context_resolution_status"] = teacher_ctx.context_resolution_status or "not_found"
+        else:
+            profile_data["teacher_context"] = None
+            profile_data["context_resolution_status"] = None
+        
         logger.info(f"Profile data built: {profile_data}")
         
         # Validate with UserProfile schema
@@ -1015,6 +1045,9 @@ async def update_current_user_profile(
         # Extract remove flag
         remove_profile_picture_str = form_data.get("remove_profile_picture", "").lower()
         remove_profile_picture = remove_profile_picture_str in ("true", "1", "yes")
+
+        # Optional teaching context (JSON string)
+        teaching_context_json = form_data.get("teaching_context")
         
         # Prepare update data
         update_kwargs = {}
@@ -1120,6 +1153,43 @@ async def update_current_user_profile(
         
         # Validate and create response
         response_data = UserResponse(**response_dict).model_dump()
+
+        # Optional: upsert teaching context and add to response
+        context_resolution_status = None
+        teacher_ctx = None
+        if teaching_context_json and isinstance(teaching_context_json, str) and teaching_context_json.strip():
+            import json
+            from app.domains.external_context.service import TeacherContextService
+            from app.domains.external_context.schemas import TeacherContextUpdate
+            try:
+                data = json.loads(teaching_context_json)
+                tc_update = TeacherContextUpdate(**data)
+                ctx_service = TeacherContextService(db)
+                ctx = ctx_service.upsert_context(updated_user.id, tc_update)
+                context_resolution_status = ctx.context_resolution_status or "not_found"
+                teacher_ctx = {
+                    "country": ctx.country,
+                    "region": ctx.region,
+                    "school_type": ctx.school_type,
+                    "grade_band": ctx.grade_band,
+                    "subjects": ctx.subjects or [],
+                    "language_preference": ctx.language_preference,
+                    "school_name": ctx.school_name,
+                    "city": ctx.city,
+                    "postal_code": ctx.postal_code,
+                    "curriculum_framework": ctx.curriculum_framework,
+                    "years_experience": ctx.years_experience,
+                    "professional_goals": ctx.professional_goals or [],
+                    "context_resolution_status": ctx.context_resolution_status,
+                    "created_at": ctx.created_at,
+                    "updated_at": ctx.updated_at,
+                }
+            except (json.JSONDecodeError, Exception) as e:
+                logger.warning(f"Teaching context parse/upsert failed: {e}")
+        if context_resolution_status is not None:
+            response_data["context_resolution_status"] = context_resolution_status
+        if teacher_ctx is not None:
+            response_data["teacher_context"] = teacher_ctx
         
         logger.info(f"Profile update response for user {updated_user.id}: profile_picture_url = {response_data.get('profile_picture_url')}")
         
@@ -1141,6 +1211,127 @@ async def update_current_user_profile(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while updating profile"
         )
+
+
+@router.patch("/users/profile", response_model=ProfileUpdateResponse)
+async def update_user_profile_with_context(
+    body: ProfileUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update user profile (personal info + teaching context). Returns profile and context_resolution_status.
+    Use this for the combined Profile Settings form (Personal Information + Teaching Context).
+    """
+    from app.domains.external_context.service import TeacherContextService
+    from app.domains.auth.models import UserRole
+    from app.domains.auth.schemas import UserRoleInfo, RoleName, RoleScope
+
+    req = body  # ProfileUpdateRequest
+    user_service = UserService(db)
+    ctx_service = TeacherContextService(db)
+
+    # Update personal fields if provided
+    if any([req.first_name, req.last_name, req.email, req.phone is not None, req.username is not None]):
+        update_kwargs = {}
+        if req.first_name is not None:
+            update_kwargs["first_name"] = req.first_name
+        if req.last_name is not None:
+            update_kwargs["last_name"] = req.last_name
+        if req.email is not None:
+            update_kwargs["email"] = req.email
+        if req.phone is not None:
+            update_kwargs["phone"] = req.phone
+        if req.username is not None:
+            update_kwargs["username"] = req.username
+        if update_kwargs:
+            await user_service.update_user(
+                user_id=current_user.id,
+                updated_by=current_user.id,
+                **update_kwargs,
+            )
+            db.refresh(current_user)
+
+    # Upsert teaching context if provided
+    context_resolution_status = ctx_service.get_resolution_status(current_user.id)
+    if req.teaching_context is not None:
+        ctx_service.upsert_context(current_user.id, req.teaching_context)
+        context_resolution_status = ctx_service.get_resolution_status(current_user.id)
+
+    # Build profile dict (same shape as GET /auth/me); refresh to pick up any prior updates (e.g. picture from PUT)
+    db.refresh(current_user)
+    user_roles = db.query(UserRole).options(joinedload(UserRole.role)).filter(
+        UserRole.user_id == current_user.id
+    ).all()
+    roles_data = []
+    for ur in user_roles:
+        if ur.role:
+            try:
+                roles_data.append(
+                    UserRoleInfo(
+                        id=ur.role.id,
+                        name=RoleName(ur.role.name) if isinstance(ur.role.name, str) else ur.role.name,
+                        scope=RoleScope(ur.role.scope) if isinstance(ur.role.scope, str) else ur.role.scope,
+                        tenant_id=ur.tenant_id,
+                        granted_at=ur.granted_at,
+                    )
+                )
+            except Exception:
+                pass
+    teacher_ctx = ctx_service.get_by_user_id(current_user.id)
+    roles_serializable = [r.model_dump() if hasattr(r, "model_dump") else r for r in roles_data]
+    profile_dict = {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "full_name": current_user.full_name,
+        "phone": current_user.phone,
+        "username": current_user.username,
+        "tenant_id": str(current_user.tenant_id),
+        "status": current_user.status,
+        "email_verified": current_user.email_verified,
+        "profile_picture_url": current_user.profile_picture_url,
+        "created_at": current_user.created_at,
+        "updated_at": current_user.updated_at,
+        "roles": roles_serializable,
+        "teacher_context": None,
+        "context_resolution_status": context_resolution_status,
+    }
+    if teacher_ctx:
+        profile_dict["teacher_context"] = {
+            "country": teacher_ctx.country,
+            "region": teacher_ctx.region,
+            "school_type": teacher_ctx.school_type,
+            "grade_band": teacher_ctx.grade_band,
+            "subjects": teacher_ctx.subjects or [],
+            "language_preference": teacher_ctx.language_preference,
+            "school_name": teacher_ctx.school_name,
+            "city": teacher_ctx.city,
+            "postal_code": teacher_ctx.postal_code,
+            "curriculum_framework": teacher_ctx.curriculum_framework,
+            "years_experience": teacher_ctx.years_experience,
+            "professional_goals": teacher_ctx.professional_goals or [],
+            "context_resolution_status": teacher_ctx.context_resolution_status,
+            "created_at": teacher_ctx.created_at,
+            "updated_at": teacher_ctx.updated_at,
+        }
+        profile_dict["context_resolution_status"] = teacher_ctx.context_resolution_status or "not_found"
+
+    recommendations = None
+    if context_resolution_status == "partial":
+        recommendations = ["Consider completing curriculum framework and grade band for better recommendations."]
+    elif context_resolution_status == "not_found":
+        recommendations = [
+            "We were unable to automatically identify detailed educational context. "
+            "Please review or complete the optional fields for accurate Professional Learning Hub recommendations."
+        ]
+
+    return ProfileUpdateResponse(
+        profile=profile_dict,
+        context_resolution_status=context_resolution_status,
+        recommendations=recommendations,
+    )
 
 
 @router.post("/auth/me/change-password", status_code=status.HTTP_204_NO_CONTENT)

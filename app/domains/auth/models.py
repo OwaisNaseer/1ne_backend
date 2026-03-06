@@ -171,9 +171,60 @@ class User(Base):
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
     memberships = relationship("UserMembership", foreign_keys="UserMembership.user_id", back_populates="user", cascade="all, delete-orphan")
     personal_workspace = relationship("PersonalWorkspace", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    
+    teacher_profile_context = relationship(
+        "TeacherProfileContext", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email={self.email}, status={self.status})>"
+
+
+class ContextResolutionStatus(str, enum.Enum):
+    """Teacher profile context resolution status for education framework mapping."""
+    RESOLVED = "resolved"
+    PARTIAL = "partial"
+    NOT_FOUND = "not_found"
+
+
+class TeacherProfileContext(Base):
+    """
+    Teacher professional learning context for Hyper-Personalization and Professional Learning Hub.
+    Maps a teacher to their national/regional education framework.
+    """
+    __tablename__ = "teacher_profile_context"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+
+    # Core required (for framework mapping)
+    country = Column(String(100), nullable=False, index=True)
+    region = Column(String(150), nullable=False, index=True)
+    school_type = Column(String(50), nullable=False)  # Public, Private, Charter, International, Other
+    grade_band = Column(String(50), nullable=False)  # K–2, 3–5, 6–8, 9–12, Higher Education, Other
+    subjects = Column(JSON, nullable=False)  # ["Math", "Science"] array
+    language_preference = Column(String(100), nullable=False)
+
+    # Optional (strongly recommended)
+    school_name = Column(String(200), nullable=True)
+    city = Column(String(100), nullable=True)
+    postal_code = Column(String(20), nullable=True)
+    curriculum_framework = Column(String(80), nullable=True)  # National Curriculum, Common Core, IB, etc.
+    years_experience = Column(String(20), nullable=True)  # 0–2, 3–5, 6–10, 10+
+    professional_goals = Column(JSON, nullable=True)  # ["classroom engagement", "differentiation", ...]
+
+    # Resolution status (set by external_context service)
+    context_resolution_status = Column(
+        String(20), nullable=True, index=True,
+        default=ContextResolutionStatus.NOT_FOUND.value
+    )
+
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    user = relationship("User", back_populates="teacher_profile_context", uselist=False)
+
+    def __repr__(self) -> str:
+        return f"<TeacherProfileContext(user_id={self.user_id}, country={self.country}, status={self.context_resolution_status})>"
 
 
 class Role(Base):

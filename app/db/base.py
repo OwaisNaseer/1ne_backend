@@ -31,6 +31,7 @@ from app.domains.auth.models import (  # noqa: F401, E402
     UserMembership,
     Invite,
     AuditLog,
+    TeacherProfileContext,
 )
 
 # Import subscription models
