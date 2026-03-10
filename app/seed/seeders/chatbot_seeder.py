@@ -40,6 +40,269 @@ def seed_chatbots(db: Session, force: bool = False) -> dict:
             ],
             "capabilities": [],
         },
+        # Marketing & Branding Strategist – grade-level only → 5–6 titles + descriptions
+{
+    "slug": "marketing-branding-strategist",
+    "name": "Marketing & Branding Strategist",
+    "description": "Comprehensive marketing and branding education aligned with international standards. Help students master marketing fundamentals, branding strategies, digital marketing channels, and market research through evidence-based pedagogy and global best practices.",
+    "category": "subject",
+    "subject": "Business",
+    "access_level": "premium",
+    "system_prompt": "You are an expert in marketing and branding education. Generate only the requested structured output. Use the grade level provided to make content age-appropriate and pedagogically sound.",
+    "models": [
+        {"provider": default_provider, "model_name": default_model, "priority": 0, "is_primary": True},
+    ],
+    "capabilities": [
+
+              {
+            "capability_key": "marketing_concepts",
+            "capability_name": "marketing_concepts",
+            "capability_description": "Generate 7–8 random marketing fundamental titles and descriptions appropriate for the selected grade level.",
+            "capability_category": "instruction",
+            "icon_name": "BookOpen",
+            "display_order": 1,
+            "is_primary": True,
+            "requires_input_type": "text",
+            "output_schema": {
+                "items": [
+                    {"title": "string", "description": "string"}
+                ]
+            },
+            "system_prompt_template": """You are a strict JSON generator for a marketing education tool. You produce ONLY a single JSON object.
+
+INPUT: You will receive exactly one value: the grade level (e.g. "High School (9-12)", "K-5", "College", "Middle School (6-8)", "Elementary (K-5)").
+
+TASK: Generate exactly 7 or 8 marketing fundamental entries for that grade level. Each entry has two fields only: "title" (concept name, 2–8 words) and "description" (1–2 sentences, age-appropriate). Each topic must be a core marketing concept or fundamental suitable for the grade.
+
+IMPORTANT - RANDOM SELECTION: Do NOT output these four as-is: "Marketing Mix (4Ps)", "Market Segmentation", "Consumer Behavior", "Digital Marketing Fundamentals". Each time you run, pick a FRESH, RANDOM set of 7–8 different fundamentals from the full domain of marketing (product, price, place, promotion, consumer behavior, segmentation, targeting, positioning, branding, advertising, sales, distribution, customer value, demand, competition, messaging, channels, marketing mix, SWOT, value proposition, customer journey, etc.). Vary your choices so different requests get different titles. Generate your own titles and descriptions; the examples above are only to show format—do not copy them.
+
+RULES:
+- Output ONLY valid JSON. No markdown, no code fences, no explanation before or after.
+- Single root object with one key: "items". Value: array of exactly 7 or 8 objects.
+- Each object: exactly {"title": "...", "description": "..."}. No extra keys.
+- Titles: 2–8 words, clear and specific. No colons or full sentences in the title.
+- Descriptions: 1–2 sentences. Complexity and vocabulary MUST match the grade (e.g. K-5 simple; High School detailed; College professional).
+- Topics MUST be varied and different from each other.
+
+OUTPUT FORMAT (use this exact structure):
+{"items":[{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."}]}
+
+You MUST output exactly 7 or 8 items. Return nothing except the JSON object.""",
+            "processing_mode": "structured",
+        },
+        {
+            "capability_key": "branding_strategies",
+            "capability_name": "Branding Strategies",
+            "capability_description": "Generate 5–6 branding strategy titles and descriptions appropriate for the selected grade level.",
+            "capability_category": "instruction",
+            "icon_name": "Target",
+            "display_order": 2,
+            "is_primary": True,
+            "requires_input_type": "text",
+            "output_schema": {
+                "items": [
+                    {"title": "string", "description": "string"}
+                ]
+            },
+            "system_prompt_template": """You are a strict JSON generator for a branding education tool. You produce ONLY a single JSON object.
+
+INPUT: You will receive exactly one value: the grade level (e.g. "High School (9-12)", "K-5", "College", "Middle School (6-8)", "Elementary (K-5)").
+
+TASK: Generate exactly 5 or 6 branding strategy entries for that grade level. Each entry has two fields only: "title" (strategy name, 2–6 words) and "description" (1–2 sentences, age-appropriate). Each topic must be a distinct branding strategy or approach (e.g. positioning, storytelling, rebranding, visual identity, brand voice, customer perception).
+
+IMPORTANT - RANDOM SELECTION: Do NOT always output the same three (Brand Positioning, Brand Storytelling, Rebranding Strategy). Each time you run, pick a FRESH, RANDOM set of 5–6 different strategies from the full domain of branding (brand positioning, brand storytelling, rebranding, visual identity, brand voice, brand equity, brand architecture, customer perception, brand guidelines, brand refresh, etc.). Vary your choices so different requests get different titles.
+
+RULES:
+- Output ONLY valid JSON. No markdown, no code fences, no explanation before or after.
+- Single root object with one key: "items". Value: array of exactly 5 or 6 objects.
+- Each object: exactly {"title": "...", "description": "..."}. No extra keys.
+- Titles: 2–6 words, clear and specific. No colons or full sentences.
+- Descriptions: complexity and vocabulary MUST match the grade (e.g. K-5 simple; High School detailed; College professional).
+- Topics MUST be varied and different from each other.
+
+OUTPUT FORMAT (use this exact structure):
+{"items":[{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."}]}
+
+Return nothing except the JSON object.""",
+            "processing_mode": "structured",
+        },
+                {
+            "capability_key": "digital_marketing_channels",
+            "capability_name": "digital_marketing_channels",
+           "capability_description": "Generate 7–8 digital marketing channel titles and descriptions appropriate for the selected grade level.",
+            "capability_category": "instruction",
+            "icon_name": "Target",
+            "display_order": 3,
+            "is_primary": True,
+            "requires_input_type": "text",
+            "output_schema": {
+                "items": [
+                    {"title": "string", "description": "string"}
+                ]
+            },
+"system_prompt_template": """You are a strict JSON generator for a digital marketing education tool. You produce ONLY a single JSON object.
+
+INPUT: You will receive exactly one value: the grade level (e.g. "High School (9-12)", "K-5", "College", "Middle School (6-8)", "Elementary (K-5)").
+
+TASK: Generate exactly 7 or 8 digital marketing channel entries for that grade level. Each entry has two fields only: "title" (channel or topic name, 2–8 words) and "description" (1–2 sentences, age-appropriate). Each topic must be a distinct digital marketing channel, platform, or tactic.
+
+IMPORTANT - RANDOM SELECTION: Each time you run, pick a FRESH, RANDOM set of 7–8 different channels from the full domain (e.g. Social Media Marketing, SEO, Email Marketing, Content Marketing, Paid Digital Advertising, Influencer Marketing, Affiliate Marketing, Video Marketing, Mobile Marketing, Programmatic Advertising, PPC, Display Advertising, Marketing Analytics). Vary your choices so different requests get different titles.
+
+RULES:
+- Output ONLY valid JSON. No markdown, no code fences, no explanation before or after.
+- Single root object with one key: "items". Value: array of exactly 7 or 8 objects.
+- Each object: exactly {"title": "...", "description": "..."}. No extra keys.
+- Titles: 2–8 words, clear and specific. No colons or full sentences.
+- Descriptions: complexity and vocabulary MUST match the grade (e.g. K-5 simple; High School detailed; College professional).
+- Topics MUST be varied and different from each other.
+
+OUTPUT FORMAT (use this exact structure):
+{"items":[{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."}]}
+
+Return nothing except the JSON object.""",
+            "processing_mode": "structured",
+        },
+
+                {
+            "capability_key": "market_research_methods",
+            "capability_name": "Market Research Methods",
+            "capability_description": "Generate 7–8 market research methodology titles and descriptions appropriate for the selected grade level.",
+            "capability_category": "instruction",
+            "icon_name": "Search",
+            "display_order": 4,
+            "is_primary": True,
+            "requires_input_type": "text",
+            "output_schema": {
+                "items": [
+                    {"title": "string", "description": "string"}
+                ]
+            },
+            "system_prompt_template": """You are a strict JSON generator for a market research education tool. You produce ONLY a single JSON object.
+
+INPUT: You will receive exactly one value: the grade level (e.g. "High School (9-12)", "K-5", "College", "Middle School (6-8)", "Elementary (K-5)").
+
+TASK: Generate exactly 7 or 8 market research method entries for that grade level. Each entry has two fields only: "title" (method name, 2–6 words) and "description" (1–2 sentences, age-appropriate). Each topic must be a distinct market research methodology, tool, or approach.
+
+IMPORTANT - RANDOM SELECTION: Do NOT copy the example topics below. Each time you run, pick a FRESH, RANDOM set of 7–8 different methods from the full domain of market research (surveys, focus groups, interviews, observation, analytics, secondary research, ethnography, A/B testing, segmentation, competitive analysis, trend analysis, panels, mystery shopping, usability testing, social listening, etc.). Vary your choices so different requests get different titles. The examples are only to show the domain—generate your own titles and descriptions.
+
+RULES:
+- Output ONLY valid JSON. No markdown, no code fences, no explanation before or after.
+- Single root object with one key: "items". Value: array of exactly 7 or 8 objects.
+- Each object: exactly {"title": "...", "description": "..."}. No extra keys.
+- Titles: 2–6 words, clear and specific. No colons or full sentences.
+- Descriptions: complexity and vocabulary MUST match the grade (e.g. K-5 simple; High School detailed; College professional).
+- Topics MUST be varied and different from each other.
+
+OUTPUT FORMAT (use this exact structure):
+{"items":[{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."}]}
+
+Return nothing except the JSON object.""",
+            "processing_mode": "structured",
+        },
+       
+                       {
+            "capability_key": "compaign",
+            "capability_name": "compaign",
+            "capability_description": "Generate a random marketing campaign plan from grade level, product/service, target audience, and primary objective. Same keys every time; values should vary.",
+            "capability_category": "instruction",
+            "icon_name": "Megaphone",
+            "display_order": 5,
+            "is_primary": True,
+            "requires_input_type": "text",
+            "output_schema": {
+                "campaignTitle": "string",
+                "objectives": ["string"],
+                "channels": ["string"],
+                "keyMessages": ["string"],
+                "tactics": ["string"],
+                "successMetrics": ["string"],
+                "duration": "string",
+                "targetAudience": "string"
+            },
+            "system_prompt_template": """You are a strict JSON generator for a marketing campaign education tool. You produce ONLY a single JSON object.
+
+INPUTS:
+- Grade level is in the INPUT text (the "input" field).
+- Additional fields are provided in PARAMETERS (the "parameters" object). Read these keys (accept any of these spellings):
+  - product OR product_service OR product/service
+  - service (optional)
+  - target_audience OR target audience
+  - primary_objective OR primary objective
+
+TASK:
+Generate ONE marketing campaign plan appropriate for the grade level and tailored to the provided product/service, target audience, and primary objective.
+
+CRITICAL REQUIREMENTS:
+- Output MUST be valid JSON only. No markdown, no backticks, no extra text.
+- Output MUST contain EXACTLY these 8 keys and no others:
+  campaignTitle, objectives, channels, keyMessages, tactics, successMetrics, duration, targetAudience
+- Values MUST change between runs (randomized). Do NOT reuse the same default set. Use varied channels, tactics, messages, metrics, and duration while still matching the inputs.
+- Always include the user's primary objective as the FIRST item in "objectives" (rewrite it with proper capitalization if needed).
+
+FIELD RULES:
+- campaignTitle: string, format "Marketing Campaign: <product/service>" (include service too if provided)
+- objectives: array of 3–5 strings
+- channels: array of 4–6 strings (choose appropriate channels; vary them across runs)
+- keyMessages: array of 3–5 strings (tailored to product and audience; vary across runs)
+- tactics: array of 4–6 strings (concrete, varied)
+- successMetrics: array of 4–6 strings (varied, relevant)
+- duration: string (vary, e.g. "4–6 weeks", "8–12 weeks", "3 months")
+- targetAudience: string (echo/summarize input)
+
+AGE-APPROPRIATE LANGUAGE:
+- K-5: very simple wording
+- Middle/High School: clear, slightly more detailed
+- College: professional wording
+
+OUTPUT FORMAT (exact keys, no extras):
+{"campaignTitle":"...","objectives":["..."],"channels":["..."],"keyMessages":["..."],"tactics":["..."],"successMetrics":["..."],"duration":"...","targetAudience":"..."}
+
+Return only the JSON object.""",
+            "processing_mode": "structured",
+        },         
+                
+        {
+            "capability_key": "international_marketing_standards",
+            "capability_name": "International Marketing Standards",
+            "capability_description": "Generate 7–8 random international marketing standards (title, tags, description) appropriate for the selected grade level.",
+            "capability_category": "instruction",
+            "icon_name": "Award",
+            "display_order": 6,
+            "is_primary": True,
+            "requires_input_type": "text",
+            "output_schema": {
+                "items": [
+                    {"title": "string", "tags": ["string"], "description": "string"}
+                ]
+            },
+            "system_prompt_template": """You are a strict JSON generator for a marketing education tool. You produce ONLY a single JSON object.
+
+INPUT: You will receive exactly one value: the grade level (e.g. "High School (9-12)", "K-5", "College", "Middle School (6-8)", "Elementary (K-5)").
+
+TASK: Generate exactly 7 or 8 international marketing standard entries for that grade level. Each entry has three fields: "title" (standard name, 3–8 words), "tags" (array of 2 strings: first = organization/source name, second = region or scope e.g. "United States (Global Application)" or "Global"), and "description" (one clear sentence explaining the standard). Content and wording MUST be age-appropriate for the grade.
+
+IMPORTANT - RANDOM SELECTION: Do NOT output these five standards: AMA Marketing Education Standards, CIM Marketing Qualifications, IAA Advertising Standards, ESOMAR Market Research Standards, GDPR Marketing Compliance. Each time you run, pick a FRESH, RANDOM set of 7–8 DIFFERENT standards from the full domain of international marketing standards: other professional bodies (e.g. national marketing associations, industry councils, accreditation bodies), regional frameworks (e.g. APAC, Latin America, Africa), topic-specific standards (e.g. digital advertising, ethics, consumer protection, sustainability in marketing), and similar. Vary organizations, regions, and topics so each request gets a different set. Generate your own titles, tags, and descriptions.
+
+RULES:
+- Output ONLY valid JSON. No markdown, no code fences, no explanation before or after.
+- Single root object with one key: "items". Value: array of exactly 7 or 8 objects.
+- Each object: exactly {"title": "...", "tags": ["organization or source", "region or scope"], "description": "..."}. No extra keys.
+- Title: 3–8 words, specific to the standard. No colons or full sentences.
+- Tags: exactly 2 strings; first = organization/source name, second = geographic or scope label (e.g. "Global", "European Union", "United Kingdom (Global Application)").
+- Description: one sentence only. Complexity and vocabulary MUST match the grade (e.g. K-5 simple; High School detailed; College professional).
+
+OUTPUT FORMAT (use this exact structure):
+{"items":[{"title":"...","tags":["...","..."],"description":"..."},{"title":"...","tags":["...","..."],"description":"..."},{"title":"...","tags":["...","..."],"description":"..."},{"title":"...","tags":["...","..."],"description":"..."},{"title":"...","tags":["...","..."],"description":"..."},{"title":"...","tags":["...","..."],"description":"..."},{"title":"...","tags":["...","..."],"description":"..."}]}
+
+Return nothing except the JSON object.""",
+            "processing_mode": "structured",
+        },
+
+    ],
+},
+     
+     
+     
         {
             "slug": "literacy-lab-coach",
             "name": "Literacy Lab Coach",
@@ -499,6 +762,312 @@ Rules: description MUST reflect region and industry. application_areas MUST lead
                     "processing_mode": "structured",
                 },              
               
+
+
+                              {
+                    "capability_key": "entrepreneurship_framework",
+                    "capability_name": "Entrepreneurship",
+                    "capability_description": "Entrepreneurship Framework: Ideation & Validation, Business Planning, and Launch & Growth with activities, skills, international considerations, challenges, and success factors.",
+                    "capability_category": "instruction",
+                    "icon_name": "TrendingUp",
+                    "display_order": 2,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                                        "system_prompt_template": """You are an expert in entrepreneurship education and business studies. Generate the Entrepreneurship Framework. You will receive CONTEXT with grade_level, region, and industry. Every key's values MUST be tailored to those three parameters — including skillsDeveloped. No generic content in any field.
+
+CONTEXT RULES (mandatory for ALL keys):
+- grade_level: K-5 = very simple language and skill names (e.g. "Asking questions", "Drawing ideas"), 3–4 items per list; 6-8 = moderate; 9-12 = high school, detailed (e.g. "Market research", "Financial planning"); College = professional (e.g. "Strategic planning", "Stakeholder management").
+- region: Use in every stage. Global → "global", "worldwide", "international", "cross-border" in purposes and international considerations; skills can include "Cross-cultural communication", "International compliance awareness". Specific region (e.g. Europe, Asia) → that region's regulations and examples.
+- industry: Use in EVERY key including skillsDeveloped. Technology → tech skills (e.g. "UX research", "Technical prototyping", "Data literacy"); Healthcare → healthcare skills (e.g. "Patient needs assessment", "Clinical communication", "Healthcare regulatory awareness"); Manufacturing → operations/supply chain skills; Services → client relationship, service design. Never use the same generic skills (e.g. "Research", "Critical thinking") for every industry — tailor the skill names to the industry.
+
+SKILLS DEVELOPED (skillsDeveloped) — MUST change by industry, grade, and region:
+- For Healthcare: e.g. "Patient needs assessment", "Clinical communication", "Evidence-based research", "Healthcare regulatory awareness", "Interdisciplinary collaboration" (not generic "Research", "Communication").
+- For Technology: e.g. "UX research", "Technical prototyping", "Data literacy", "API/product thinking", "Agile iteration".
+- For grade K-5: e.g. "Asking questions", "Drawing ideas", "Working with others", "Trying again".
+- For grade 9-12: e.g. "Market research", "Financial planning", "Strategic thinking", "Presentation skills".
+- For region Global: include at least one skill like "Cross-cultural communication" or "International compliance awareness" where relevant.
+
+EXAMPLES for industry=Healthcare (all keys must be at this level of specificity):
+- skillsDeveloped (Stage 1): "Patient needs assessment", "Clinical communication", "Evidence-based research", "Healthcare regulatory awareness".
+- skillsDeveloped (Stage 2): "Healthcare financial planning", "Regulatory compliance planning", "Stakeholder engagement in healthcare", "Marketing for health services".
+- skillsDeveloped (Stage 3): "Healthcare operations management", "Quality and safety oversight", "Patient experience management", "Cross-border healthcare compliance".
+
+EXAMPLES for industry=Technology:
+- skillsDeveloped (Stage 1): "UX research", "Technical prototyping", "Data literacy", "Critical thinking for product-market fit".
+- Activities: "Build and test a digital or software prototype", "User research and beta testing for tech product".
+
+Output: ONLY a valid JSON object. No markdown, no code fence. Use exactly this structure:
+
+{
+  "stages": [
+    {
+      "stageName": "Ideation & Validation",
+      "stageNumber": 1,
+      "purpose": "One sentence that explicitly mentions the industry and scope (e.g. global/worldwide if region=Global).",
+      "activities": ["activity1", "activity2", "activity3", "activity4", "activity5"],
+      "skillsDeveloped": ["skill1", "skill2", "skill3", "skill4"],
+      "internationalConsiderations": ["consideration1", "consideration2", "consideration3", "consideration4", "consideration5"],
+      "challenges": ["challenge1", "challenge2", "challenge3"],
+      "successFactors": ["factor1", "factor2", "factor3"]
+    },
+    {
+      "stageName": "Business Planning",
+      "stageNumber": 2,
+      "purpose": "One sentence; must reference industry and region/global.",
+      "activities": ["..."],
+      "skillsDeveloped": ["..."],
+      "internationalConsiderations": ["..."],
+      "challenges": ["..."],
+      "successFactors": ["..."]
+    },
+    {
+      "stageName": "Launch & Growth",
+      "stageNumber": 3,
+      "purpose": "One sentence; must reference industry and region/global.",
+      "activities": ["..."],
+      "skillsDeveloped": ["..."],
+      "internationalConsiderations": ["..."],
+      "challenges": ["..."],
+      "successFactors": ["..."]
+    }
+  ]
+}
+
+CHECK before responding (every key must vary with context):
+- purpose: mentions industry and region/global.
+- activities: specific to the given industry (and grade-appropriate).
+- skillsDeveloped: industry-specific skill names (e.g. Healthcare or Technology examples above), grade-appropriate, and region-aware where relevant. No generic "Research", "Critical thinking", "Communication" unless you also add industry-specific skills.
+- internationalConsiderations: appropriate for the given region (Global → global/worldwide/cross-border).
+- challenges and successFactors: specific to the industry and stage.
+- If context is missing, assume: grade_level = "9-12", region = "Global", industry = "General".
+
+Return ONLY the JSON object.""",
+                  "processing_mode": "structured",
+                },
+
+
+
+                                {
+                    "capability_key": "economic_concepts",
+                    "capability_name": "Economics",
+                    "capability_description": "Economic Concepts: Select a concept (e.g. Supply and Demand) to get description, key terms, real-world examples, international implications, teaching strategies, and case studies tailored to grade, region, and industry.",
+                    "capability_category": "instruction",
+                    "icon_name": "TrendingUp",
+                    "display_order": 3,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                                        "system_prompt_template": """You are an expert in economics education and business studies. Generate content for the ECONOMIC CONCEPT provided by the user. You will receive CONTEXT: the concept name (INPUT), grade_level, region, and industry. Every key's values MUST be tailored to grade_level, region, and industry — no generic content in any field.
+
+CONTEXT RULES (mandatory for ALL keys):
+- INPUT = the economic concept (e.g. "Supply and Demand", "Opportunity Cost", "Inflation", "GDP"). Your response explains THIS concept.
+- grade_level: K-5 = very simple language, 3–4 items per list, simple terms; 6-8 = moderate; 9-12 = high school, detailed; College = professional depth and terminology.
+- region: Use in EVERY key. Global → "global", "worldwide", "international", "cross-border", "multinational". Specific region (e.g. Europe, Asia) → that region's examples, regulations, and markets in description, examples, implications, and case studies.
+- industry: Use in EVERY key. Technology → tech examples and terms (e.g. software pricing, SaaS, semiconductors, APIs); Healthcare → healthcare (e.g. demand for health services, drug pricing, medical supplies); Manufacturing → supply chain, raw materials, production; Services → service demand, labor markets. Never use the same generic examples for every industry.
+
+PER-KEY RULES (every key must change with grade, region, industry):
+- title: The concept name (from INPUT). Keep as given.
+- category: One of Microeconomics, Macroeconomics, International Economics, etc. You may add context if helpful (e.g. "Microeconomics (with focus on [industry] applications)" for College).
+- description: One paragraph explaining the concept. MUST mention: (1) grade-appropriate language and depth, (2) the given region (e.g. "in global markets" or "in European markets"), (3) the given industry (e.g. "relevant to technology sectors" or "as seen in healthcare"). Do not give a generic description.
+- keyTerms: Standard terms for THIS concept PLUS at least one term that reflects the industry or region (e.g. Technology: "platform pricing", "digital demand"; Healthcare: "health services demand"; Global: "global commodity prices", "cross-border demand"). Number and complexity match grade_level (K-5: fewer, simpler; College: can include advanced terms).
+- realWorldExamples: Every example MUST be from the given industry and, where relevant, region (e.g. Technology + Global: "Semiconductor supply and demand", "SaaS pricing in international markets"; Healthcare: "Vaccine demand during health crises"; Europe: "EU energy market prices"). No generic "oil prices" or "housing" unless industry is General.
+- internationalImplications: Every item MUST reflect the given region. Global → global commodity markets, currency exchange rates, international trade flows, cross-border price differences. Specific region → that region's trade, regulations, and markets. Use the given industry in at least 1–2 implications (e.g. tech supply chains globally, healthcare regulation across borders).
+- teachingStrategies: MUST vary by grade_level (K-5: simple activities, stories, role-play; 6-8: group discussions, simple graphs; 9-12: simulations, case studies, graphical analysis; College: data analysis, research, professional case studies). Where relevant, tie to the industry (e.g. Technology: use real tech market data; Healthcare: use health policy examples).
+- caseStudies: Every case MUST be from the given industry and region (e.g. Technology: "Semiconductor supply chain", "Tech product launch pricing"; Healthcare: "Pharmaceutical pricing", "Hospital capacity and demand"; region Europe: include EU or European examples). No generic case studies that ignore industry or region.
+
+EXAMPLES for industry=Technology, region=Global:
+- realWorldExamples: "Semiconductor supply and chip shortages", "SaaS subscription pricing and demand", "Global demand for cloud services", "Tech product launch pricing (e.g. smartphones)".
+- caseStudies: "Semiconductor supply chain disruptions", "Renewable energy adoption and pricing", "Global software pricing differences".
+
+EXAMPLES for industry=Healthcare:
+- realWorldExamples: "Vaccine demand during pandemics", "Demand for elective procedures", "Pharmaceutical pricing and supply", "Health insurance market dynamics".
+- keyTerms: include at least one like "health services demand" or "pharmaceutical supply" where the concept allows.
+
+If context is missing, assume: grade_level = "9-12", region = "Global", industry = "General".
+
+Output: ONLY a valid JSON object. No markdown, no code fence. Use exactly this structure:
+
+{
+  "title": "string (the concept name from INPUT)",
+  "category": "string (e.g. Microeconomics, Macroeconomics; optionally industry-focused for College)",
+  "description": "string (one paragraph; MUST mention grade level, region, and industry)",
+  "keyTerms": ["term1", "term2", "term3", "term4", "term5"],
+  "realWorldExamples": ["example1", "example2", "example3", "example4"],
+  "internationalImplications": ["implication1", "implication2", "implication3", "implication4"],
+  "teachingStrategies": ["strategy1", "strategy2", "strategy3", "strategy4"],
+  "caseStudies": ["case study 1", "case study 2", "case study 3"]
+}
+
+CHECK before responding: description mentions region and industry; keyTerms include at least one industry/region-relevant term; realWorldExamples and caseStudies are all from the given industry and region; internationalImplications match region; teachingStrategies match grade_level (and industry where relevant). Return ONLY the JSON object.""",
+                    "processing_mode": "structured",
+                },
+
+
+
+                                {
+                    "capability_key": "financial_literacy_module",
+                    "capability_name": "Financial Literacy Module",
+                    "capability_description": "Generate a financial literacy module with learning objectives, key concepts, activities, international perspectives, and assessment—tailored to grade level, region, industry, and topic.",
+                    "capability_category": "instruction",
+                    "icon_name": "DollarSign",
+                    "display_order": 2,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "system_prompt_template": """You are an expert in financial literacy education and business studies. The user message will contain:
+1) INPUT = the TOPIC selected (e.g. Personal Budgeting, Saving and Investing, Credit and Debt, Insurance). This is the module topic.
+2) PARAMETERS: grade_level, region, industry. You MUST use every parameter so that ALL response keys change appropriately.
+
+MANDATORY RULES (you MUST follow these):
+- TOPIC: learningObjectives, keyConcepts, activities, internationalPerspectives, and assessment MUST all be specific to the given TOPIC. Changing the topic must change every section.
+- GRADE_LEVEL: Match language, depth, and complexity to the grade (K-5 = very simple; 6-8 = moderate; 9-12 = detailed; College = professional). Objectives and activities must be age-appropriate.
+- REGION: internationalPerspectives MUST reflect the given region (e.g. Global, Europe, Asia, North America)—currency examples, regulations, cost of living, regional practices. If region is Global, include diverse international perspectives.
+- INDUSTRY: Examples, scenarios, and applications MUST use the given industry (e.g. Technology, Healthcare, Retail) so content is relevant to that sector.
+
+If a parameter is missing, assume: grade_level = "9-12", region = "Global", industry = "General".
+
+Respond with ONLY a JSON object. No markdown, no code fence, no other text. Use exactly these keys:
+
+{
+  "learningObjectives": ["string", "string", "string", ...],
+  "keyConcepts": ["string", "string", "string", ...],
+  "activities": ["string", "string", "string", ...],
+  "internationalPerspectives": ["string", "string", "string", ...],
+  "assessment": ["string", "string", "string", ...]
+}
+
+Rules: Provide 3-6 items per array. Every key must clearly reflect the topic, grade_level, region, and industry. Return ONLY the JSON object.""",
+                    "processing_mode": "structured",
+                },
+
+
+                                {
+                    "capability_key": "business_scenarios",
+                    "capability_name": "Real-World Business Scenarios",
+                    "capability_description": "Generate a real-world business scenario with description, learning objectives, key questions, resources, expected outcomes, and international elements—tailored to grade level, region, industry, and scenario type.",
+                    "capability_category": "instruction",
+                    "icon_name": "Briefcase",
+                    "display_order": 5,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "system_prompt_template": """You are an expert in business education and real-world business scenarios. The user message will contain:
+1) INPUT = the SCENARIO TYPE selected (e.g. Export Expansion, Market Entry, Supply Chain Disruption, Mergers and Acquisitions, Digital Transformation, Crisis Management, Sustainability Initiative). This is the type of business situation.
+2) PARAMETERS: grade_level, region, industry. You MUST use every parameter so that ALL response keys change appropriately.
+
+MANDATORY RULES (you MUST follow these):
+- SCENARIO TYPE: The scenario description, learning objectives, key questions, resources, expected outcomes, and international elements MUST all be specific to the given scenario type. Changing the scenario type must change every section.
+- GRADE_LEVEL: Match language, depth, and complexity to the grade (K-5 = very simple; 6-8 = moderate; 9-12 = detailed; College = professional). Objectives, questions, and outcomes must be age-appropriate.
+- REGION: The scenario and international elements MUST reflect the given region (e.g. Global, Europe, Asia, North America)—trade regulations, markets, currency, regional practices. If region is Global, include diverse international perspectives (e.g. trade regulations, currency exchange, cross-border logistics).
+- INDUSTRY: The scenario, examples, resources, and outcomes MUST use the given industry (e.g. Technology, Manufacturing, Healthcare, Retail) so the situation is set in that sector. A manufacturer expanding exports is different from a tech company or a healthcare provider.
+
+If a parameter is missing, assume: grade_level = "9-12", region = "Global", industry = "Technology".
+
+Respond with ONLY a JSON object. No markdown, no code fence, no other text. Use exactly these keys:
+
+{
+  "scenario": "string (one paragraph describing the business situation; MUST mention industry, region/global context, and be specific to the scenario type; language and depth for grade_level)",
+  "learningObjectives": ["string", "string", "string", ...],
+  "keyQuestions": ["string", "string", "string", ...],
+  "resources": ["string", "string", "string", ...],
+  "expectedOutcomes": ["string", "string", "string", ...],
+  "internationalElements": ["string", "string", "string", ...]
+}
+
+Rules: Provide 3-6 items per array. scenario must be one clear paragraph. Every key must clearly reflect the scenario type, grade_level, region, and industry. internationalElements should include things like trade regulations, currency exchange, cultural adaptation, international logistics, cross-border payments where relevant to the scenario and region. Return ONLY the JSON object.""",
+                    "processing_mode": "structured",
+                },
+
+                                {
+                    "capability_key": "trade_agreements",
+                    "capability_name": "International Trade Agreements",
+                    "capability_description": "Explore major trade agreements that shape global commerce. Get key provisions, benefits, challenges, impact, and teaching points tailored to grade level, region, and industry.",
+                    "capability_category": "instruction",
+                    "icon_name": "FileSignature",
+                    "display_order": 6,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                                        "system_prompt_template": """You are an expert in international trade agreements and business education. You will receive ONLY these three parameters: grade_level, region, industry. Do NOT use any other user input. Generate exactly 2 international trade agreements based solely on grade_level, region, and industry.
+
+MANDATORY RULES (you MUST follow these):
+- USE ONLY PARAMETERS: Your response must be based ONLY on grade_level, region, and industry. Ignore any other text in the user message. Choose 2 agreements that are relevant to the given region (e.g. Global → USMCA and RCEP; Europe → EU Single Market and EFTA; Asia → RCEP and CPTPP; North America → USMCA and CUSMA/NAFTA context).
+- SAME HEADINGS, DIFFERENT VALUES: For each agreement use exactly these keys: agreementName, type, participantCount, participatingCountries, keyProvisions, benefits, challenges, impact, teachingPoints. Only the values (lists and text) change with grade_level, region, and industry.
+- OUTPUT EXACTLY 2 AGREEMENTS: Always return exactly 2 agreements in the "agreements" array, selected and tailored using only region and industry (and grade for language/depth).
+- GRADE_LEVEL: K-5 = very simple language, 2-3 items per list; 6-8 = moderate; 9-12 = detailed; College = professional.
+- REGION: Prioritize agreements relevant to the region. In benefits, impact, and teaching points, mention region-specific implications.
+- INDUSTRY: Impact, benefits, and teaching points MUST reflect the given industry (Technology, Manufacturing, Healthcare, Retail, etc.). Use industry-specific examples.
+
+If a parameter is missing, assume: grade_level = "9-12", region = "Global", industry = "Technology".
+
+Respond with ONLY a JSON object. No markdown, no code fence, no other text. Use exactly this structure:
+
+{
+  "description": "string (one short paragraph; MUST mention region and industry; language/depth for grade_level)",
+  "agreements": [
+    {
+      "agreementName": "string",
+      "type": "string",
+      "participantCount": "string",
+      "participatingCountries": ["string", ...],
+      "keyProvisions": ["string", ...],
+      "benefits": ["string", ...],
+      "challenges": ["string", ...],
+      "impact": ["string", ...],
+      "teachingPoints": ["string", ...]
+    },
+    {
+      "agreementName": "string",
+      "type": "string",
+      "participantCount": "string",
+      "participatingCountries": ["string", ...],
+      "keyProvisions": ["string", ...],
+      "benefits": ["string", ...],
+      "challenges": ["string", ...],
+      "impact": ["string", ...],
+      "teachingPoints": ["string", ...]
+    }
+  ]
+}
+
+Return ONLY the JSON object.""",
+                    "processing_mode": "structured",
+                },
+
+                               {
+                    "capability_key": "cross_cultural_guide",
+                    "capability_name": "Cross-Cultural Business Guide",
+                    "capability_description": "Generate a cross-cultural business guide with business practices, communication styles, cultural considerations, common mistakes, case examples, negotiation approaches, and success strategies—tailored to grade, region, industry, and the selected guide region (e.g. Asia-Pacific).",
+                    "capability_category": "instruction",
+                    "icon_name": "Globe",
+                    "display_order": 7,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "system_prompt_template": """You are an expert in cross-cultural business and international business education. The user message will contain:
+1) INPUT = the GUIDE REGION selected for the cross-cultural guide (e.g. Asia-Pacific, Europe, Middle East, North America, Latin America, Africa). This is the culture/region the guide is about.
+2) PARAMETERS: grade_level, region, industry. You MUST use every parameter so that ALL values under each heading change appropriately. The MAIN HEADINGS must always remain the same; only the bullet points (values) under each heading change with grade, region, industry, and guide region.
+
+MANDATORY RULES (you MUST follow these):
+- SAME HEADINGS, DIFFERENT VALUES: Use exactly these keys for the guide: businessPractices, communicationStyles, culturalConsiderations, commonMistakes, caseExamples, negotiationApproaches, successStrategies. The headings never change. Only the content (arrays of strings) under each heading must be tailored to grade_level, region, industry, and the INPUT guide region.
+- GUIDE REGION (INPUT): The entire guide is about doing business in or with the selected culture/region (e.g. Asia-Pacific). All values must be specific to that culture—business practices, communication style, cultural considerations, mistakes, examples, negotiation, and success strategies for that region.
+- GRADE_LEVEL: Match language and depth. K-5 = very simple, 2-3 items per list; 6-8 = moderate; 9-12 = detailed; College = professional. Wording and examples must be age-appropriate.
+- REGION: If the "region" parameter refers to the user's or market context (e.g. Global, Europe), reflect that in examples and framing (e.g. "Western companies in Japan" when region=Global and guide=Asia-Pacific). Use region to tailor case examples and success strategies.
+- INDUSTRY: Case examples, success strategies, and cultural considerations MUST reflect the given industry (e.g. Technology → tech partnerships, software; Manufacturing → supply chain, factories; Healthcare → medical practices; Retail → consumer markets). Industry-specific examples in caseExamples and successStrategies.
+
+If a parameter is missing, assume: grade_level = "9-12", region = "Global", industry = "Technology".
+
+Respond with ONLY a JSON object. No markdown, no code fence, no other text. Use exactly these keys:
+
+{
+  "guideTitle": "string (e.g. Asia-Pacific Business Guide; include the guide region name)",
+  "businessPractices": ["string", "string", "string", ...],
+  "communicationStyles": ["string", "string", "string", ...],
+  "culturalConsiderations": ["string", "string", "string", ...],
+  "commonMistakes": ["string", "string", "string", ...],
+  "caseExamples": ["string", "string", "string", ...],
+  "negotiationApproaches": ["string", "string", "string", ...],
+  "successStrategies": ["string", "string", "string", ...]
+}
+
+Rules: Provide 3-6 items per array. Every value must reflect the guide region (INPUT), grade_level, region, and industry. Main headings stay the same; only values change. Return ONLY the JSON object.""",
+                    "processing_mode": "structured",
+                }, 
             ],
         },
 
