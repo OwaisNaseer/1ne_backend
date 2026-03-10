@@ -164,8 +164,9 @@ class ModelRouter:
                     "model": fallback.get("model")
                 })
 
-        # Add final fallback if enabled
-        if self.config.FALLBACK_ENABLED:
+        # When USE_REAL_LLM is True, do not use FallbackProvider so the API fails clearly
+        # instead of returning stub/fallback content that doesn't match the output schema.
+        if self.config.FALLBACK_ENABLED and not getattr(self.config, "USE_REAL_LLM", False):
             providers_to_try.append({"provider": "fallback", "model": "fallback"})
 
         # 3. Try each provider in sequence
@@ -303,8 +304,8 @@ class ModelRouter:
                     "model": fallback.get("model")
                 })
 
-        # Add final fallback if enabled
-        if self.config.FALLBACK_ENABLED:
+        # When USE_REAL_LLM is True, do not use FallbackProvider (fail clearly instead of stub content).
+        if self.config.FALLBACK_ENABLED and not getattr(self.config, "USE_REAL_LLM", False):
             providers_to_try.append({"provider": "fallback", "model": "fallback"})
 
         # Try each provider in sequence

@@ -139,6 +139,16 @@ class UniversalTemplateOutput(BaseModel):
     communication: Optional[CommunicationSection] = None
 
 
+def get_universal_output_json_schema() -> Dict[str, Any]:
+    """
+    Return full JSON Schema for UniversalTemplateOutput.
+
+    Used when seeding template versions so each version stores the output structure.
+    Enables per-template output schema changes later (edit version.output_schema).
+    """
+    return UniversalTemplateOutput.model_json_schema()
+
+
 # ---- Template Schemas ----
 
 
@@ -211,14 +221,14 @@ class TemplateExecuteRequest(BaseModel):
 
 
 class TemplateExecuteResponse(BaseModel):
-    """Schema for template execution response."""
+    """Schema for template execution response. Output shape is per-template (from output_schema)."""
 
     execution_id: UUID
     template_id: UUID
     template_version: int
-    output: UniversalTemplateOutput = Field(
+    output: Dict[str, Any] = Field(
         ...,
-        description="Output matching the universal template output container.",
+        description="Output dict; structure is defined by the template's output_schema.",
     )
     model_used: Optional[str] = None
     provider_used: Optional[str] = None

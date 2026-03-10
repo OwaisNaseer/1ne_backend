@@ -36,6 +36,7 @@ class TemplateVersion(Base):
     status = Column(SQLEnum(TemplateVersionStatus, values_callable=lambda x: [e.value for e in x]), nullable=False, default=TemplateVersionStatus.DRAFT.value)
     input_schema = Column(JSON, nullable=False)  # JSON schema for input validation
     output_schema = Column(JSON, nullable=True)  # JSON schema for output structure
+    stub_config = Column(JSON, nullable=True)  # Version-specific stub output configuration
     prompt_definition = Column(JSON, nullable=True)  # Prompt template or definition
     model_config = Column(JSON, nullable=True)  # LLM model configuration
     created_by = Column(UUID(as_uuid=True), nullable=True)  # FK to user (nullable for now)

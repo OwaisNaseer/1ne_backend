@@ -28,6 +28,7 @@ from app.schemas.template import (
     AssessmentQuestion,
     CommunicationSection,
 )
+from app.utils.stub_builder import build_stub_output as generic_build_stub_output
 
 logger = get_logger(__name__)
 
@@ -91,108 +92,55 @@ class ExecutionService:
         return cls._prompt_builder
 
     @classmethod
-    def _build_stub_output(
+    def _ensure_real_llm_configured(cls) -> None:
+        """
+        When USE_REAL_LLM is True, ensure at least one provider API key is set.
+        Raises ValueError with clear message so template execution does not fail silently.
+        """
+        if not llm_settings.USE_REAL_LLM:
+            return
+        has_key = bool(
+            llm_settings.OPENAI_API_KEY
+            or llm_settings.ANTHROPIC_API_KEY
+            or llm_settings.GOOGLE_API_KEY
+        )
+        if not has_key:
+            raise ValueError(
+                "USE_REAL_LLM is true but no LLM API key is set. "
+                "Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY in .env, "
+                "or set USE_REAL_LLM=false to use stub output."
+            )
+
+    @classmethod
+    def _build_stub_output_dict(
         cls,
         template: Template,
         template_version: Optional[TemplateVersion],
         input_data: Dict[str, Any],
-    ) -> UniversalTemplateOutput:
-        """Build a fake but structurally correct UniversalTemplateOutput."""
-        topic = input_data.get("topic", template.name)
-        learning_objective = input_data.get("learning_objective", "Support student learning.")
-        subject = input_data.get("subject", getattr(template, "subject_default", "general"))
+    ) -> Dict[str, Any]:
+        """
+        Build stub output as a dict from template version's output_schema and stub_config.
+        Generic: works for any template shape (lesson plan, STEAM, assessment, etc.).
+        """
+        output_schema = {}
+        if template_version and getattr(template_version, "output_schema", None):
+            output_schema = template_version.output_schema or {}
+        if not isinstance(output_schema, dict):
+            output_schema = {}
 
-        overview = f"{template.name} for {subject}: {topic}"
-        learning_goals = [
-            learning_objective,
-            f"Help students engage deeply with {topic}.",
-        ]
-        materials = [
-            "Whiteboard or digital board",
-            "Student notebooks or devices",
-        ]
-
-        steps = [
-            LessonStep(
-                title="Introduction & Activation of Prior Knowledge",
-                description=f"Briefly introduce {topic} and ask students what they already know.",
-            ),
-            LessonStep(
-                title="Guided Practice",
-                description=f"Model the core skill or concept related to {topic} and work through an example together.",
-            ),
-            LessonStep(
-                title="Independent or Small-Group Practice",
-                description="Students apply the concept with teacher circulating for support.",
-            ),
-        ]
-
-        differentiation = [
-            "Offer sentence stems or visual supports for students who need additional scaffolding.",
-            "Provide extension tasks for students who are ready for enrichment.",
-        ]
-
-        teacher_notes = [
-            "Adjust pacing based on student responses and check-ins.",
-            "Capture examples of strong student thinking to highlight during debrief.",
-        ]
-
-        bloom_alignment = [
-            BloomAlignmentItem(
-                level=BloomLevel.UNDERSTAND,
-                description="Students explain the core idea in their own words.",
-            ),
-            BloomAlignmentItem(
-                level=BloomLevel.APPLY,
-                description="Students use the concept in a new example.",
-            ),
-        ]
-
-        assessment: Optional[AssessmentSection] = AssessmentSection(
-            checks_for_understanding=[
-                "Cold-call a few students to explain the concept.",
-                "Use exit tickets asking students to solve a short problem or respond to a prompt.",
-            ],
-            rubric=None,
+        stub_config = (
+            (template_version and getattr(template_version, "stub_config", None))
+            or getattr(template, "stub_config", None)
+            or {}
         )
+        if not isinstance(stub_config, dict):
+            stub_config = {}
 
-        questions: Optional[list[AssessmentQuestion]] = None
-        communication: Optional[CommunicationSection] = None
-
-        if template.category == TemplateCategory.ASSESSMENT:
-            questions = [
-                AssessmentQuestion(
-                    question_text=f"Explain {topic} in your own words.",
-                    type="short_answer",
-                ),
-                AssessmentQuestion(
-                    question_text=f"Apply {topic} to a real-world scenario.",
-                    type="open_ended",
-                ),
-            ]
-
-        if template.category == TemplateCategory.COMMUNICATION:
-            communication = CommunicationSection(
-                subject_line=f"Update about our work on {topic}",
-                message_body=f"We are currently working on {topic}. Here is how you can support at home.",
-                key_details=[
-                    f"Students are learning to: {learning_objective}",
-                    "Look for opportunities to discuss this topic in everyday life.",
-                ],
-                call_to_action="Reply to this message if you have any questions or want specific suggestions.",
-            )
-
-        return UniversalTemplateOutput(
-            overview=overview,
-            learning_goals=learning_goals,
-            materials=materials,
-            steps=steps,
-            differentiation=differentiation,
-            assessment=assessment,
-            teacher_notes=teacher_notes,
-            bloom_alignment=bloom_alignment,
-            questions=questions,
-            communication=communication,
+        return generic_build_stub_output(
+            output_schema=output_schema,
+            stub_config=stub_config,
+            input_data=input_data,
+            template_name=template.name,
         )
 
     @classmethod
@@ -216,9 +164,34 @@ class ExecutionService:
             prompt_definition=prompt_definition,
             template_category=template.category,
             model_config=template_version.model_config,
+            output_schema=template_version.output_schema if getattr(template_version, "output_schema", None) else None,
         )
         
         return system_message, user_prompt
+
+    @classmethod
+    def _unwrap_schema_shaped_output(cls, parsed: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        If the LLM returned a JSON Schema-shaped object (type, title, required, properties)
+        with the actual content inside 'properties', return the inner data so the API
+        returns a flat output dict. Frontend expects output.title, output.overview, etc.
+        """
+        if not isinstance(parsed, dict) or not parsed:
+            return parsed
+        props = parsed.get("properties")
+        if not isinstance(props, dict) or not props:
+            return parsed
+        # Schema "properties" have values like {"type": "string", "title": "..."}.
+        # Data "properties" have values like "Lesson title", ["goal1"], {"level": "Create"}, etc.
+        first_val = next(iter(props.values()), None)
+        if first_val is None:
+            return parsed
+        if isinstance(first_val, dict) and "type" in first_val and "title" in first_val:
+            # Looks like a schema property definition, not actual data
+            return parsed
+        # Unwrap: use properties as the output
+        logger.info("Unwrapping schema-shaped LLM output (content was in 'properties')")
+        return props
 
     @classmethod
     def _parse_llm_response(
@@ -226,30 +199,25 @@ class ExecutionService:
         content: str,
         template: Template,
         template_version: Optional[TemplateVersion] = None,
-    ) -> UniversalTemplateOutput:
+    ) -> Dict[str, Any]:
         """
-        Parse LLM response into UniversalTemplateOutput using TOON handler.
-        
-        Uses TOONHandler to parse TOON format (with JSON fallback).
+        Parse LLM response into a dict matching the template's output shape.
+        Uses TOON handler; unwraps if LLM returned schema-shaped output (data in 'properties').
+        On failure returns stub dict.
         """
         toon_handler = cls._get_toon_handler()
-        
         try:
-            # Get output schema if available
             schema = None
-            if template_version and template_version.output_schema:
+            if template_version and getattr(template_version, "output_schema", None):
                 schema = json.dumps(template_version.output_schema) if isinstance(template_version.output_schema, dict) else str(template_version.output_schema)
-            
-            # Parse using TOON handler (handles TOON and JSON fallback)
             parsed = toon_handler.parse_output(content, schema=schema)
-            
-            # Build UniversalTemplateOutput from parsed data
-            return cls._build_output_from_dict(parsed, template)
-            
+            if isinstance(parsed, dict) and parsed:
+                return cls._unwrap_schema_shaped_output(parsed)
+            # Parsed but not a non-empty dict
+            return cls._build_stub_output_dict(template, template_version, input_data={"topic": "Parsed response was empty"})
         except Exception as e:
             logger.error(f"Error parsing LLM response: {e}")
-            # Fallback to stub output with minimal data
-            return cls._build_stub_output(template, template_version=None, input_data={"topic": "Error parsing response"})
+            return cls._build_stub_output_dict(template, template_version, input_data={"topic": "Error parsing response"})
 
     @classmethod
     def _naive_parse_text(cls, text: str) -> Dict[str, Any]:
@@ -372,39 +340,28 @@ class ExecutionService:
         user_id: Optional[uuid.UUID] = None,
         tenant_id: Optional[uuid.UUID] = None,
         is_demo: bool = False,
-    ) -> Tuple[TemplateExecution, UniversalTemplateOutput]:
+    ) -> Tuple[TemplateExecution, Dict[str, Any]]:
         """
         Execute a template with stubbed or real LLM output and persist a TemplateExecution.
 
-        Returns the persisted TemplateExecution and the universal output model.
+        Returns the persisted TemplateExecution and the output as a dict (shape from template's output_schema).
         """
         start_time = time.perf_counter()
-
-        # Check if we should use real LLM
         use_real_llm = llm_settings.USE_REAL_LLM
+        llm_response = None
 
         if use_real_llm:
-            # Use real LLM
+            cls._ensure_real_llm_configured()
             logger.info(f"Using real LLM with TOON for template execution: {template.slug}")
-            
-            # Build prompt using TOON-aware prompt builder
             system_message, user_prompt = cls._build_prompt(template, template_version, input_data)
-            
-            # Get model config from template version
             model_config = template_version.model_config
-            
-            # Call LLM via router (async)
             router = cls._get_model_router()
             llm_response = await router.generate(
                 system_message=system_message,
                 prompt=user_prompt,
                 model_config=model_config,
             )
-            
-            # Parse response using TOON handler
-            universal_output = cls._parse_llm_response(llm_response.content, template, template_version)
-            
-            # Extract metadata from LLM response
+            output_dict = cls._parse_llm_response(llm_response.content, template, template_version)
             model_used = llm_response.model_used
             provider_used = llm_response.provider
             token_usage_dict = {
@@ -414,20 +371,16 @@ class ExecutionService:
             }
             latency_ms = llm_response.latency_ms
             cost_estimate = llm_response.cost_estimate
-            
         else:
-            # Use stubbed output
             logger.info(f"Using stubbed output for template execution: {template.slug}")
-            universal_output = cls._build_stub_output(
-                template=template,
-                template_version=template_version,
-                input_data=input_data,
-            )
+            output_dict = cls._build_stub_output_dict(template, template_version, input_data)
             model_used = cls.DUMMY_MODEL_USED
             provider_used = cls.DUMMY_PROVIDER_USED
             token_usage_dict = {"prompt": 0, "completion": 0, "total": 0}
             latency_ms = int((time.perf_counter() - start_time) * 1000)
             cost_estimate = 0
+
+        cache_hit = getattr(llm_response, "cache_hit", False) if llm_response is not None else False
 
         execution = TemplateExecution(
             template_id=template.id,
@@ -436,13 +389,13 @@ class ExecutionService:
             user_id=user_id,
             tenant_id=tenant_id,
             input_data=input_data,
-            output_data=universal_output.model_dump(),
+            output_data=output_dict,
             model_used=model_used,
             provider_used=provider_used,
             token_usage=token_usage_dict,
             cost_estimate=cost_estimate,
             latency_ms=latency_ms,
-            cache_hit=getattr(llm_response, 'cache_hit', False),
+            cache_hit=cache_hit,
             alignment_flags=None,
         )
 
@@ -450,7 +403,7 @@ class ExecutionService:
         db.commit()
         db.refresh(execution)
 
-        return execution, universal_output
+        return execution, output_dict
 
     @classmethod
     async def execute_stream(
@@ -499,35 +452,21 @@ class ExecutionService:
         use_real_llm = llm_settings.USE_REAL_LLM
 
         if not use_real_llm:
-            # For stub mode, generate stub output and convert to markdown
-            universal_output = cls._build_stub_output(
-                template=template,
-                template_version=template_version,
-                input_data=input_data,
-            )
-            
-            # Convert stub output to markdown (like Activity)
-            from app.utils.markdown_converter import universal_output_to_markdown
-            markdown_text = universal_output_to_markdown(universal_output.model_dump())
-            
-            # Stream markdown word-by-word (like Activity's stream_markdown_word_by_word)
-            # CRITICAL: Stream exactly like Activity - no filtering, preserve all markdown characters including "#"
+            # Generic stub: build dict from output_schema + stub_config, then convert to markdown
+            output_dict = cls._build_stub_output_dict(template, template_version, input_data)
+            from app.utils.markdown_converter import dict_to_markdown
+            markdown_text = dict_to_markdown(output_dict)
+
             if markdown_text:
-                words = markdown_text.split(' ')
+                words = markdown_text.split(" ")
                 for i, word in enumerate(words):
-                    # CRITICAL: Don't filter - Activity streams everything including "#", "##", etc.
-                    if i == 0:
-                        chunk_to_send = word
-                    else:
-                        chunk_to_send = ' ' + word
-                    
+                    chunk_to_send = word if i == 0 else " " + word
                     yield {
                         "type": "content",
                         "chunk": chunk_to_send,
                         "template_slug": template.slug,
                     }
-            
-            # Create execution record
+
             execution = TemplateExecution(
                 template_id=template.id,
                 template_version_id=template_version.id,
@@ -535,7 +474,7 @@ class ExecutionService:
                 user_id=user_id,
                 tenant_id=tenant_id,
                 input_data=input_data,
-                output_data=universal_output.model_dump(),
+                output_data=output_dict,
                 model_used=cls.DUMMY_MODEL_USED,
                 provider_used=cls.DUMMY_PROVIDER_USED,
                 token_usage={"prompt": 0, "completion": 0, "total": 0},
@@ -555,37 +494,25 @@ class ExecutionService:
             }
             return
 
-        # Real LLM streaming path
+        # Real LLM streaming path: use same TOON prompt + output_schema as non-streaming
+        # so the streamed response matches the template's output_schema and frontend shows correct structure.
+        cls._ensure_real_llm_configured()
         try:
             logger.info(f"Streaming LLM execution for template: {template.slug}")
             
-            # CRITICAL: For streaming, use markdown prompt (like Activity)
-            # This allows real-time streaming without waiting for complete TOON
-            from app.llm.prompt_builder import TOONPromptBuilder
-            prompt_builder = TOONPromptBuilder()
-            
-            # Build streaming prompt that generates markdown directly
-            system_message, streaming_prompt = prompt_builder.build_streaming_prompt(
-                input_data=input_data,
-                prompt_definition=template_version.prompt_definition or {},
-                template_category=template.category,
-            )
-            
-            # Get model config from template version
+            # Use the same prompt as non-streaming (TOON + output_schema) so output matches schema
+            system_message, user_prompt = cls._build_prompt(template, template_version, input_data)
             model_config = template_version.model_config
-            
-            # Get router
             router = cls._get_model_router()
             
             model_used = None
             provider_used = None
             token_usage_dict = {"prompt": 0, "completion": 0, "total": 0}
             
-            # CRITICAL: Stream chunks directly from LLM (like Activity)
-            # No TOON accumulation - stream markdown chunks immediately
+            # Stream TOON/JSON chunks; frontend will parse and format via buildFormattedFromParsed
             async for chunk in router.stream(
                 system_message=system_message,
-                prompt=streaming_prompt,
+                prompt=user_prompt,
                 model_config=model_config,
             ):
                 # Stream chunks directly to frontend (real-time, no delays)

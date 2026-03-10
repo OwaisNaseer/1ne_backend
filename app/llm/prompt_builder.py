@@ -3,6 +3,7 @@ TOON-aware prompt builder for LLM communication.
 
 Builds prompts with TOON input format and schema instructions for token efficiency.
 """
+import json
 from typing import Any, Dict, Optional, Tuple
 
 from app.core.logging import get_logger
@@ -31,6 +32,7 @@ class TOONPromptBuilder:
         prompt_definition: Dict[str, Any],
         template_category: TemplateCategory,
         model_config: Optional[Dict[str, Any]] = None,
+        output_schema: Optional[Dict[str, Any]] = None,
     ) -> Tuple[str, str]:
         """
         Build complete prompt with TOON input and output schema.
@@ -125,11 +127,12 @@ class TOONPromptBuilder:
         
         # 3. Build system message with TOON instructions and language/standard
         system_message = self._build_system_message(
-            schema_type, 
+            schema_type,
             prompt_definition,
             output_language=output_language,
             lang_instruction=lang_instruction,
-            standard=standard
+            standard=standard,
+            output_schema=output_schema,
         )
         
         # 4. Build user prompt with TOON input and schema instructions
@@ -363,7 +366,8 @@ FINAL REMINDERS:
         prompt_definition: Dict[str, Any],
         output_language: str = "English",
         lang_instruction: str = "in English",
-        standard: Optional[str] = None
+        standard: Optional[str] = None,
+        output_schema: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Build system message with TOON instructions and language/standard handling (like Activity).
@@ -493,10 +497,17 @@ FINAL REMINDERS:
             parts.append("- Include opportunities for critical thinking, problem-solving, creativity, and metacognition.")
             parts.append("")
         
-        # Output schema instructions
-        schema_instruction = self.toon_handler.build_toon_schema_string(schema_type)
-        parts.append(schema_instruction)
-        parts.append("")
+        # Output schema instructions: use version's output_schema when provided (per-template flexibility)
+        if output_schema and isinstance(output_schema, dict):
+            parts.append("OUTPUT STRUCTURE (your response must match this schema):")
+            parts.append(json.dumps(output_schema, indent=2))
+            parts.append("")
+            parts.append("IMPORTANT: Return ONLY the data object (the key-value content that fits the schema). Do NOT wrap it in a schema envelope (no top-level 'type', 'required', or 'properties' wrapper). For example, return {\"title\": \"...\", \"overview\": \"...\", ...} not {\"type\": \"object\", \"properties\": {...}}.")
+            parts.append("")
+        else:
+            schema_instruction = self.toon_handler.build_toon_schema_string(schema_type)
+            parts.append(schema_instruction)
+            parts.append("")
         
         # Additional instructions - INTERNATIONAL QUALITY
         parts.append("Ensure your response is complete, accurate, and follows the TOON schema structure above.")
