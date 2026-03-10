@@ -53,6 +53,21 @@ class Pipeline2Model:
         labels = self._kmeans.predict(embeddings)
         return [int(label) for label in labels]
 
+    def predict_from_profile_text(self, profile_text: str) -> int:
+        """
+        Predict cluster assignment for a single Teacher_profile text string.
+
+        Used by DB integration (e.g. Learning Hub) when the input is a
+        feature snapshot converted to profile text via snapshot_adapter.
+        Does not change existing CSV/CLI behavior.
+        """
+        import pandas as pd
+
+        text_col = self._feature_spec.get("text_column", TEXT_COLUMN)
+        df = pd.DataFrame([{text_col: profile_text}])
+        labels = self.predict(df)
+        return labels[0]
+
 
 def load_model(version: str = "latest") -> Pipeline2Model:
     """

@@ -99,6 +99,16 @@ class Settings(BaseSettings):
     OCR_RECHUNK_SIZE_TOKENS: int = 200
     MAX_FILE_SIZE_MB: int = 50  # Max document file size
     DOCUMENTS_DIR: str = "uploads/documents"  # Document storage directory
+
+    # Teacher Identity / Career documents
+    CAREER_DOCUMENTS_DIR: str = "uploads/career_documents"
+    CAREER_MAX_FILE_SIZE_MB: int = 10
+    CAREER_ALLOWED_EXTENSIONS: list[str] = [".pdf", ".docx"]
+
+    # Teacher Intelligence freshness (snapshot / ML output max age in days)
+    FEATURE_SNAPSHOT_MAX_AGE_DAYS: int = 7
+    ML_OUTPUT_MAX_AGE_DAYS: int = 7
+
     # Free-mode embedding
     FAKE_EMBEDDING_DIM: int = 384
     LOCAL_EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"

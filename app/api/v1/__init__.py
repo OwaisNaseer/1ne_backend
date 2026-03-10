@@ -13,7 +13,12 @@ try:
     from app.domains.chatbots import routes as chatbot_routes
     from app.domains.content_ingestion import routes as content_ingestion_routes
     from app.domains.external_context import routes as metadata_routes
-    
+    from app.domains.teacher_identity import routes as teacher_identity_routes
+    from app.domains.teacher_intelligence import routes as teacher_intelligence_routes
+    from app.domains.learning_hub import routes as learning_hub_routes
+    from app.domains.content_registry import routes as content_registry_routes
+    from app.domains.content_factory import routes as content_factory_routes
+
     router = APIRouter()
     
     # Authentication routes
@@ -21,7 +26,22 @@ try:
     
     # Metadata (countries, regions, subjects, etc.) and profile context
     router.include_router(metadata_routes.router)
-    
+
+    # Teacher Identity (Professional Learning Hub)
+    router.include_router(teacher_identity_routes.router)
+
+    # Teacher Intelligence (CTP, feature snapshots, ML outputs)
+    router.include_router(teacher_intelligence_routes.router)
+
+    # Learning Hub (Pipeline2 integration, home orchestration)
+    router.include_router(learning_hub_routes.router)
+
+    # Content Registry (canonical content + recommendation mapping)
+    router.include_router(content_registry_routes.router)
+
+    # Content Factory (agentic content generation)
+    router.include_router(content_factory_routes.router)
+
     # Subscription routes
     router.include_router(subscription_routes.router)
     

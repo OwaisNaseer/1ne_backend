@@ -66,3 +66,25 @@ from app.domains.content_ingestion.models import (  # noqa: F401, E402
     WorksheetCache,
     WorksheetQuestionHash,
 )
+
+# Import teacher identity models
+from app.domains.teacher_identity.models import (  # noqa: F401, E402
+    TeacherExperience,
+    TeacherEducation,
+    TeacherCertification,
+    TeacherAchievement,
+    TeacherCareerDocument,
+)
+
+# Import teacher intelligence models
+from app.domains.teacher_intelligence.models import (  # noqa: F401, E402
+    TeacherFeatureSnapshot,
+    MLOutput,
+    PipelineRun,
+)
+
+# Import content registry models
+from app.domains.content_registry.models import ContentRegistryItem  # noqa: F401, E402
+
+# Import content factory models
+from app.domains.content_factory.models import ContentGenerationJob  # noqa: F401, E402
