@@ -92,6 +92,26 @@ class ExecutionService:
         return cls._prompt_builder
 
     @classmethod
+    def _ensure_real_llm_configured(cls) -> None:
+        """
+        When USE_REAL_LLM is True, ensure at least one provider API key is set.
+        Raises ValueError with clear message so template execution does not fail silently.
+        """
+        if not llm_settings.USE_REAL_LLM:
+            return
+        has_key = bool(
+            llm_settings.OPENAI_API_KEY
+            or llm_settings.ANTHROPIC_API_KEY
+            or llm_settings.GOOGLE_API_KEY
+        )
+        if not has_key:
+            raise ValueError(
+                "USE_REAL_LLM is true but no LLM API key is set. "
+                "Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY in .env, "
+                "or set USE_REAL_LLM=false to use stub output."
+            )
+
+    @classmethod
     def _build_stub_output_dict(
         cls,
         template: Template,
@@ -150,6 +170,30 @@ class ExecutionService:
         return system_message, user_prompt
 
     @classmethod
+    def _unwrap_schema_shaped_output(cls, parsed: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        If the LLM returned a JSON Schema-shaped object (type, title, required, properties)
+        with the actual content inside 'properties', return the inner data so the API
+        returns a flat output dict. Frontend expects output.title, output.overview, etc.
+        """
+        if not isinstance(parsed, dict) or not parsed:
+            return parsed
+        props = parsed.get("properties")
+        if not isinstance(props, dict) or not props:
+            return parsed
+        # Schema "properties" have values like {"type": "string", "title": "..."}.
+        # Data "properties" have values like "Lesson title", ["goal1"], {"level": "Create"}, etc.
+        first_val = next(iter(props.values()), None)
+        if first_val is None:
+            return parsed
+        if isinstance(first_val, dict) and "type" in first_val and "title" in first_val:
+            # Looks like a schema property definition, not actual data
+            return parsed
+        # Unwrap: use properties as the output
+        logger.info("Unwrapping schema-shaped LLM output (content was in 'properties')")
+        return props
+
+    @classmethod
     def _parse_llm_response(
         cls,
         content: str,
@@ -158,7 +202,8 @@ class ExecutionService:
     ) -> Dict[str, Any]:
         """
         Parse LLM response into a dict matching the template's output shape.
-        Uses TOON handler; returns parsed dict as-is. On failure returns stub dict.
+        Uses TOON handler; unwraps if LLM returned schema-shaped output (data in 'properties').
+        On failure returns stub dict.
         """
         toon_handler = cls._get_toon_handler()
         try:
@@ -167,7 +212,7 @@ class ExecutionService:
                 schema = json.dumps(template_version.output_schema) if isinstance(template_version.output_schema, dict) else str(template_version.output_schema)
             parsed = toon_handler.parse_output(content, schema=schema)
             if isinstance(parsed, dict) and parsed:
-                return parsed
+                return cls._unwrap_schema_shaped_output(parsed)
             # Parsed but not a non-empty dict
             return cls._build_stub_output_dict(template, template_version, input_data={"topic": "Parsed response was empty"})
         except Exception as e:
@@ -306,6 +351,7 @@ class ExecutionService:
         llm_response = None
 
         if use_real_llm:
+            cls._ensure_real_llm_configured()
             logger.info(f"Using real LLM with TOON for template execution: {template.slug}")
             system_message, user_prompt = cls._build_prompt(template, template_version, input_data)
             model_config = template_version.model_config
@@ -448,37 +494,25 @@ class ExecutionService:
             }
             return
 
-        # Real LLM streaming path
+        # Real LLM streaming path: use same TOON prompt + output_schema as non-streaming
+        # so the streamed response matches the template's output_schema and frontend shows correct structure.
+        cls._ensure_real_llm_configured()
         try:
             logger.info(f"Streaming LLM execution for template: {template.slug}")
             
-            # CRITICAL: For streaming, use markdown prompt (like Activity)
-            # This allows real-time streaming without waiting for complete TOON
-            from app.llm.prompt_builder import TOONPromptBuilder
-            prompt_builder = TOONPromptBuilder()
-            
-            # Build streaming prompt that generates markdown directly
-            system_message, streaming_prompt = prompt_builder.build_streaming_prompt(
-                input_data=input_data,
-                prompt_definition=template_version.prompt_definition or {},
-                template_category=template.category,
-            )
-            
-            # Get model config from template version
+            # Use the same prompt as non-streaming (TOON + output_schema) so output matches schema
+            system_message, user_prompt = cls._build_prompt(template, template_version, input_data)
             model_config = template_version.model_config
-            
-            # Get router
             router = cls._get_model_router()
             
             model_used = None
             provider_used = None
             token_usage_dict = {"prompt": 0, "completion": 0, "total": 0}
             
-            # CRITICAL: Stream chunks directly from LLM (like Activity)
-            # No TOON accumulation - stream markdown chunks immediately
+            # Stream TOON/JSON chunks; frontend will parse and format via buildFormattedFromParsed
             async for chunk in router.stream(
                 system_message=system_message,
-                prompt=streaming_prompt,
+                prompt=user_prompt,
                 model_config=model_config,
             ):
                 # Stream chunks directly to frontend (real-time, no delays)

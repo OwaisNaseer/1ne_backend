@@ -502,6 +502,8 @@ FINAL REMINDERS:
             parts.append("OUTPUT STRUCTURE (your response must match this schema):")
             parts.append(json.dumps(output_schema, indent=2))
             parts.append("")
+            parts.append("IMPORTANT: Return ONLY the data object (the key-value content that fits the schema). Do NOT wrap it in a schema envelope (no top-level 'type', 'required', or 'properties' wrapper). For example, return {\"title\": \"...\", \"overview\": \"...\", ...} not {\"type\": \"object\", \"properties\": {...}}.")
+            parts.append("")
         else:
             schema_instruction = self.toon_handler.build_toon_schema_string(schema_type)
             parts.append(schema_instruction)
