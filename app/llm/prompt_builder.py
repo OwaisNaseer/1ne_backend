@@ -456,8 +456,15 @@ FINAL REMINDERS:
                 parts.append(f"Task: {description}")
                 parts.append("")
         
-        # Add detailed content instructions for LESSON_DESIGN category - INTERNATIONAL QUALITY
-        if schema_type == "lesson_design_output" or schema_type == "universal_output":
+        # When template provides output_schema, use ONLY that structure (future-proof, per-template).
+        # Do NOT add generic lesson-plan sections (Learning Goals, Opening, Guided Practice, etc.).
+        if output_schema and isinstance(output_schema, dict):
+            parts.append("Your response must contain ONLY the keys defined in the OUTPUT STRUCTURE below. Use the exact property names from the schema.")
+            parts.append("QUALITY: Generate high-quality, international-level content suitable for top-tier institutions (Silicon Valley / global tech and education standards). Every schema key must have substantial, detailed content—no empty sections, no placeholder text, no one-line answers. Write comprehensive, professional material that is ready for expert educators and high-performing schools.")
+            parts.append("Do not add sections (e.g. Learning Objective, Opening, Guided Practice) that are not in the schema. Do not leave any key empty.")
+            parts.append("")
+        # Add detailed content instructions only when no template-specific output_schema (legacy/default)
+        elif schema_type == "lesson_design_output" or schema_type == "universal_output":
             parts.append("CONTENT REQUIREMENTS FOR LESSON PLANS (INTERNATIONAL STANDARDS):")
             parts.append("- Overview: Write 2-3 detailed paragraphs explaining the lesson context, purpose, pedagogical approach, and how it fits into broader learning progression.")
             parts.append("- Learning Goals: Provide 3-5 comprehensive, measurable learning objectives using Bloom's Taxonomy levels. Each objective should:")
@@ -514,8 +521,9 @@ FINAL REMINDERS:
         parts.append("Return only the TOON-formatted data, no additional explanation.")
         parts.append("")
         parts.append("FINAL QUALITY REQUIREMENTS:")
-        parts.append("- Generate detailed, comprehensive content suitable for international schools and high-performing institutions.")
-        parts.append("- Write full descriptions, complete explanations, and thorough details - no brief summaries or placeholder text.")
+        parts.append("- Generate detailed, comprehensive content suitable for international schools and high-performing institutions (Silicon Valley / global high-tech education standards).")
+        parts.append("- Write full descriptions, complete explanations, and thorough details - no brief summaries, no placeholder text, no empty sections.")
+        parts.append("- Every output key in the schema must have substantial content - never leave a section empty or one sentence only.")
         parts.append("- Ensure content is academically rigorous, pedagogically sound, and culturally appropriate.")
         parts.append("- Use research-based teaching methods and align with international best practices.")
         parts.append("- Content should be ready for immediate use in USA, UK, IB, or other high-level international school contexts.")

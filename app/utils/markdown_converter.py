@@ -6,6 +6,7 @@ Provides:
 - dict_to_markdown: generic converter that walks any dict (key -> heading, value -> content).
 - universal_output_to_markdown: legacy converter for the fixed universal output shape.
 """
+import json
 import logging
 from typing import Dict, Any, List, Optional
 
@@ -15,6 +16,24 @@ logger = logging.getLogger(__name__)
 def _humanize_key(key: str) -> str:
     """Turn schema key into a readable heading (e.g. learning_goals -> Learning Goals)."""
     return key.replace("_", " ").strip().title()
+
+
+def humanize_key(key: str) -> str:
+    """Public alias for _humanize_key (section labels)."""
+    return _humanize_key(key)
+
+
+def section_label_from_schema(section_key: str, output_schema: Optional[Dict[str, Any]] = None) -> str:
+    """Preferred section label: from output_schema property title, else humanized key."""
+    if output_schema and isinstance(output_schema, dict):
+        props = output_schema.get("properties") or {}
+        if isinstance(props, dict):
+            prop = props.get(section_key)
+            if isinstance(prop, dict):
+                title = prop.get("title")
+                if isinstance(title, str) and title.strip():
+                    return title.strip()
+    return _humanize_key(section_key)
 
 
 def _value_to_markdown(value: Any, parent_heading_level: int = 0) -> List[str]:
@@ -81,6 +100,26 @@ def _dict_to_markdown_lines(data: Dict[str, Any], heading_level: int = 0) -> Lis
             elif isinstance(value, str) and value.strip():
                 lines.append(value.strip())
     return lines
+
+
+def section_value_to_markdown_text(value: Any) -> str:
+    """
+    Convert a single section value (string, list, dict, etc.) to markdown text.
+    Used for section-by-section streaming: no top-level heading, just content lines.
+    Never returns raw JSON: if value is a string that looks like JSON, parse and convert to markdown.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        s = value.strip()
+        if s.startswith("{") or s.startswith("["):
+            try:
+                parsed = json.loads(s)
+                value = parsed
+            except Exception:
+                pass
+    lines = _value_to_markdown(value, parent_heading_level=0)
+    return "\n".join(lines).strip() if lines else ""
 
 
 def dict_to_markdown(data: Dict[str, Any]) -> str:

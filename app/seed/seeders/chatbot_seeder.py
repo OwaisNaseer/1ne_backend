@@ -301,7 +301,312 @@ Return nothing except the JSON object.""",
     ],
 },
      
-     
+        {
+            "slug": "career-readiness-coach",
+            "name": "Career Readiness Coach",
+            "description": "Comprehensive career readiness tools aligned with international standards. Help students build professional resumes, ace interviews, develop essential skills, and navigate global career opportunities.",
+            "category": "subject",
+            "subject": "Business",
+            "access_level": "premium",
+            "system_prompt": "You are an expert career readiness coach. Always return strictly valid JSON matching the requested schema. Tailor outputs to grade_level, region, industry, and career_level when provided.",
+            "models": [
+                {"provider": default_provider, "model_name": default_model, "priority": 0, "is_primary": True},
+            ],
+            "capabilities": [
+                {
+                    "capability_key": "international_resume_builder",
+                    "capability_name": "Resume Builder",
+                    "capability_description": "Explain an international resume format with section order, key differences, and ATS tips.",
+                    "capability_category": "instruction",
+                    "icon_name": "FileText",
+                    "display_order": 1,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "output_schema": {
+                        "formatName": "string",
+                        "region": "string",
+                        "formatDescription": "string",
+                        "sectionOrder": ["string"],
+                        "keyDifferences": ["string"],
+                        "personalInformationIncluded": ["string"],
+                        "bestFor": ["string"],
+                        "length": "string",
+                        "exampleStructure": {"professionalSummary": ["string"], "experience": ["string"]},
+                        "atsOptimizationTips": ["string"],
+                    },
+                    "system_prompt_template": """You are a strict JSON generator for an international resume format explorer.
+
+INPUT: resume format name (e.g. "US Resume", "EU CV", "UK CV").
+CONTEXT (PARAMETERS): grade_level, region, industry.
+
+Return ONLY valid JSON with exactly these keys:
+{
+  "formatName": "string",
+  "region": "string",
+  "formatDescription": "string",
+  "sectionOrder": ["string"],
+  "keyDifferences": ["string"],
+  "personalInformationIncluded": ["string"],
+  "bestFor": ["string"],
+  "length": "string",
+  "exampleStructure": { "professionalSummary": ["string"], "experience": ["string"] },
+  "atsOptimizationTips": ["string"]
+}
+
+Rules:
+- Tailor to grade_level, region, industry.
+- Keep sectionOrder realistic and ordered.
+- No markdown, no extra text.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "interview_prep",
+                    "capability_name": "Interview Prep",
+                    "capability_description": "Generate interview questions with cultural context and answer frameworks.",
+                    "capability_category": "instruction",
+                    "icon_name": "MessageSquare",
+                    "display_order": 2,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "output_schema": {
+                        "questions": [
+                            {
+                                "questionTitle": "string",
+                                "culturalContext": "string",
+                                "answerFramework": "string",
+                                "answerComponents": ["string"],
+                                "exampleSentenceStructure": "string",
+                                "commonMistakes": ["string"],
+                                "tips": ["string"],
+                            }
+                        ]
+                    },
+                    "system_prompt_template": """You are a strict JSON generator for interview preparation.
+
+INPUT: interview category (e.g. "Behavioral", "Technical", "Situational").
+CONTEXT (PARAMETERS): grade_level, region, industry.
+
+Return ONLY valid JSON:
+{
+  "questions": [
+    {
+      "questionTitle": "string",
+      "culturalContext": "string",
+      "answerFramework": "string",
+      "answerComponents": ["string"],
+      "exampleSentenceStructure": "string",
+      "commonMistakes": ["string"],
+      "tips": ["string"]
+    }
+  ]
+}
+
+Rules:
+- Generate 6–10 questions.
+- Tailor to region + industry, and match grade_level language.
+- No markdown, no extra text.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "professional_skills_competencies",
+                    "capability_name": "Professional Skills",
+                    "capability_description": "Return key professional competencies with descriptions and key points.",
+                    "capability_category": "instruction",
+                    "icon_name": "Target",
+                    "display_order": 3,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "output_schema": {
+                        "competencies": [
+                            {"competencyTitle": "string", "description": "string", "order": "number", "keyPoints": ["string"]}
+                        ]
+                    },
+                    "system_prompt_template": """You are a strict JSON generator for professional skills competencies (NACE-aligned, region-aware).
+
+CONTEXT (PARAMETERS): grade_level, region, industry.
+
+Return ONLY valid JSON:
+{
+  "competencies": [
+    { "competencyTitle": "string", "description": "string", "order": 1, "keyPoints": ["string"] }
+  ]
+}
+
+Rules:
+- Return exactly 8 competencies.
+- Tailor keyPoints to the given industry and region. Match grade_level language.
+- No markdown, no extra text.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "industry_insights",
+                    "capability_name": "Industry Insights",
+                    "capability_description": "Provide global industry insights: skills, certifications, salary ranges, pathways, hotspots, outlook.",
+                    "capability_category": "analysis",
+                    "icon_name": "TrendingUp",
+                    "display_order": 4,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "output_schema": {
+                        "industryLabel": "string",
+                        "growthTrend": "high|moderate|stable|declining",
+                        "globalOpportunities": ["string"],
+                        "requiredSkills": ["string"],
+                        "certifications": ["string"],
+                        "salaryRanges": {"entryLevel": "string", "midLevel": "string", "senior": "string"},
+                        "careerPathways": {"entry": ["string"], "progression": ["string"], "senior": ["string"]},
+                        "geographicHotspots": ["string"],
+                        "futureOutlook": ["string"],
+                    },
+                    "system_prompt_template": """You are a strict JSON generator for industry insights.
+
+INPUT: industry name (e.g. "Technology", "Healthcare").
+CONTEXT (PARAMETERS): grade_level, region.
+
+Return ONLY valid JSON with exactly these keys:
+{
+  "industryLabel": "string",
+  "growthTrend": "high|moderate|stable|declining",
+  "globalOpportunities": ["string"],
+  "requiredSkills": ["string"],
+  "certifications": ["string"],
+  "salaryRanges": { "entryLevel": "string", "midLevel": "string", "senior": "string" },
+  "careerPathways": { "entry": ["string"], "progression": ["string"], "senior": ["string"] },
+  "geographicHotspots": ["string"],
+  "futureOutlook": ["string"]
+}
+
+Rules:
+- Tailor to region context (regulations, hotspots, market).
+- Match grade_level language.
+- No markdown, no extra text.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "career_pathway_planning",
+                    "capability_name": "Career Pathways",
+                    "capability_description": "Plan a pathway for a target career and industry, including entry requirements and progression.",
+                    "capability_category": "instruction",
+                    "icon_name": "Award",
+                    "display_order": 5,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "output_schema": {
+                        "entryLevelRequirements": {"education": ["string"], "skills": ["string"]},
+                        "careerProgression": {
+                            "midLevel": {"timeframe": "string", "skills": ["string"], "responsibilities": ["string"]},
+                            "senior": {"timeframe": "string", "skills": ["string"], "responsibilities": ["string"]},
+                        },
+                        "seniorLevel": {"roles": ["string"], "requirements": ["string"], "compensation": "string"},
+                        "alternativePaths": ["string"],
+                        "internationalOpportunities": ["string"],
+                    },
+                    "system_prompt_template": """You are a strict JSON generator for career pathway planning.
+
+INPUT: target career role (e.g. "Software Engineer").
+CONTEXT (PARAMETERS): grade_level, region, industry, career_level.
+
+Return ONLY valid JSON:
+{
+  "entryLevelRequirements": { "education": ["string"], "skills": ["string"] },
+  "careerProgression": {
+    "midLevel": { "timeframe": "string", "skills": ["string"], "responsibilities": ["string"] },
+    "senior": { "timeframe": "string", "skills": ["string"], "responsibilities": ["string"] }
+  },
+  "seniorLevel": { "roles": ["string"], "requirements": ["string"], "compensation": "string" },
+  "alternativePaths": ["string"],
+  "internationalOpportunities": ["string"]
+}
+
+Rules:
+- Tailor to industry and region; reflect career_level where helpful.
+- Match grade_level language.
+- No markdown, no extra text.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "linkedin_guide",
+                    "capability_name": "LinkedIn Guide",
+                    "capability_description": "Generate LinkedIn optimization best practices for profile sections.",
+                    "capability_category": "instruction",
+                    "icon_name": "Linkedin",
+                    "display_order": 6,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "output_schema": {
+                        "linkedInGuideDescription": "string",
+                        "headline": {"bestPractices": ["string"], "examples": ["string"]},
+                        "summary": {"bestPractices": ["string"], "examples": ["string"]},
+                        "experience": {"bestPractices": ["string"], "examples": ["string"]},
+                        "skillsAndEndorsements": {"bestPractices": ["string"]},
+                        "keywordStrategy": {"bestPractices": ["string"], "keywordCategories": ["string"]},
+                        "networkingTips": {"bestPractices": ["string"]},
+                        "contentStrategy": {"bestPractices": ["string"]},
+                        "commonMistakesToAvoid": ["string"],
+                    },
+                    "system_prompt_template": """You are a strict JSON generator for a LinkedIn optimization guide.
+
+CONTEXT (PARAMETERS): grade_level, region, industry, career_level.
+
+Return ONLY valid JSON with exactly these keys:
+{
+  "linkedInGuideDescription": "string",
+  "headline": { "bestPractices": ["string"], "examples": ["string"] },
+  "summary": { "bestPractices": ["string"], "examples": ["string"] },
+  "experience": { "bestPractices": ["string"], "examples": ["string"] },
+  "skillsAndEndorsements": { "bestPractices": ["string"] },
+  "keywordStrategy": { "bestPractices": ["string"], "keywordCategories": ["string"] },
+  "networkingTips": { "bestPractices": ["string"] },
+  "contentStrategy": { "bestPractices": ["string"] },
+  "commonMistakesToAvoid": ["string"]
+}
+
+Rules:
+- Tailor to industry and region norms; match grade_level language.
+- No markdown, no extra text.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "skills_assessment_gap_analysis",
+                    "capability_name": "Skills Assessment",
+                    "capability_description": "Analyze skill gap between current and target levels and produce a development plan.",
+                    "capability_category": "analysis",
+                    "icon_name": "BarChart3",
+                    "display_order": 7,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "output_schema": {
+                        "competency": "string",
+                        "currentLevel": "string",
+                        "targetLevel": "string",
+                        "gapAnalysis": ["string"],
+                        "developmentPlan": [{"activity": "string", "timeline": "string", "resources": ["string"]}],
+                        "evidenceNeeded": ["string"],
+                    },
+                    "system_prompt_template": """You are a strict JSON generator for skills assessment gap analysis.
+
+INPUT: competency name.
+CONTEXT (PARAMETERS): grade_level, region, industry, current_level, target_level.
+
+Return ONLY valid JSON:
+{
+  "competency": "string",
+  "currentLevel": "string",
+  "targetLevel": "string",
+  "gapAnalysis": ["string"],
+  "developmentPlan": [
+    { "activity": "string", "timeline": "string", "resources": ["string"] }
+  ],
+  "evidenceNeeded": ["string"]
+}
+
+Rules:
+- Tailor plan to industry and region. Match grade_level language.
+- No markdown, no extra text.""",
+                    "processing_mode": "structured",
+                },
+            ],
+        },
      
         {
             "slug": "literacy-lab-coach",

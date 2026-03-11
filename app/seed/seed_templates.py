@@ -830,86 +830,38 @@ def get_template_data() -> list[Dict[str, Any]]:
                 },
                 "output_schema": {
                     "type": "object",
-                    "title": "UniversalTemplateOutput",
-                    "required": ["overview", "learning_goals", "materials", "steps"],
+                    "title": "SummativeAssessmentOutput",
+                    "required": [
+                        "test_overview",
+                        "learning_goals",
+                        "instructions",
+                        "rubric",
+                        "questions_section",
+                        "answer_key",
+                        "bloom_categorization",
+                    ],
                     "properties": {
-                        "overview": {"type": "string", "title": "Overview"},
-                        "learning_goals": {"type": "array", "title": "Learning Goals", "items": {"type": "string"}},
-                        "materials": {"type": "array", "title": "Materials", "items": {"type": "string"}},
-                        "steps": {
-                            "type": "array",
-                            "title": "Steps",
-                            "items": {
-                                "type": "object",
-                                "title": "LessonStep",
-                                "required": ["title", "description"],
-                                "properties": {"title": {"type": "string", "title": "Title"}, "description": {"type": "string", "title": "Description"}},
-                            },
-                        },
-                        "differentiation": {"type": "array", "title": "Differentiation", "items": {"type": "string"}},
-                        "assessment": {
-                            "type": ["object", "null"],
-                            "title": "AssessmentSection",
-                            "properties": {
-                                "checks_for_understanding": {"type": "array", "items": {"type": "string"}},
-                                "rubric": {"type": ["object", "null"]},
-                            },
-                            "required": ["checks_for_understanding"],
-                        },
-                        "teacher_notes": {"type": "array", "title": "Teacher Notes", "items": {"type": "string"}},
-                        "bloom_alignment": {
-                            "type": "array",
-                            "title": "Bloom Alignment",
-                            "items": {
-                                "type": "object",
-                                "title": "BloomAlignmentItem",
-                                "required": ["level", "description"],
-                                "properties": {
-                                    "level": {"type": "string", "enum": ["remember", "understand", "apply", "analyze", "evaluate", "create"]},
-                                    "description": {"type": "string", "title": "Description"},
-                                },
-                            },
-                        },
-                        "questions": {
-                            "type": ["array", "null"],
-                            "title": "Questions",
-                            "items": {
-                                "type": "object",
-                                "title": "AssessmentQuestion",
-                                "required": ["question_text", "type"],
-                                "properties": {
-                                    "question_text": {"type": "string", "title": "Question Text"},
-                                    "type": {"type": "string", "title": "Type"},
-                                    "answer_key": {"type": ["string", "null"]},
-                                    "difficulty": {"type": ["string", "null"]},
-                                },
-                            },
-                        },
-                        "communication": {
-                            "type": ["object", "null"],
-                            "title": "CommunicationSection",
-                            "properties": {
-                                "subject_line": {"type": ["string", "null"]},
-                                "message_body": {"type": ["string", "null"]},
-                                "key_details": {"type": ["array", "null"], "items": {"type": "string"}},
-                                "call_to_action": {"type": ["string", "null"]},
-                            },
-                        },
+                        "test_overview": {"type": "string", "title": "Test Overview", "description": "Brief overview of the assessment: purpose, format, and what is being assessed."},
+                        "learning_goals": {"type": "array", "title": "Learning Goals", "items": {"type": "string"}, "description": "Learning objectives this assessment measures."},
+                        "instructions": {"type": "string", "title": "Instructions", "description": "Clear instructions for students: time allowed, how to answer, formatting rules."},
+                        "rubric": {"type": "string", "title": "Rubric / Marking Guide", "description": "Marking rubric in readable form: performance levels (e.g. Beginning, Developing, Proficient, Advanced) with clear criteria for each. Use prose or bullet points, not raw JSON."},
+                        "questions_section": {"type": "string", "title": "Questions", "description": "All questions by type. Number each question (1., 2., 3.). For MCQ list options A, B, C, D only — do NOT give the correct answer here; correct answers go only in Answer Key."},
+                        "answer_key": {"type": "string", "title": "Answer Key", "description": "Numbered list matching each question: e.g. '1. B', '2. D', '3. A' for MCQ, or brief marking points for open questions. Must correspond one-to-one with question numbers. Do not write unrelated text."},
+                        "bloom_categorization": {"type": "string", "title": "Bloom Categorization", "description": "One short line per question (e.g. '1. Apply; 2. Understand; 3. Analyze') or a short summary. No long paragraphs."},
                     },
                 },
                 "stub_config": {
-                    "overview_template": "{template_name} for {subject}: {topic}",
-                    "learning_goals_template": ["{learning_objective}", "Help students engage deeply with {topic}."],
-                    "materials": ["Whiteboard or digital board", "Student notebooks or devices"],
-                    "step_titles": ["Introduction & Activation of Prior Knowledge", "Guided Practice", "Independent or Small-Group Practice"],
-                    "step_descriptions_template": "Briefly introduce {topic} and ask students what they already know.",
-                    "differentiation": ["Offer sentence stems or visual supports for students who need additional scaffolding.", "Provide extension tasks for students who are ready for enrichment."],
-                    "teacher_notes": ["Adjust pacing based on student responses and check-ins.", "Capture examples of strong student thinking to highlight during debrief."],
-                    "assessment_checks": ["Cold-call a few students to explain the concept.", "Use exit tickets asking students to solve a short problem or respond to a prompt."],
+                    "test_overview": "Summative assessment for {topic} at grade {grade}. Assesses {learning_objective}.",
+                    "learning_goals": ["{learning_objective}", "Demonstrate understanding of {topic}."],
+                    "instructions": "Answer all questions. Short answer: write in full sentences. Essay: plan before writing. Time: as specified per section.",
+                    "rubric": "Proficient: Meets all criteria with clear evidence. Developing: Partial understanding. Beginning: Limited evidence. Advanced: Exceeds expectations with depth.",
+                    "questions_section": "Short Answer: 3 questions. Essay: 1 extended response. See rubric for marking.",
+                    "answer_key": "Answers and marking points will be provided in the full assessment.",
+                    "bloom_categorization": "Questions align with {bloom_level} level(s) as specified.",
                 },
                 "prompt_definition": {
-                    "description": "Generate a comprehensive, internationally-aligned summative assessment suitable for high-level schools with: Test Overview, Questions by Type, Rubric / Marking Guide, Answer Key, and Bloom Categorization. Ensure questions are academically rigorous, assess deep understanding, and align with international assessment standards. Include a detailed marking rubric that clearly distinguishes between performance levels. Questions should cover various cognitive levels and require critical thinking, not just recall.",
-                    "context": "This assessment will be used in international schools. It must meet high academic standards and provide clear, fair evaluation criteria."
+                    "description": "Generate a summative assessment with exactly these sections in order. (1) Test Overview — brief purpose and format. (2) Learning Goals — bullet list of what the test measures. (3) Instructions — clear student-facing rules and timing. (4) Rubric / Marking Guide — performance levels (Beginning, Developing, Proficient, Advanced) with criteria in prose or bullets. (5) Questions — number each question (1., 2., 3.); for MCQ show only question text and options A, B, C, D; do NOT reveal the correct answer in this section. (6) Answer Key — a numbered list that exactly matches the questions: for MCQ write '1. B', '2. D', etc.; for short answer/essay write brief marking points. The Answer Key must be the correct answer for each question number only; no unrelated sentences. (7) Bloom Categorization — one short line per question (e.g. '1. Apply; 2. Understand') or a brief summary. Write all sections in clear, human-readable form. No raw JSON. Match the question types and difficulty the user requested.",
+                    "context": "This assessment is for international schools. The Answer Key must correspond one-to-one with question numbers. Do not put correct answers inline under each question; put them only in the Answer Key section."
                 }
             }
         },

@@ -381,7 +381,9 @@ async def execute_template_stream(
     """
     Execute a template with streaming output (Server-Sent Events).
 
-    Returns an SSE stream with content chunks, done event, or error event.
+    Returns an SSE stream with schema-based section events only:
+    meta, section_start, section_content (per output_schema), done, or error.
+    Does not stream raw JSON or "content" chunks.
     """
     template: Optional[Template] = (
         db.query(Template)
@@ -424,8 +426,10 @@ async def execute_template_stream(
                 tenant_id=tenant_id,
                 is_demo=False,
             ):
+                # Only forward schema-based events; never send raw "content" (legacy/prevents JSON leak)
+                if isinstance(event, dict) and event.get("type") == "content":
+                    continue
                 # CRITICAL: Format and send immediately without buffering
-                # This ensures chunks arrive in real-time for word-by-word streaming
                 event_json = json.dumps(event)
                 yield f"data: {event_json}\n\n"
         except Exception as e:
