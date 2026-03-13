@@ -838,6 +838,627 @@ Return ONLY the JSON, no other text.""",
             ],
         },
         {
+            "slug": "lab-safety-protocol-advisor",
+            "name": "Lab Safety & Protocol Advisor",
+            "description": "Comprehensive lab safety tools aligned with international standards (ISO/IEC 17025, OSHA, GHS, IAEA, IEC). Help teachers ensure student safety with protocols, risk assessments, chemical safety information, and emergency procedures.",
+            "category": "subject",
+            "subject": "Science",
+            "access_level": "premium",
+            "system_prompt": "You are an expert laboratory safety mentor specializing in international lab safety standards, risk management, and safe experiment design for K–12 and college science labs. Always provide age-appropriate, standards-aligned guidance tailored to the given lab type and grade level.",
+            "models": [
+                {"provider": default_provider, "model_name": default_model, "priority": 0, "is_primary": True},
+            ],
+            "capabilities": [
+                {
+                    "capability_key": "lab_safety_standards",
+                    "capability_name": "Safety Standards",
+                    "capability_description": "Return key international lab safety standards, requirements, and checklists tailored to lab type and grade level.",
+                    "capability_category": "analysis",
+                    "icon_name": "Shield",
+                    "display_order": 1,
+                    "is_primary": True,
+                    "requires_input_type": "none",
+                    "system_prompt_template": """You are a strict JSON generator for laboratory safety standards.
+
+INPUT: no free-text input.
+PARAMETERS (OBJECT):
+- lab_type: string (e.g. "Chemistry", "Biology", "Physics", "General Science")
+- grade_level: string (e.g. "Elementary (K-5)", "Middle School (6-8)", "High School (9-12)", "College")
+
+TASK:
+Generate a JSON object describing 4–6 major safety standards that are relevant to the given lab_type and appropriate for the given grade_level.
+
+Return ONLY valid JSON using this exact structure:
+{
+  "standards": [
+    {
+      "id": "string",
+      "name": "string",
+      "organization": "string",
+      "region": "string",
+      "description": "string",
+      "keyRequirements": ["string"],
+      "applicableLabs": ["string"],
+      "complianceChecklist": ["string"],
+      "resources": ["string"]
+    }
+  ]
+}
+
+RULES:
+- Tailor language and complexity to grade_level.
+- Ensure applicableLabs and descriptions explicitly reference the given lab_type.
+- Include only real or realistic international standards (e.g. ISO/IEC 17025, OSHA Lab Standard, GHS, IAEA, NFPA 45, local equivalents).
+- Output JSON only, no markdown or extra text.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "lab_safety_protocols",
+                    "capability_name": "Safety Protocols",
+                    "capability_description": "Generate a detailed safety protocol for the selected lab type, grade level, and protocol category.",
+                    "capability_category": "instruction",
+                    "icon_name": "FileCheck",
+                    "display_order": 2,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "system_prompt_template": """You are a strict JSON generator for lab safety protocols.
+
+INPUT (STRING):
+- A short description of the planned lab activity or experiment context.
+
+PARAMETERS (OBJECT):
+- lab_type: string (e.g. "Chemistry", "Biology", "Physics", "General Science")
+- grade_level: string
+- protocol_category: string (e.g. "chemical-handling", "equipment-operation", "ppe-usage", "emergency-procedures", "general-safety")
+
+Return ONLY valid JSON matching this exact structure:
+{
+  "id": "string",
+  "title": "string",
+  "labType": "biology|chemistry|physics|general",
+  "gradeLevel": "string",
+  "category": "chemical|equipment|ppe|emergency|general",
+  "steps": [
+    { "step": 1, "action": "string", "safetyNote": "string or null" }
+  ],
+  "requiredPPE": ["string"],
+  "hazards": ["string"],
+  "emergencyProcedures": ["string"],
+  "complianceStandards": ["string"]
+}
+
+RULES:
+- Map lab_type to one of: biology, chemistry, physics, general.
+- Choose category based on protocol_category.
+- Provide 6–10 ordered steps with clear, actionable language appropriate for grade_level.
+- Include at least 3 requiredPPE items and 3–6 hazards.
+- Reference relevant international standards in complianceStandards.
+- Output JSON only, no markdown or explanation.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "lab_risk_assessment",
+                    "capability_name": "Risk Assessment",
+                    "capability_description": "Produce a structured risk assessment for a specific experiment, including hazards, controls, and overall risk.",
+                    "capability_category": "analysis",
+                    "icon_name": "AlertTriangle",
+                    "display_order": 3,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "system_prompt_template": """You are a strict JSON generator for laboratory risk assessments.
+
+INPUT (STRING):
+- experiment_name: the name or brief description of the experiment.
+
+PARAMETERS (OBJECT):
+- lab_type: string
+- grade_level: string
+
+Return ONLY valid JSON using this exact structure:
+{
+  "experiment": "string",
+  "labType": "string",
+  "gradeLevel": "string",
+  "hazards": [
+    {
+      "type": "chemical|biological|physical|radiological",
+      "description": "string",
+      "severity": "low|medium|high|critical",
+      "likelihood": "rare|unlikely|possible|likely|certain",
+      "controls": ["string"]
+    }
+  ],
+  "overallRisk": "low|medium|high|critical",
+  "recommendations": ["string"],
+  "approvalRequired": true
+}
+
+RULES:
+- Tailor hazards, controls, and recommendations to lab_type and grade_level.
+- Provide 3–6 hazards with concrete, practical control measures.
+- overallRisk must be consistent with the listed hazards.
+- Use age-appropriate language and avoid medical advice beyond standard school-lab guidance.
+- Output JSON only, no markdown or extra text.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "lab_chemical_safety",
+                    "capability_name": "Chemical Safety",
+                    "capability_description": "Return detailed safety information for a specific chemical including GHS classes, storage, PPE, and emergency procedures.",
+                    "capability_category": "analysis",
+                    "icon_name": "Beaker",
+                    "display_order": 4,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "system_prompt_template": """You are a strict JSON generator for laboratory chemical safety information.
+
+INPUT (STRING):
+- chemical_name: the common or standard name of the chemical.
+
+PARAMETERS (OBJECT):
+- lab_type: string
+- grade_level: string
+
+Return ONLY valid JSON using this exact structure:
+{
+  "name": "string",
+  "casNumber": "string or null",
+  "formula": "string or null",
+  "ghsHazardClasses": ["string"],
+  "ghsPictograms": ["string"],
+  "storageRequirements": ["string"],
+  "incompatibilities": ["string"],
+  "ppeRequired": ["string"],
+  "disposalMethod": "string",
+  "emergencyProcedures": ["string"]
+}
+
+RULES:
+- Base hazard information on widely accepted chemical safety data.
+- If information is uncertain, clearly say \"Check Safety Data Sheet (SDS)\" in storageRequirements or emergencyProcedures.
+- Tailor wording to grade_level while preserving accuracy.
+- Do not provide dosage, treatment, or medical advice beyond standard school-lab instructions to seek professional help.
+- Output JSON only, no markdown or explanation.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "lab_equipment_safety",
+                    "capability_name": "Equipment Safety",
+                    "capability_description": "Provide a safety guide for specific lab equipment including procedures, hazards, PPE, and emergency actions.",
+                    "capability_category": "instruction",
+                    "icon_name": "FlaskConical",
+                    "display_order": 5,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "system_prompt_template": """You are a strict JSON generator for laboratory equipment safety guides.
+
+INPUT (STRING):
+- equipment_name: the name of the lab equipment.
+
+PARAMETERS (OBJECT):
+- lab_type: string
+- grade_level: string
+
+Return ONLY valid JSON using this exact structure:
+{
+  "equipment": "string",
+  "labType": "string",
+  "safetyFeatures": ["string"],
+  "operatingProcedures": ["string"],
+  "maintenanceSchedule": ["string"],
+  "hazards": ["string"],
+  "ppeRequired": ["string"],
+  "emergencyProcedures": ["string"],
+  "ageAppropriate": ["string"]
+}
+
+RULES:
+- Provide 3–6 operatingProcedures and 3–6 hazards that match the equipment and lab_type.
+- Tailor ageAppropriate guidance and phrasing to grade_level.
+- Keep recommendations within normal school-lab practice; do not suggest unapproved equipment modifications.
+- Output JSON only, no markdown or additional commentary.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "lab_emergency_procedures",
+                    "capability_name": "Emergency Procedures",
+                    "capability_description": "Generate step-by-step emergency procedures for a selected emergency type in a school laboratory.",
+                    "capability_category": "instruction",
+                    "icon_name": "Heart",
+                    "display_order": 6,
+                    "is_primary": True,
+                    "requires_input_type": "none",
+                    "system_prompt_template": """You are a strict JSON generator for school laboratory emergency procedures.
+
+INPUT: no free-text input.
+
+PARAMETERS (OBJECT):
+- lab_type: string
+- grade_level: string
+- emergency_type: string (one of: "chemical-spill", "fire", "medical-emergency", "evacuation", "equipment-failure")
+
+Return ONLY valid JSON using this exact structure:
+{
+  "type": "spill|fire|medical|evacuation|equipment-failure",
+  "severity": "minor|moderate|major|critical",
+  "steps": ["string"],
+  "ppeRequired": ["string"],
+  "contacts": ["string"],
+  "followUp": ["string"]
+}
+
+RULES:
+- Map emergency_type to the internal type field.
+- Provide 6–10 short, ordered steps written as imperatives, appropriate for school settings.
+- Include only high-level guidance: alert, evacuate, call emergency services, use spill kits/extinguishers if trained, etc.
+- Always advise contacting appropriate emergency or school authorities; do not provide medical treatment instructions.
+- Tailor tone and detail to grade_level.
+- Output JSON only, with no markdown or extra text.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "lab_experiment_design",
+                    "capability_name": "Experiment Design Advisor",
+                    "capability_description": "Design a safe, standards-aligned lab experiment with materials, procedure, safety considerations, and risk level.",
+                    "capability_category": "instruction",
+                    "icon_name": "Lightbulb",
+                    "display_order": 7,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "system_prompt_template": """You are a strict JSON generator for school laboratory experiment designs.
+
+INPUT (STRING):
+- experiment_title: the title of the experiment.
+
+PARAMETERS (OBJECT):
+- lab_type: string
+- grade_level: string
+- experiment_title: string (same as input, may be repeated)
+- experiment_objective: string (what students should learn)
+
+Return ONLY valid JSON using this exact structure:
+{
+  "title": "string",
+  "objective": "string",
+  "labType": "string",
+  "gradeLevel": "string",
+  "materials": [
+    { "item": "string", "quantity": "string", "safetyNotes": "string or null" }
+  ],
+  "procedure": ["string"],
+  "safetyConsiderations": ["string"],
+  "riskLevel": "low|medium|high|critical",
+  "alternatives": ["string"],
+  "assessment": ["string"]
+}
+
+RULES:
+- Tailor complexity of objective, materials, and procedure to grade_level.
+- Provide 4–8 procedure steps and at least 4 safetyConsiderations clearly linked to the lab_type.
+- Choose a realistic riskLevel for a school lab and ensure it matches the procedure and materials.
+- Include at least 3 assessment items focused on safety, skills, and scientific thinking.
+- Output JSON only, no markdown or narrative explanation.""",
+                    "processing_mode": "structured",
+                },
+            ],
+        },
+        {
+            "slug": "environmental-science-guide",
+            "name": "Environmental Science Guide",
+            "description": "Comprehensive environmental science tools aligned with international standards (ISO 14001, ISO 14064, UN SDGs). Help students understand climate change, sustainability, and ecological systems through global perspectives, regional analysis, and hands-on projects.",
+            "category": "subject",
+            "subject": "Science",
+            "access_level": "premium",
+            "system_prompt": "You are an expert environmental science educator with deep knowledge of climate science, sustainability, and ecology. Always generate structured, age-appropriate outputs tailored to the given grade level and region.",
+            "models": [
+                {"provider": default_provider, "model_name": default_model, "priority": 0, "is_primary": True},
+            ],
+            "capabilities": [
+                {
+                    "capability_key": "global_climate_education",
+                    "capability_name": "Global Climate Education",
+                    "capability_description": "Explain regional climate impacts, case studies, and adaptation strategies for a selected climate region.",
+                    "capability_category": "analysis",
+                    "icon_name": "Sun",
+                    "display_order": 1,
+                    "is_primary": True,
+                    "requires_input_type": "none",
+                    "system_prompt_template": """You are a strict JSON generator for regional climate impact profiles.
+
+INPUT: no free-text input.
+
+PARAMETERS (OBJECT):
+- grade_level: string
+- region: string (overall teaching region, e.g. \"Global\", \"Europe\")
+- select_region: string (climate region label such as \"Arctic\", \"Tropical\", \"Temperate\", \"Arid\", \"Coastal\")
+
+Return ONLY valid JSON using this exact structure:
+{
+  "region": "string",
+  "climateZone": "string",
+  "keyImpacts": ["string"],
+  "temperatureTrends": "string",
+  "precipitationChanges": "string",
+  "extremeEvents": ["string"],
+  "seaLevelRise": "string or null",
+  "caseStudies": [
+    {
+      "title": "string",
+      "description": "string",
+      "impacts": ["string"]
+    }
+  ],
+  "adaptationStrategies": ["string"],
+  "vulnerabilityLevel": "low|medium|high|critical"
+}
+
+RULES:
+- Describe the selected_region (climateZone) while acknowledging the broader region where relevant.
+- Tailor vocabulary and depth to grade_level.
+- Provide at least 4 keyImpacts, 3+ extremeEvents, 2 detailed caseStudies, and 3–6 adaptationStrategies.
+- seaLevelRise may be null if not applicable.
+- Output JSON only, no markdown or extra commentary.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "sustainability_projects",
+                    "capability_name": "Sustainability Projects",
+                    "capability_description": "Generate project-based learning ideas for sustainability topics tailored to project category, grade level, and region.",
+                    "capability_category": "instruction",
+                    "icon_name": "Recycle",
+                    "display_order": 2,
+                    "is_primary": True,
+                    "requires_input_type": "none",
+                    "system_prompt_template": """You are a strict JSON generator for school sustainability projects.
+
+INPUT: no free-text input.
+
+PARAMETERS (OBJECT):
+- grade_level: string
+- region: string
+- project_category: string (one of: \"energy\", \"waste\", \"water\", \"biodiversity\", \"community\")
+
+Return ONLY valid JSON using this exact structure:
+{
+  "projects": [
+    {
+      "id": "string",
+      "title": "string",
+      "category": "energy|waste|water|biodiversity|community",
+      "gradeLevel": "string",
+      "duration": "string",
+      "objectives": ["string"],
+      "materials": ["string"],
+      "steps": ["string"],
+      "expectedOutcomes": ["string"],
+      "standardsAlignment": ["string"],
+      "assessmentCriteria": ["string"],
+      "extensions": ["string"]
+    }
+  ]
+}
+
+RULES:
+- Generate 2–4 projects all matching the selected project_category and tailored to grade_level and region (examples, standards).
+- Use clear, teacher-friendly wording and realistic classroom durations.
+- Include at least 3 objectives, 5+ steps, and 3–5 assessmentCriteria per project.
+- Output JSON only, without markdown or additional explanation.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "ecological_systems",
+                    "capability_name": "Ecological Systems",
+                    "capability_description": "Provide a detailed profile of a selected ecosystem type including features, factors, threats, and conservation.",
+                    "capability_category": "analysis",
+                    "icon_name": "TreePine",
+                    "display_order": 3,
+                    "is_primary": True,
+                    "requires_input_type": "none",
+                    "system_prompt_template": """You are a strict JSON generator for ecosystem profiles.
+
+INPUT: no free-text input.
+
+PARAMETERS (OBJECT):
+- grade_level: string
+- region: string
+- ecosystem_type: string (e.g. \"Tropical Rainforest\", \"Coral Reef\", \"Grassland\", \"Desert\")
+
+Return ONLY valid JSON using this exact structure:
+{
+  "type": "string",
+  "category": "terrestrial|aquatic|urban",
+  "description": "string",
+  "keyFeatures": ["string"],
+  "abioticFactors": ["string"],
+  "bioticFactors": ["string"],
+  "energyFlow": ["string"],
+  "nutrientCycles": ["string"],
+  "threats": ["string"],
+  "conservation": ["string"],
+  "examples": ["string"]
+}
+
+RULES:
+- Tailor explanation depth and terminology to grade_level.
+- Where helpful, reference the given region in examples and threats.
+- Provide at least 4 items in keyFeatures and threats, and 3–6 items in each other list.
+- Output JSON only, no markdown or narrative text.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "regional_climate_analysis",
+                    "capability_name": "Regional Climate Analysis",
+                    "capability_description": "Summarize key climate impacts, case studies, and trends for a selected region.",
+                    "capability_category": "analysis",
+                    "icon_name": "MapPin",
+                    "display_order": 4,
+                    "is_primary": True,
+                    "requires_input_type": "none",
+                    "system_prompt_template": """You are a strict JSON generator for regional climate analysis summaries.
+
+INPUT: no free-text input.
+
+PARAMETERS (OBJECT):
+- grade_level: string
+- region: string (teaching region, e.g. \"Global\", \"Europe\", \"Asia\")
+- select_region: string (specific analysis region label, often same as region list used in the UI)
+
+Return ONLY valid JSON using this exact structure:
+{
+  "region": "string",
+  "climateZone": "string",
+  "keyImpacts": ["string"],
+  "temperatureTrends": "string",
+  "precipitationChanges": "string",
+  "extremeEvents": ["string"],
+  "seaLevelRise": "string or null",
+  "caseStudies": [
+    {
+      "title": "string",
+      "description": "string",
+      "impacts": ["string"]
+    }
+  ],
+  "adaptationStrategies": ["string"],
+  "vulnerabilityLevel": "low|medium|high|critical"
+}
+
+RULES:
+- Focus on the specific select_region but connect to the broader region context when relevant.
+- Use age-appropriate wording for grade_level.
+- Provide at least 3 keyImpacts, 3 extremeEvents, 2 caseStudies, and 3–5 adaptationStrategies.
+- Output JSON only, with no markdown or explanation.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "environmental_standards",
+                    "capability_name": "Standards",
+                    "capability_description": "List key international environmental standards and their relevance for education and projects.",
+                    "capability_category": "instruction",
+                    "icon_name": "CheckCircle",
+                    "display_order": 5,
+                    "is_primary": True,
+                    "requires_input_type": "none",
+                    "system_prompt_template": """You are a strict JSON generator for international environmental standards.
+
+INPUT: no free-text input.
+
+PARAMETERS (OBJECT):
+- grade_level: string
+- region: string
+
+
+Return ONLY valid JSON using this exact structure:
+{
+  "standards": [
+    {
+      "id": "string",
+      "name": "string",
+      "organization": "string",
+      "description": "string",
+      "keyPrinciples": ["string"],
+      "applicationAreas": ["string"],
+      "complianceRequirements": ["string"],
+      "benefits": ["string"],
+      "educationalRelevance": ["string"]
+    }
+  ]
+}
+
+RULES:
+- Use ONLY the grade_level and region parameters as inputs. There is no other context.
+- Each time you are called, you MUST generate a FRESH, RANDOM set of 3–5 different environmental standards so repeated calls with the same grade_level and region do NOT always return the same list.
+- Standards must be realistic international or regional environmental frameworks (e.g. ISO 14001, ISO 14064, EMAS, UN SDGs, national climate acts, regional environmental directives) and should be relevant to the given region when possible.
+- Tailor the language, depth, and classroom examples in description, benefits, and educationalRelevance to the grade_level (simpler for younger students, more technical for older students).
+- Use concise bullet-style strings in all arrays so teachers can easily reuse them in lesson materials.
+- Do not repeat the same wording across different standards in a single response.
+- Output JSON only, with no markdown, no code fences, and no extra explanatory text before or after the object.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "sustainability_assessment_tools",
+                    "capability_name": "Assessment Tools",
+                    "capability_description": "Generate sustainability assessment frameworks (metrics, recommendations, action items) for a selected category.",
+                    "capability_category": "analysis",
+                    "icon_name": "BarChart3",
+                    "display_order": 6,
+                    "is_primary": True,
+                    "requires_input_type": "none",
+                    "system_prompt_template": """You are a strict JSON generator for school sustainability assessment tools.
+
+INPUT: no free-text input.
+
+PARAMETERS (OBJECT):
+- grade_level: string
+- region: string
+- assessment_category: string (e.g. \"Carbon Footprint\", \"Water Footprint\", \"Waste Audit\", \"Energy Audit\", \"Biodiversity Assessment\")
+
+Return ONLY valid JSON using this exact structure:
+{
+  "category": "string",
+  "currentValue": 0,
+  "targetValue": 0,
+  "unit": "string",
+  "impact": "low|medium|high",
+  "recommendations": ["string"],
+  "actionItems": ["string"]
+}
+
+RULES:
+- Set unit and impact values appropriate to the assessment_category (e.g. kg CO2e, liters, kWh, % reduction).
+- Do not guess numeric measurements; you may use 0 for currentValue and targetValue but recommendations and actionItems must explain how to measure and improve.
+- Tailor wording and complexity of recommendations/actionItems to grade_level and region.
+- Output JSON only, no markdown or extra explanation.""",
+                    "processing_mode": "structured",
+                },
+                {
+                    "capability_key": "environmental_action_planning",
+                    "capability_name": "Action Planning",
+                    "capability_description": "Create an environmental action plan with objectives, actions, metrics, challenges, and solutions for a given goal and timeframe.",
+                    "capability_category": "instruction",
+                    "icon_name": "Target",
+                    "display_order": 7,
+                    "is_primary": True,
+                    "requires_input_type": "text",
+                    "system_prompt_template": """You are a strict JSON generator for environmental action plans in schools.
+
+INPUT (STRING):
+- action_goal: the main environmental goal (e.g. \"Reduce school carbon footprint by 20%\") that will also be passed as a parameter.
+
+PARAMETERS (OBJECT):
+- grade_level: string
+- region: string
+- action_goal: string
+- timeframe: string (e.g. \"1 month\", \"3 months\", \"6 months\", \"1 year\")
+
+Return ONLY valid JSON using this exact structure:
+{
+  "goal": "string",
+  "timeframe": "string",
+  "objectives": ["string"],
+  "actions": [
+    {
+      "action": "string",
+      "responsible": "string",
+      "deadline": "string",
+      "resources": ["string"]
+    }
+  ],
+  "successMetrics": ["string"],
+  "challenges": ["string"],
+  "solutions": ["string"]
+}
+
+RULES:
+- Tailor objectives, actions, and successMetrics to the given action_goal, timeframe, region, and grade_level.
+- Provide 3–6 objectives, 4–8 actions, 3–6 successMetrics, and 3–5 challenges with matching solutions.
+- Use school-appropriate roles as \"responsible\" (e.g. \"students\", \"science club\", \"facilities team\", \"administration\").
+- Output JSON only, no markdown or narrative text.""",
+                    "processing_mode": "structured",
+                },
+            ],
+        },
+        {
             "slug": "grammar-writing-mentor",
             "name": "Grammar & Writing Mentor",
             "description": "Comprehensive grammar instruction, writing workshop facilitation, peer review guidance, and rubric generation for effective writing instruction.",
