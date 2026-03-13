@@ -1,5 +1,5 @@
 """
-Seed script for 20 core system templates with detailed input/output specifications.
+Seed script for core system templates with detailed input/output specifications.
 """
 from datetime import datetime
 from typing import Dict, Any
@@ -21,7 +21,7 @@ def get_default_model_config() -> Dict[str, Any]:
 
 
 def get_template_data() -> list[Dict[str, Any]]:
-    """Get all 20 template definitions with their versions matching detailed criteria."""
+    """Get all template definitions with their versions matching detailed criteria."""
     return [
         {
             # TEMPLATE 1: General Lesson Planner
@@ -1925,7 +1925,207 @@ def get_template_data() -> list[Dict[str, Any]]:
             }
         },
         {
-            # TEMPLATE 15: Sustainability Systems Thinking Lesson Builder
+            # TEMPLATE 15: Concept Quest Adventure (Universal Subject Game)
+            "template": {
+                "slug": "concept_quest_adventure",
+                "name": "Concept Quest Adventure",
+                "description": "Story-driven concept game where students progress through mission levels to deepen understanding of core ideas across subjects.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "e.g. Year 6, Grade 5"
+                        },
+                        "subject": {
+                            "type": "string",
+                            "title": "Subject",
+                            "enum": ["science", "history", "geography", "literature", "economics", "other"],
+                            "description": "Primary subject focus for the game."
+                        },
+                        "topic": {
+                            "type": "string",
+                            "title": "Topic",
+                            "description": "Short description of the concept focus, e.g. Food Chains."
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom level",
+                            "description": "e.g. Understand, Apply, Understand / Apply."
+                        },
+                        "game_duration": {
+                            "type": "string",
+                            "title": "Game duration",
+                            "description": "Approximate time for the full game, e.g. 30 minutes."
+                        },
+                        "difficulty": {
+                            "type": "string",
+                            "title": "Difficulty",
+                            "enum": ["Easy", "Medium", "Hard"],
+                            "description": "Overall challenge level for the game."
+                        },
+                        "team_mode": {
+                            "type": "boolean",
+                            "title": "Team mode",
+                            "description": "Whether students will play in teams (true) or individually (false)."
+                        },
+                        "standards_framework": {
+                            "type": "string",
+                            "title": "Standards framework (optional)",
+                            "description": "Optional standards framework or curriculum label."
+                        }
+                    },
+                    "required": [
+                        "grade_level",
+                        "subject",
+                        "topic",
+                        "bloom_level",
+                        "game_duration",
+                        "difficulty",
+                        "team_mode"
+                    ]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ConceptQuestAdventureOutput",
+                    "required": [
+                        "title",
+                        "story_scenario",
+                        "mission_levels",
+                        "game_mechanics",
+                        "assessment",
+                        "teacher_facilitation"
+                    ],
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "title": "Game title"
+                        },
+                        "story_scenario": {
+                            "type": "string",
+                            "title": "Story scenario",
+                            "description": "Brief narrative hook that explains the problem or quest."
+                        },
+                        "mission_levels": {
+                            "type": "array",
+                            "title": "Mission levels",
+                            "items": {
+                                "type": "object",
+                                "title": "Mission level",
+                                "required": ["level_title", "description"],
+                                "properties": {
+                                    "level_title": {
+                                        "type": "string",
+                                        "title": "Level title"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "title": "Level description"
+                                    },
+                                    "student_task": {
+                                        "type": "string",
+                                        "title": "Student task",
+                                        "description": "What students do to complete this level."
+                                    }
+                                }
+                            }
+                        },
+                        "game_mechanics": {
+                            "type": "array",
+                            "title": "Game mechanics",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "assessment": {
+                            "type": "array",
+                            "title": "Assessment (skill + evidence)",
+                            "items": {
+                                "type": "object",
+                                "required": ["skill", "evidence"],
+                                "properties": {
+                                    "skill": {
+                                        "type": "string",
+                                        "title": "Skill"
+                                    },
+                                    "evidence": {
+                                        "type": "string",
+                                        "title": "Evidence of learning"
+                                    }
+                                }
+                            }
+                        },
+                        "teacher_facilitation": {
+                            "type": "array",
+                            "title": "Teacher facilitation steps",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "title_template": "The {topic} Quest",
+                    "story_scenario_template": "The class has been transported into a {subject} world where the balance of {topic} has been disrupted. Students must complete concept missions to restore order for Grade {grade_level}.",
+                    "mission_levels": [
+                        {
+                            "level_title": "Level 1 – Identify Key Concepts",
+                            "description_template": "Students sort example items into correct categories related to {topic}.",
+                            "student_task_template": "Select or classify items that correctly represent the core concept."
+                        },
+                        {
+                            "level_title": "Level 2 – Build the Concept Model",
+                            "description_template": "Students arrange cards or ideas to build a complete representation of {topic}.",
+                            "student_task_template": "Assemble the model (diagram, sequence, or structure) in the correct order."
+                        },
+                        {
+                            "level_title": "Level 3 – Challenge Scenario",
+                            "description_template": "Students predict what happens if one part of the model changes or is removed.",
+                            "student_task_template": "Explain the consequences and justify their reasoning using Bloom level {bloom_level}."
+                        }
+                    ],
+                    "game_mechanics": [
+                        "Teams earn quest points for correct answers and high-quality explanations.",
+                        "Bonus points for creative reasoning or deep connections.",
+                        "Time-based mini-challenges to keep energy high."
+                    ],
+                    "assessment": [
+                        {
+                            "skill": "Concept recognition",
+                            "evidence_template": "Correctly identifies and classifies examples and non-examples of {topic}."
+                        },
+                        {
+                            "skill": "Systems / relational thinking",
+                            "evidence_template": "Accurately predicts how changes in one part of the concept affect the whole."
+                        },
+                        {
+                            "skill": "Reasoning and explanation",
+                            "evidence_template": "Provides clear verbal or written explanations using appropriate vocabulary."
+                        }
+                    ],
+                    "teacher_facilitation": [
+                        "Divide the class into teams or pairs based on {difficulty} and group dynamics.",
+                        "Explain the story scenario and overall mission so students understand the stakes.",
+                        "Distribute any cards, prompts, or digital resources needed for each mission level.",
+                        "Run mission levels sequentially, pausing between levels to highlight key thinking moves.",
+                        "Use questioning to push students from recall to {bloom_level} level reasoning.",
+                        "Close with a brief reflection where students share the most important idea they learned about {topic}."
+                    ]
+                },
+                "prompt_definition": {
+                    "description": "Generate a concept quest game with: Game title, story scenario, mission levels (at least 3), game mechanics, assessment table (skill + evidence), and teacher facilitation steps. The game should be playable in a single lesson and adaptable across subjects.",
+                    "context": "This template creates a story-driven concept game that can be used in science, history, geography, literature, or economics. The output must follow the provided output_schema exactly so the frontend can render sections for title, story, mission levels, game mechanics, assessment (skill/evidence), and teacher facilitation."
+                }
+            }
+        },
+        {
+            # TEMPLATE 16: Sustainability Systems Thinking Lesson Builder
             "template": {
                 "slug": "sustainability_systems_lesson",
                 "name": "Sustainability Systems Thinking Lesson Builder",
@@ -2470,12 +2670,570 @@ def get_template_data() -> list[Dict[str, Any]]:
                 }
             }
         },
+        {
+            # TEMPLATE 21: Math City Builder Game
+            "template": {
+                "slug": "math_city_builder",
+                "name": "Math City Builder Game",
+                "description": "Students solve math problems to build and manage a virtual city. Teaches arithmetic, algebra, geometry, and financial literacy.",
+                "category": "lesson_design",
+                "subject_default": "math",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "e.g. Year 5, Grade 5"
+                        },
+                        "subject": {
+                            "type": "string",
+                            "title": "Subject",
+                            "description": "Primary subject (e.g. Mathematics)."
+                        },
+                        "topic": {
+                            "type": "string",
+                            "title": "Topic",
+                            "description": "Short description of the math focus, e.g. Area and Perimeter."
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom level",
+                            "description": "e.g. Apply, Analyze."
+                        },
+                        "game_duration": {
+                            "type": "string",
+                            "title": "Game duration",
+                            "description": "Approximate time for the full game, e.g. 40 minutes."
+                        },
+                        "city_theme": {
+                            "type": "string",
+                            "title": "City theme",
+                            "description": "Theme for the virtual city, e.g. Eco City."
+                        },
+                        "team_mode": {
+                            "type": "boolean",
+                            "title": "Team mode",
+                            "description": "Whether students play in teams (true) or individually (false)."
+                        }
+                    },
+                    "required": [
+                        "grade_level",
+                        "subject",
+                        "topic",
+                        "bloom_level",
+                        "game_duration",
+                        "city_theme",
+                        "team_mode"
+                    ]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "MathCityBuilderOutput",
+                    "required": [
+                        "title",
+                        "game_scenario",
+                        "challenges",
+                        "game_mechanics",
+                        "assessment"
+                    ],
+                    "properties": {
+                        "title": {"type": "string", "title": "Game title"},
+                        "game_scenario": {"type": "string", "title": "Game scenario"},
+                        "challenges": {
+                            "type": "array",
+                            "title": "Challenges",
+                            "items": {
+                                "type": "object",
+                                "required": ["challenge_title", "description"],
+                                "properties": {
+                                    "challenge_title": {"type": "string", "title": "Challenge title"},
+                                    "description": {"type": "string", "title": "Description"},
+                                    "details": {"type": "string", "title": "Details (e.g. dimensions, constraints)"}
+                                }
+                            }
+                        },
+                        "game_mechanics": {
+                            "type": "array",
+                            "title": "Game mechanics",
+                            "items": {"type": "string"}
+                        },
+                        "assessment": {
+                            "type": "array",
+                            "title": "Assessment (skill + evidence)",
+                            "items": {
+                                "type": "object",
+                                "required": ["skill", "evidence"],
+                                "properties": {
+                                    "skill": {"type": "string", "title": "Skill"},
+                                    "evidence": {"type": "string", "title": "Evidence"}
+                                }
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "title_template": "Build Your {city_theme}",
+                    "game_scenario_template": "Students must design a sustainable city by calculating building spaces for {topic}.",
+                    "challenges": [
+                        {
+                            "challenge_title": "Park Design",
+                            "description_template": "Students calculate area given dimensions.",
+                            "details_template": "Length = 20 m, Width = 15 m."
+                        },
+                        {
+                            "challenge_title": "Solar Farm",
+                            "description_template": "Students determine perimeter fencing needed.",
+                            "details_template": "Perimeter calculation challenge."
+                        },
+                        {
+                            "challenge_title": "Budget Constraint",
+                            "description_template": "Students allocate funds to build houses.",
+                            "details_template": "Financial literacy and allocation."
+                        }
+                    ],
+                    "game_mechanics": [
+                        "Points for correct calculations",
+                        "Bonus for fastest solution",
+                        "City upgrades unlocked"
+                    ],
+                    "assessment": [
+                        {"skill": "Mathematical accuracy", "evidence_template": "Correct calculations"},
+                        {"skill": "Problem solving", "evidence_template": "Efficient design choices"},
+                        {"skill": "Real-world application", "evidence_template": "Budget allocation"}
+                    ]
+                },
+                "prompt_definition": {
+                    "description": "Generate a Math City Builder game with: Game title, game scenario, challenges (e.g. Park Design, Solar Farm, Budget Constraint) with dimensions/constraints, game mechanics, and assessment table (skill + evidence). Focus on arithmetic, algebra, geometry, and financial literacy as appropriate for the topic.",
+                    "context": "This template creates a city-building game where students solve math problems to build and manage a virtual city. Output must include title, scenario, challenges, game mechanics, and assessment (skill/evidence)."
+                }
+            }
+        },
+        {
+            # TEMPLATE 22: History Time Travel Simulation
+            "template": {
+                "slug": "history_time_travel_simulation",
+                "name": "History Time Travel Simulation",
+                "description": "Students become historical decision makers and experience consequences. Works for History, Civics, and Social Studies.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "e.g. Year 8, Grade 8"
+                        },
+                        "subject": {
+                            "type": "string",
+                            "title": "Subject",
+                            "description": "e.g. History, Civics, Social Studies."
+                        },
+                        "topic": {
+                            "type": "string",
+                            "title": "Topic",
+                            "description": "Historical focus, e.g. Industrial Revolution."
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom level",
+                            "description": "e.g. Analyze, Evaluate, Analyze / Evaluate."
+                        },
+                        "game_duration": {
+                            "type": "string",
+                            "title": "Game duration",
+                            "description": "Approximate time, e.g. 45 minutes."
+                        },
+                        "roles": {
+                            "type": "array",
+                            "title": "Roles",
+                            "items": {"type": "string"},
+                            "description": "Stakeholder roles for the simulation, e.g. Factory Owner, Worker, Government, Inventor."
+                        }
+                    },
+                    "required": [
+                        "grade_level",
+                        "subject",
+                        "topic",
+                        "bloom_level",
+                        "game_duration",
+                        "roles"
+                    ]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "HistoryTimeTravelOutput",
+                    "required": [
+                        "title",
+                        "scenario",
+                        "game_rounds",
+                        "game_mechanics",
+                        "assessment"
+                    ],
+                    "properties": {
+                        "title": {"type": "string", "title": "Game title"},
+                        "scenario": {"type": "string", "title": "Scenario"},
+                        "game_rounds": {
+                            "type": "array",
+                            "title": "Game rounds",
+                            "items": {
+                                "type": "object",
+                                "required": ["round_title", "description"],
+                                "properties": {
+                                    "round_title": {"type": "string", "title": "Round title"},
+                                    "description": {"type": "string", "title": "Description"},
+                                    "choices": {
+                                        "type": "array",
+                                        "title": "Choices",
+                                        "items": {"type": "string"}
+                                    }
+                                }
+                            }
+                        },
+                        "game_mechanics": {
+                            "type": "array",
+                            "title": "Game mechanics",
+                            "items": {"type": "string"}
+                        },
+                        "assessment": {
+                            "type": "array",
+                            "title": "Assessment (skill + evidence)",
+                            "items": {
+                                "type": "object",
+                                "required": ["skill", "evidence"],
+                                "properties": {
+                                    "skill": {"type": "string", "title": "Skill"},
+                                    "evidence": {"type": "string", "title": "Evidence"}
+                                }
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "title_template": "{topic} Simulator",
+                    "scenario_template": "Students roleplay stakeholders during the {topic}.",
+                    "game_rounds": [
+                        {
+                            "round_title": "Factory Expansion",
+                            "description_template": "Factory owner chooses expansion strategy.",
+                            "choices": ["Hire more workers", "Buy machines"]
+                        },
+                        {
+                            "round_title": "Worker Conditions",
+                            "description_template": "Workers demand improvements.",
+                            "choices": ["Better wages", "Shorter hours"]
+                        },
+                        {
+                            "round_title": "Government Policy",
+                            "description_template": "Government decides policy direction.",
+                            "choices": ["Introduce labor laws", "Allow free market"]
+                        }
+                    ],
+                    "game_mechanics": [
+                        "Each decision changes economy score",
+                        "Each decision changes worker happiness",
+                        "Each decision changes production output"
+                    ],
+                    "assessment": [
+                        {"skill": "Historical understanding", "evidence_template": "Accurate reasoning"},
+                        {"skill": "Critical thinking", "evidence_template": "Trade-off evaluation"},
+                        {"skill": "Argumentation", "evidence_template": "Debate participation"}
+                    ]
+                },
+                "prompt_definition": {
+                    "description": "Generate a History Time Travel simulation with: Game title, scenario, game rounds (each with round title, description, and choices), game mechanics (how decisions affect economy score, worker happiness, production output, etc.), and assessment table (skill + evidence). Students roleplay the given roles and experience consequences of decisions.",
+                    "context": "This template creates a role-play simulation for History, Civics, or Social Studies. Output must include title, scenario, game rounds with choices, game mechanics, and assessment (skill/evidence)."
+                }
+            }
+        },
+        {
+            # TEMPLATE 23: Science Lab Mystery Game
+            "template": {
+                "slug": "science_lab_mystery",
+                "name": "Science Lab Mystery Game",
+                "description": "Students solve a scientific mystery using evidence. Teaches scientific method, hypothesis testing, and evidence analysis.",
+                "category": "lesson_design",
+                "subject_default": "science",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "e.g. Year 7, Grade 7"
+                        },
+                        "subject": {
+                            "type": "string",
+                            "title": "Subject",
+                            "description": "e.g. Science."
+                        },
+                        "topic": {
+                            "type": "string",
+                            "title": "Topic",
+                            "description": "Scientific focus, e.g. Chemical Reactions."
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom level",
+                            "description": "e.g. Analyze."
+                        },
+                        "game_duration": {
+                            "type": "string",
+                            "title": "Game duration",
+                            "description": "Approximate time, e.g. 35 minutes."
+                        },
+                        "mystery_type": {
+                            "type": "string",
+                            "title": "Mystery type",
+                            "description": "Type of mystery scenario, e.g. Lab Accident."
+                        }
+                    },
+                    "required": [
+                        "grade_level",
+                        "subject",
+                        "topic",
+                        "bloom_level",
+                        "game_duration",
+                        "mystery_type"
+                    ]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ScienceLabMysteryOutput",
+                    "required": [
+                        "title",
+                        "scenario",
+                        "evidence_cards",
+                        "investigation_steps",
+                        "game_mechanics",
+                        "assessment"
+                    ],
+                    "properties": {
+                        "title": {"type": "string", "title": "Game title"},
+                        "scenario": {"type": "string", "title": "Scenario"},
+                        "evidence_cards": {
+                            "type": "array",
+                            "title": "Evidence cards",
+                            "items": {
+                                "type": "object",
+                                "required": ["label", "description"],
+                                "properties": {
+                                    "label": {"type": "string", "title": "Evidence label"},
+                                    "description": {"type": "string", "title": "Description"}
+                                }
+                            }
+                        },
+                        "investigation_steps": {
+                            "type": "array",
+                            "title": "Investigation steps",
+                            "items": {"type": "string"}
+                        },
+                        "game_mechanics": {
+                            "type": "array",
+                            "title": "Game mechanics",
+                            "items": {"type": "string"}
+                        },
+                        "assessment": {
+                            "type": "array",
+                            "title": "Assessment (skill + evidence)",
+                            "items": {
+                                "type": "object",
+                                "required": ["skill", "evidence"],
+                                "properties": {
+                                    "skill": {"type": "string", "title": "Skill"},
+                                    "evidence": {"type": "string", "title": "Evidence"}
+                                }
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "title_template": "The {mystery_type} Mystery",
+                    "scenario_template": "A {topic} incident occurred. Students must determine what happened using evidence.",
+                    "evidence_cards": [
+                        {"label": "Evidence A", "description_template": "Observable clue related to {topic}."},
+                        {"label": "Evidence B", "description_template": "Second clue."},
+                        {"label": "Evidence C", "description_template": "Third clue."}
+                    ],
+                    "investigation_steps": [
+                        "Form hypothesis",
+                        "Test reactions or gather data",
+                        "Identify cause or conclusion"
+                    ],
+                    "game_mechanics": [
+                        "Teams earn points for correct hypothesis",
+                        "Points for logical reasoning",
+                        "Points for evidence use"
+                    ],
+                    "assessment": [
+                        {"skill": "Scientific reasoning", "evidence_template": "Hypothesis formation"},
+                        {"skill": "Data interpretation", "evidence_template": "Evidence analysis"},
+                        {"skill": "Problem solving", "evidence_template": "Correct conclusion"}
+                    ]
+                },
+                "prompt_definition": {
+                    "description": "Generate a Science Lab Mystery game with: Game title, scenario (e.g. lab accident or scientific mystery), evidence cards (label + description), investigation steps (e.g. form hypothesis, test reactions, identify conclusion), game mechanics, and assessment table (skill + evidence). Focus on scientific method, hypothesis testing, and evidence analysis.",
+                    "context": "This template creates a mystery game where students solve a scientific puzzle using evidence. Output must include title, scenario, evidence cards, investigation steps, game mechanics, and assessment (skill/evidence)."
+                }
+            }
+        },
+        {
+            # TEMPLATE 24: Global Geography Strategy Game
+            "template": {
+                "slug": "global_geography_strategy",
+                "name": "Global Geography Strategy Game",
+                "description": "Students manage global resources and environmental challenges. Teaches geography, climate science, and economics.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "e.g. Year 9, Grade 9"
+                        },
+                        "subject": {
+                            "type": "string",
+                            "title": "Subject",
+                            "description": "e.g. Geography."
+                        },
+                        "topic": {
+                            "type": "string",
+                            "title": "Topic",
+                            "description": "Focus, e.g. Climate Change."
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom level",
+                            "description": "e.g. Evaluate, Create, Evaluate / Create."
+                        },
+                        "game_duration": {
+                            "type": "string",
+                            "title": "Game duration",
+                            "description": "Approximate time, e.g. 50 minutes."
+                        },
+                        "regions": {
+                            "type": "array",
+                            "title": "Regions",
+                            "items": {"type": "string"},
+                            "description": "World regions students represent, e.g. Asia, Europe, Africa, Americas."
+                        }
+                    },
+                    "required": [
+                        "grade_level",
+                        "subject",
+                        "topic",
+                        "bloom_level",
+                        "game_duration",
+                        "regions"
+                    ]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "GlobalGeographyStrategyOutput",
+                    "required": [
+                        "title",
+                        "scenario",
+                        "game_rounds",
+                        "game_mechanics",
+                        "assessment"
+                    ],
+                    "properties": {
+                        "title": {"type": "string", "title": "Game title"},
+                        "scenario": {"type": "string", "title": "Scenario"},
+                        "game_rounds": {
+                            "type": "array",
+                            "title": "Game rounds",
+                            "items": {
+                                "type": "object",
+                                "required": ["round_title", "description"],
+                                "properties": {
+                                    "round_title": {"type": "string", "title": "Round title"},
+                                    "description": {"type": "string", "title": "Description"},
+                                    "choices": {
+                                        "type": "array",
+                                        "title": "Choices",
+                                        "items": {"type": "string"}
+                                    }
+                                }
+                            }
+                        },
+                        "game_mechanics": {
+                            "type": "array",
+                            "title": "Game mechanics",
+                            "items": {"type": "string"}
+                        },
+                        "assessment": {
+                            "type": "array",
+                            "title": "Assessment (skill + evidence)",
+                            "items": {
+                                "type": "object",
+                                "required": ["skill", "evidence"],
+                                "properties": {
+                                    "skill": {"type": "string", "title": "Skill"},
+                                    "evidence": {"type": "string", "title": "Evidence"}
+                                }
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "title_template": "Planet Earth Strategy Game",
+                    "scenario_template": "Students represent world regions managing resources while addressing {topic}.",
+                    "game_rounds": [
+                        {
+                            "round_title": "Energy Production",
+                            "description_template": "Choose energy strategy.",
+                            "choices": ["Coal", "Solar", "Wind"]
+                        },
+                        {
+                            "round_title": "Economic Development",
+                            "description_template": "Choose development path.",
+                            "choices": ["Build factories", "Protect forests"]
+                        },
+                        {
+                            "round_title": "Climate Disaster",
+                            "description_template": "Students must allocate emergency resources.",
+                            "choices": []
+                        }
+                    ],
+                    "game_mechanics": [
+                        "Players track economy score",
+                        "Players track environmental health",
+                        "Players track global cooperation"
+                    ],
+                    "assessment": [
+                        {"skill": "Geographical understanding", "evidence_template": "Resource decisions"},
+                        {"skill": "Systems thinking", "evidence_template": "Long-term planning"},
+                        {"skill": "Ethical reasoning", "evidence_template": "Sustainability choices"}
+                    ]
+                },
+                "prompt_definition": {
+                    "description": "Generate a Global Geography Strategy game with: Game title, scenario (students represent world regions managing resources and addressing the topic), game rounds (e.g. Energy Production, Economic Development, Climate Disaster) with choices, game mechanics (economy score, environmental health, global cooperation), and assessment table (skill + evidence). Focus on geography, climate science, and economics.",
+                    "context": "This template creates a strategy game for geography and sustainability. Output must include title, scenario, game rounds with choices, game mechanics, and assessment (skill/evidence)."
+                }
+            }
+        },
     ]
 
 
 def seed_templates(db: Session, force: bool = False) -> Dict[str, int]:
     """
-    Seed the 12 core system templates.
+    Seed the core system templates.
     
     Args:
         db: Database session
