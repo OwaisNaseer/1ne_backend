@@ -215,6 +215,1108 @@ def get_template_data() -> list[Dict[str, Any]]:
             }
         },
         {
+            # TEMPLATE 25: GIS Mapping & Spatial Analysis Activity Builder
+            "template": {
+                "slug": "gis_mapping_spatial_analysis",
+                "name": "GIS Mapping & Spatial Analysis Activity Builder",
+                "description": "Helps teachers design GIS-style activities where students analyze geographic patterns using layers, maps, and spatial relationships.",
+                "category": "subject_specific",
+                "subject_default": "social_studies",
+                "grade_bands_supported": ["6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "e.g. Year 10"
+                        },
+                        "map_layers": {
+                            "type": "array",
+                            "title": "Map layers",
+                            "description": "List of geographic layers students will analyze (e.g. Population Density, Transportation Networks).",
+                            "items": {"type": "string"}
+                        },
+                        "region": {
+                            "type": "string",
+                            "title": "Region",
+                            "description": "Geographic focus region, e.g. South-East Asia."
+                        },
+                        "learning_objective": {
+                            "type": "string",
+                            "title": "Learning objective",
+                            "description": "e.g. Students analyze how infrastructure influences economic development."
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom level",
+                            "description": "e.g. Analyze / Evaluate."
+                        },
+                        "assessment_type": {
+                            "type": "string",
+                            "title": "Assessment type",
+                            "description": "e.g. Spatial Analysis Report."
+                        }
+                    },
+                    "required": ["grade_level", "map_layers", "region", "learning_objective", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "GISMappingSpatialAnalysisOutput",
+                    "required": [
+                        "activity_overview",
+                        "map_layer_analysis",
+                        "spatial_pattern_questions",
+                        "comparative_task",
+                        "student_output",
+                        "assessment_rubric",
+                        "bloom_alignment"
+                    ],
+                    "properties": {
+                        "activity_overview": {"type": "string", "title": "Activity overview"},
+                        "map_layer_analysis": {
+                            "type": "array",
+                            "title": "Map layer analysis focus points",
+                            "items": {"type": "string"}
+                        },
+                        "spatial_pattern_questions": {
+                            "type": "array",
+                            "title": "Spatial pattern questions",
+                            "items": {"type": "string"}
+                        },
+                        "comparative_task": {"type": "string", "title": "Comparative task"},
+                        "student_output": {"type": "string", "title": "Student output requirement"},
+                        "assessment_rubric": {
+                            "type": "array",
+                            "title": "Assessment rubric (criteria + description)",
+                            "items": {
+                                "type": "object",
+                                "required": ["criteria", "description"],
+                                "properties": {
+                                    "criteria": {"type": "string", "title": "Criteria"},
+                                    "description": {"type": "string", "title": "Description"}
+                                }
+                            }
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom alignment",
+                            "required": ["level", "description"],
+                            "properties": {
+                                "level": {"type": "string", "title": "Bloom level"},
+                                "description": {"type": "string", "title": "Bloom alignment description"}
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "activity_overview_template": "Students explore how geographic layers such as {map_layers} interact in {region} to influence economic development.",
+                    "map_layer_analysis": [
+                        "Population distribution",
+                        "Major transportation routes",
+                        "Economic activity centers"
+                    ],
+                    "spatial_pattern_questions": [
+                        "Where do economic centers cluster?",
+                        "How do transportation networks influence development?"
+                    ],
+                    "comparative_task_template": "Students compare two cities in {region} and explain their geographic advantages using map evidence.",
+                    "student_output_template": "Write a 500-word spatial analysis report explaining key geographic relationships in {region}.",
+                    "assessment_rubric": [
+                        {"criteria": "Spatial interpretation", "description": "Identifies and describes spatial patterns using map layers."},
+                        {"criteria": "Geographic reasoning", "description": "Explains relationships between layers such as infrastructure and development."},
+                        {"criteria": "Evidence use", "description": "Supports conclusions with specific map-based evidence."}
+                    ],
+                    "bloom_alignment": {
+                        "level": "Analyze / Evaluate",
+                        "description_template": "Students analyze spatial relationships and evaluate development patterns in {region} using {map_layers}."
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a GIS-style mapping activity where students analyze how multiple map layers interact in a specific region. Output must include: Activity overview, Map layer analysis focus points, Spatial pattern questions, Comparative task, Student output requirement, Assessment rubric (criteria + description), and Bloom alignment.",
+                    "context": "This template supports geography and global studies classes that introduce GIS thinking and spatial analysis. Ensure tasks require students to interpret patterns, justify claims with map evidence, and work at the requested Bloom level."
+                }
+            }
+        },
+        {
+            # TEMPLATE 26: Sustainable Cities Planning Studio
+            "template": {
+                "slug": "sustainable_cities_planning_studio",
+                "name": "Sustainable Cities Planning Studio",
+                "description": "Engages students in urban planning challenges focused on sustainability, transport, housing, and green design.",
+                "category": "subject_specific",
+                "subject_default": "social_studies",
+                "grade_bands_supported": ["6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "e.g. Year 10"
+                        },
+                        "city_focus": {
+                            "type": "string",
+                            "title": "City focus",
+                            "description": "e.g. Future Sustainable City."
+                        },
+                        "urban_issues": {
+                            "type": "array",
+                            "title": "Urban issues",
+                            "description": "Key challenges such as traffic congestion, air pollution, housing.",
+                            "items": {"type": "string"}
+                        },
+                        "project_duration": {
+                            "type": "string",
+                            "title": "Project duration",
+                            "description": "e.g. 1 week."
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom level",
+                            "description": "e.g. Create."
+                        },
+                        "team_size": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 20,
+                            "title": "Team size"
+                        }
+                    },
+                    "required": ["grade_level", "city_focus", "urban_issues", "project_duration", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SustainableCitiesPlanningStudioOutput",
+                    "required": [
+                        "planning_challenge_brief",
+                        "urban_planning_components",
+                        "design_process",
+                        "project_deliverables",
+                        "evaluation_rubric",
+                        "bloom_alignment"
+                    ],
+                    "properties": {
+                        "planning_challenge_brief": {"type": "string", "title": "Planning challenge brief"},
+                        "urban_planning_components": {
+                            "type": "array",
+                            "title": "Urban planning components",
+                            "items": {"type": "string"}
+                        },
+                        "design_process": {
+                            "type": "array",
+                            "title": "Design process steps",
+                            "items": {"type": "string"}
+                        },
+                        "project_deliverables": {
+                            "type": "array",
+                            "title": "Project deliverables",
+                            "items": {"type": "string"}
+                        },
+                        "evaluation_rubric": {
+                            "type": "array",
+                            "title": "Evaluation rubric (criteria + description)",
+                            "items": {
+                                "type": "object",
+                                "required": ["criteria", "description"],
+                                "properties": {
+                                    "criteria": {"type": "string", "title": "Criteria"},
+                                    "description": {"type": "string", "title": "Description"}
+                                }
+                            }
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom alignment",
+                            "required": ["level", "description"],
+                            "properties": {
+                                "level": {"type": "string", "title": "Bloom level"},
+                                "description": {"type": "string", "title": "Bloom alignment description"}
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "planning_challenge_brief_template": "Students design a {city_focus} addressing key issues such as {urban_issues} over {project_duration}.",
+                    "urban_planning_components": [
+                        "Transportation systems",
+                        "Green spaces",
+                        "Housing development",
+                        "Waste management"
+                    ],
+                    "design_process": [
+                        "Research urban challenges",
+                        "Develop city layout",
+                        "Propose sustainability solutions"
+                    ],
+                    "project_deliverables": [
+                        "City design map",
+                        "Written proposal",
+                        "Class presentation"
+                    ],
+                    "evaluation_rubric": [
+                        {"criteria": "Innovation", "description": "Proposes creative and original sustainability solutions."},
+                        {"criteria": "Feasibility", "description": "Design is realistic and implementable within constraints."},
+                        {"criteria": "Environmental impact", "description": "Demonstrates strong focus on sustainability and ecological outcomes."}
+                    ],
+                    "bloom_alignment": {
+                        "level": "Create",
+                        "description_template": "Students create a sustainable urban plan that integrates research, design, and evaluation for {city_focus}."
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a Sustainable Cities Planning Studio project where students act as urban planners. Output must include: Planning challenge brief, Urban planning components, Design process steps, Project deliverables, Evaluation rubric (criteria + description), and Bloom alignment.",
+                    "context": "This template supports project-based learning in geography, civics, and sustainability. Ensure tasks encourage collaborative design, creative problem solving, and systems thinking about urban environments."
+                }
+            }
+        },
+        {
+            # TEMPLATE 27: Global Trade Network Analysis
+            "template": {
+                "slug": "global_trade_network_analysis",
+                "name": "Global Trade Network Analysis",
+                "description": "Helps students understand global supply chains, trade patterns, and economic geography.",
+                "category": "subject_specific",
+                "subject_default": "social_studies",
+                "grade_bands_supported": ["9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "e.g. Year 11"
+                        },
+                        "trade_focus": {
+                            "type": "string",
+                            "title": "Trade focus",
+                            "description": "e.g. Global Supply Chains."
+                        },
+                        "products": {
+                            "type": "array",
+                            "title": "Products",
+                            "description": "Key products whose supply chains students will trace (e.g. Electronics, Clothing).",
+                            "items": {"type": "string"}
+                        },
+                        "regions": {
+                            "type": "array",
+                            "title": "Regions",
+                            "description": "Regions involved in trade (e.g. Asia, Europe, North America).",
+                            "items": {"type": "string"}
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom level",
+                            "description": "e.g. Analyze / Evaluate."
+                        },
+                        "assessment_type": {
+                            "type": "string",
+                            "title": "Assessment type",
+                            "description": "e.g. Trade Analysis Report."
+                        }
+                    },
+                    "required": ["grade_level", "trade_focus", "products", "regions", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "GlobalTradeNetworkAnalysisOutput",
+                    "required": [
+                        "global_trade_overview",
+                        "supply_chain_mapping_activity",
+                        "trade_pattern_questions",
+                        "economic_impact_analysis",
+                        "student_task",
+                        "assessment_rubric",
+                        "bloom_alignment"
+                    ],
+                    "properties": {
+                        "global_trade_overview": {"type": "string", "title": "Global trade overview"},
+                        "supply_chain_mapping_activity": {
+                            "type": "array",
+                            "title": "Supply chain mapping steps",
+                            "items": {"type": "string"}
+                        },
+                        "trade_pattern_questions": {
+                            "type": "array",
+                            "title": "Trade pattern questions",
+                            "items": {"type": "string"}
+                        },
+                        "economic_impact_analysis": {
+                            "type": "array",
+                            "title": "Economic impact analysis focus points",
+                            "items": {"type": "string"}
+                        },
+                        "student_task": {"type": "string", "title": "Student task"},
+                        "assessment_rubric": {
+                            "type": "array",
+                            "title": "Assessment rubric (criteria + description)",
+                            "items": {
+                                "type": "object",
+                                "required": ["criteria", "description"],
+                                "properties": {
+                                    "criteria": {"type": "string", "title": "Criteria"},
+                                    "description": {"type": "string", "title": "Description"}
+                                }
+                            }
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom alignment",
+                            "required": ["level", "description"],
+                            "properties": {
+                                "level": {"type": "string", "title": "Bloom level"},
+                                "description": {"type": "string", "title": "Bloom alignment description"}
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "global_trade_overview_template": "Explanation of how {products} move through global supply chains connecting {regions}.",
+                    "supply_chain_mapping_activity": [
+                        "Select a product.",
+                        "Trace its journey from factory to consumer (Factory → Port → Shipping Route → Retail Market).",
+                        "Annotate each stage with location and value added."
+                    ],
+                    "trade_pattern_questions": [
+                        "Why are certain regions manufacturing hubs?",
+                        "How do transportation routes influence trade flows?"
+                    ],
+                    "economic_impact_analysis": [
+                        "Job creation in different regions.",
+                        "Environmental costs of production and transport.",
+                        "Economic dependency on global markets."
+                    ],
+                    "student_task_template": "Write a trade analysis report explaining how global trade networks function for {products} within {trade_focus}.",
+                    "assessment_rubric": [
+                        {"criteria": "Geographic analysis", "description": "Explains trade patterns across regions using spatial reasoning."},
+                        {"criteria": "Economic reasoning", "description": "Accurately interprets supply chains and economic relationships."},
+                        {"criteria": "Critical evaluation", "description": "Assesses social, environmental, and economic impacts with balance."}
+                    ],
+                    "bloom_alignment": {
+                        "level": "Analyze / Evaluate",
+                        "description_template": "Students analyze global trade networks and evaluate economic implications for {trade_focus} and {products}."
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a Global Trade Network Analysis activity where students trace products through international supply chains. Output must include: Global trade overview, Supply chain mapping activity, Trade pattern questions, Economic impact analysis focus points, Student task, Assessment rubric, and Bloom alignment.",
+                    "context": "This template supports senior geography and economics classes studying globalization and trade. Ensure students interpret maps/diagrams, reason about supply chains, and critically evaluate impacts."
+                }
+            }
+        },
+        {
+            # TEMPLATE 28: Interdisciplinary English Project Builder
+            "template": {
+                "slug": "interdisciplinary_english_project",
+                "name": "Interdisciplinary English Project Builder",
+                "description": "Connects English with science, history, or social studies for project-based learning and persuasive communication.",
+                "category": "subject_specific",
+                "subject_default": "english",
+                "grade_bands_supported": ["6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "e.g. Year 9"
+                        },
+                        "project_theme": {
+                            "type": "string",
+                            "title": "Project theme",
+                            "description": "e.g. Environmental Sustainability."
+                        },
+                        "connected_subject": {
+                            "type": "string",
+                            "title": "Connected subject",
+                            "description": "e.g. Science, History, Social Studies."
+                        },
+                        "learning_objective": {
+                            "type": "string",
+                            "title": "Learning objective",
+                            "description": "e.g. Communicate scientific ideas through persuasive writing."
+                        },
+                        "project_duration": {
+                            "type": "string",
+                            "title": "Project duration",
+                            "description": "e.g. 1 week."
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom level",
+                            "description": "e.g. Create."
+                        }
+                    },
+                    "required": ["grade_level", "project_theme", "connected_subject", "learning_objective", "project_duration", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "InterdisciplinaryEnglishProjectOutput",
+                    "required": [
+                        "project_overview",
+                        "research_task",
+                        "writing_task",
+                        "presentation_component",
+                        "assessment_rubric",
+                        "bloom_alignment"
+                    ],
+                    "properties": {
+                        "project_overview": {"type": "string", "title": "Project overview"},
+                        "research_task": {
+                            "type": "array",
+                            "title": "Research task focus areas",
+                            "items": {"type": "string"}
+                        },
+                        "writing_task": {
+                            "type": "array",
+                            "title": "Writing task outputs",
+                            "items": {"type": "string"}
+                        },
+                        "presentation_component": {"type": "string", "title": "Presentation component"},
+                        "assessment_rubric": {
+                            "type": "array",
+                            "title": "Assessment rubric (criteria + description)",
+                            "items": {
+                                "type": "object",
+                                "required": ["criteria", "description"],
+                                "properties": {
+                                    "criteria": {"type": "string", "title": "Criteria"},
+                                    "description": {"type": "string", "title": "Description"}
+                                }
+                            }
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom alignment",
+                            "required": ["level", "description"],
+                            "properties": {
+                                "level": {"type": "string", "title": "Bloom level"},
+                                "description": {"type": "string", "title": "Bloom alignment description"}
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "project_overview_template": "Students explore {project_theme} in {connected_subject} and communicate findings through persuasive English writing.",
+                    "research_task": [
+                        "Investigate pollution impacts.",
+                        "Explore renewable energy solutions.",
+                        "Examine biodiversity loss and conservation."
+                    ],
+                    "writing_task": [
+                        "Persuasive article",
+                        "Awareness campaign message"
+                    ],
+                    "presentation_component_template": "Students present their argument to the class, explaining key ideas about {project_theme}.",
+                    "assessment_rubric": [
+                        {"criteria": "Research quality", "description": "Information is accurate, relevant, and well-sourced from {connected_subject}."},
+                        {"criteria": "Writing clarity", "description": "Argument is clearly structured with strong persuasive techniques."},
+                        {"criteria": "Creativity", "description": "Presentation and writing are engaging and original."}
+                    ],
+                    "bloom_alignment": {
+                        "level": "Create",
+                        "description_template": "Students create interdisciplinary communication products that synthesize research on {project_theme}."
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate an interdisciplinary English project linking English with another subject such as science or history. Output must include: Project overview, Research task focus areas, Writing task outputs, Presentation component, Assessment rubric, and Bloom alignment.",
+                    "context": "This template supports IB-style and modern curricula that emphasize interdisciplinary, project-based learning. Ensure tasks require both content understanding and advanced communication skills."
+                }
+            }
+        },
+        {
+            # TEMPLATE 29: Literary Analysis Essay Architect (Advanced Literature)
+            "template": {
+                "slug": "literary_analysis_essay_architect",
+                "name": "Literary Analysis Essay Architect (Advanced Literature)",
+                "description": "Guides students in writing high-level literary analysis essays for IB, AP, Cambridge, and GCSE English Literature.",
+                "category": "subject_specific",
+                "subject_default": "english",
+                "grade_bands_supported": ["9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "e.g. Year 11"
+                        },
+                        "literary_text": {
+                            "type": "string",
+                            "title": "Literary text",
+                            "description": "Title and author, e.g. Macbeth by William Shakespeare."
+                        },
+                        "analysis_focus": {
+                            "type": "string",
+                            "title": "Analysis focus",
+                            "description": "e.g. Ambition and Moral Corruption."
+                        },
+                        "essay_type": {
+                            "type": "string",
+                            "title": "Essay type",
+                            "description": "e.g. Literary Analysis."
+                        },
+                        "learning_objective": {
+                            "type": "string",
+                            "title": "Learning objective",
+                            "description": "e.g. Analyze how the author develops a theme through character and symbolism."
+                        },
+                        "essay_length": {
+                            "type": "string",
+                            "title": "Essay length",
+                            "description": "e.g. 1000 words."
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom level",
+                            "description": "e.g. Analyze → Evaluate."
+                        },
+                        "standards_framework": {
+                            "type": "string",
+                            "title": "Standards framework",
+                            "description": "Optional curriculum framework (e.g. IB Literature)."
+                        }
+                    },
+                    "required": ["grade_level", "literary_text", "analysis_focus", "essay_type", "learning_objective", "essay_length", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "LiteraryAnalysisEssayArchitectOutput",
+                    "required": [
+                        "literary_context_overview",
+                        "analytical_essay_prompt",
+                        "evidence_exploration_activity",
+                        "essay_structure_guide",
+                        "assessment_rubric",
+                        "bloom_alignment"
+                    ],
+                    "properties": {
+                        "literary_context_overview": {"type": "string", "title": "Literary context overview"},
+                        "analytical_essay_prompt": {"type": "string", "title": "Analytical essay prompt"},
+                        "evidence_exploration_activity": {
+                            "type": "array",
+                            "title": "Evidence exploration focus areas",
+                            "items": {"type": "string"}
+                        },
+                        "essay_structure_guide": {
+                            "type": "object",
+                            "title": "Essay structure guide",
+                            "properties": {
+                                "introduction": {"type": "array", "title": "Introduction elements", "items": {"type": "string"}},
+                                "body_paragraphs": {"type": "array", "title": "Body paragraph elements", "items": {"type": "string"}},
+                                "conclusion": {"type": "array", "title": "Conclusion elements", "items": {"type": "string"}}
+                            },
+                            "required": ["introduction", "body_paragraphs", "conclusion"]
+                        },
+                        "assessment_rubric": {
+                            "type": "array",
+                            "title": "Assessment rubric (criteria + description)",
+                            "items": {
+                                "type": "object",
+                                "required": ["criteria", "description"],
+                                "properties": {
+                                    "criteria": {"type": "string", "title": "Criteria"},
+                                    "description": {"type": "string", "title": "Description"}
+                                }
+                            }
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom alignment",
+                            "required": ["level", "description"],
+                            "properties": {
+                                "level": {"type": "string", "title": "Bloom level"},
+                                "description": {"type": "string", "title": "Bloom alignment description"}
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "literary_context_overview_template": "Brief explanation of how {analysis_focus} operates in {literary_text}, e.g. ambition drives the protagonist's rise to power but leads to psychological destruction.",
+                    "analytical_essay_prompt_template": "How does the author use symbolism and character development to explore {analysis_focus} in {literary_text}?",
+                    "evidence_exploration_activity": [
+                        "Key character soliloquies or internal monologues.",
+                        "Persuasive dialogue from pivotal scenes.",
+                        "Symbolic motifs (e.g. blood, weather, light/dark)."
+                    ],
+                    "essay_structure_guide": {
+                        "introduction": [
+                            "Context for text and theme.",
+                            "Clear thesis statement addressing {analysis_focus}."
+                        ],
+                        "body_paragraphs": [
+                            "Analytical claim.",
+                            "Embedded evidence (quotation).",
+                            "Explanation and close analysis of language.",
+                            "Comment on broader thematic implications."
+                        ],
+                        "conclusion": [
+                            "Synthesis of main points.",
+                            "Connection of theme to broader human or social questions."
+                        ]
+                    },
+                    "assessment_rubric": [
+                        {"criteria": "Interpretation", "description": "Shows insightful understanding of {analysis_focus} in {literary_text}."},
+                        {"criteria": "Evidence", "description": "Selects accurate, well-integrated textual evidence."},
+                        {"criteria": "Analysis", "description": "Offers detailed explanation of literary techniques and their effects."},
+                        {"criteria": "Organization", "description": "Essay is logically structured with coherent paragraphs and transitions."}
+                    ],
+                    "bloom_alignment": {
+                        "level": "Analyze → Evaluate",
+                        "description_template": "Students analyze literary devices and evaluate thematic meaning in {literary_text} at an advanced level."
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a high-level literary analysis essay task suitable for IB, AP, Cambridge, or GCSE. Output must include: Literary context overview, Analytical essay prompt, Evidence exploration activity, Essay structure guide, Assessment rubric, and Bloom alignment.",
+                    "context": "This template is for advanced literature classes. Ensure prompts demand close textual analysis, conceptual sophistication, and evaluative thinking."
+                }
+            }
+        },
+        {
+            # TEMPLATE 30: Media Literacy & Bias Analysis Builder
+            "template": {
+                "slug": "media_literacy_bias_analysis",
+                "name": "Media Literacy & Bias Analysis Builder",
+                "description": "Helps teachers design activities where students analyze media bias, credibility, and perspective.",
+                "category": "subject_specific",
+                "subject_default": "social_studies",
+                "grade_bands_supported": ["9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "e.g. Year 10"
+                        },
+                        "media_topic": {
+                            "type": "string",
+                            "title": "Media topic",
+                            "description": "e.g. Climate Change Reporting."
+                        },
+                        "source_types": {
+                            "type": "array",
+                            "title": "Source types",
+                            "description": "Types of sources to compare (e.g. News Article, Social Media Post).",
+                            "items": {"type": "string"}
+                        },
+                        "learning_objective": {
+                            "type": "string",
+                            "title": "Learning objective",
+                            "description": "e.g. Analyze bias and evaluate credibility of media sources."
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom level",
+                            "description": "e.g. Analyze / Evaluate."
+                        },
+                        "assessment_type": {
+                            "type": "string",
+                            "title": "Assessment type",
+                            "description": "e.g. Media Analysis Report."
+                        }
+                    },
+                    "required": ["grade_level", "media_topic", "source_types", "learning_objective", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "MediaLiteracyBiasAnalysisOutput",
+                    "required": [
+                        "media_literacy_objective",
+                        "source_comparison_task",
+                        "bias_detection_questions",
+                        "credibility_evaluation_framework",
+                        "student_task",
+                        "assessment_rubric",
+                        "bloom_alignment"
+                    ],
+                    "properties": {
+                        "media_literacy_objective": {"type": "string", "title": "Media literacy objective"},
+                        "source_comparison_task": {
+                            "type": "object",
+                            "title": "Source comparison task",
+                            "properties": {
+                                "sources_to_compare": {"type": "array", "title": "Sources to compare", "items": {"type": "string"}},
+                                "focus_areas": {"type": "array", "title": "Focus areas", "items": {"type": "string"}}
+                            },
+                            "required": ["sources_to_compare", "focus_areas"]
+                        },
+                        "bias_detection_questions": {
+                            "type": "array",
+                            "title": "Bias detection questions",
+                            "items": {"type": "string"}
+                        },
+                        "credibility_evaluation_framework": {
+                            "type": "array",
+                            "title": "Credibility evaluation framework",
+                            "items": {"type": "string"}
+                        },
+                        "student_task": {"type": "string", "title": "Student task"},
+                        "assessment_rubric": {
+                            "type": "array",
+                            "title": "Assessment rubric (criteria + description)",
+                            "items": {
+                                "type": "object",
+                                "required": ["criteria", "description"],
+                                "properties": {
+                                    "criteria": {"type": "string", "title": "Criteria"},
+                                    "description": {"type": "string", "title": "Description"}
+                                }
+                            }
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom alignment",
+                            "required": ["level", "description"],
+                            "properties": {
+                                "level": {"type": "string", "title": "Bloom level"},
+                                "description": {"type": "string", "title": "Bloom alignment description"}
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "media_literacy_objective_template": "Students analyze how information about {media_topic} is presented across different media sources and detect bias.",
+                    "source_comparison_task": {
+                        "sources_to_compare": [
+                            "News article",
+                            "Social media post"
+                        ],
+                        "focus_areas": [
+                            "Language tone",
+                            "Evidence used",
+                            "Emotional framing"
+                        ]
+                    },
+                    "bias_detection_questions": [
+                        "What perspective does the author represent?",
+                        "What information might be missing?",
+                        "Is the language neutral, biased, or persuasive?"
+                    ],
+                    "credibility_evaluation_framework": [
+                        "Author expertise and background.",
+                        "Evidence reliability and sourcing.",
+                        "Publication or platform credibility."
+                    ],
+                    "student_task_template": "Write a 500-word media analysis explaining which source on {media_topic} is more reliable and why.",
+                    "assessment_rubric": [
+                        {"criteria": "Source evaluation", "description": "Accurately identifies and evaluates source credibility."},
+                        {"criteria": "Bias analysis", "description": "Clearly detects and explains perspectives and biases."},
+                        {"criteria": "Reasoning", "description": "Builds a logical argument supported by specific examples."}
+                    ],
+                    "bloom_alignment": {
+                        "level": "Analyze / Evaluate",
+                        "description_template": "Students analyze media bias and evaluate credibility of sources about {media_topic}."
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a media literacy activity comparing at least two contrasting source types on a given topic. Output must include: Media literacy objective, Source comparison task (sources and focus areas), Bias detection questions, Credibility evaluation framework, Student task, Assessment rubric, and Bloom alignment.",
+                    "context": "This template supports critical media literacy in secondary classrooms. Ensure tasks are age-appropriate and encourage skepticism, evidence-based evaluation, and ethical media consumption."
+                }
+            }
+        },
+        {
+            # TEMPLATE 31: Scientific Controversy Debate Framework
+            "template": {
+                "slug": "scientific_controversy_debate",
+                "name": "Scientific Controversy Debate Framework",
+                "description": "Helps students debate scientific issues with conflicting perspectives, improving scientific literacy and argument evaluation.",
+                "category": "subject_specific",
+                "subject_default": "science",
+                "grade_bands_supported": ["9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "e.g. Year 10"
+                        },
+                        "scientific_issue": {
+                            "type": "string",
+                            "title": "Scientific issue",
+                            "description": "e.g. Should genetically modified crops be widely adopted?"
+                        },
+                        "roles": {
+                            "type": "array",
+                            "title": "Stakeholder roles",
+                            "description": "List of roles students will play (e.g. Scientist, Environmental Activist).",
+                            "items": {"type": "string"}
+                        },
+                        "debate_format": {
+                            "type": "string",
+                            "title": "Debate format",
+                            "description": "e.g. Scientific Evidence Debate."
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom level",
+                            "description": "e.g. Analyze / Evaluate."
+                        },
+                        "duration": {
+                            "type": "string",
+                            "title": "Duration",
+                            "description": "e.g. 45 minutes."
+                        }
+                    },
+                    "required": ["grade_level", "scientific_issue", "roles", "debate_format", "bloom_level", "duration"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ScientificControversyDebateOutput",
+                    "required": [
+                        "scientific_context_overview",
+                        "stakeholder_role_profiles",
+                        "evidence_analysis_task",
+                        "debate_structure",
+                        "reflection_questions",
+                        "assessment_rubric",
+                        "bloom_alignment"
+                    ],
+                    "properties": {
+                        "scientific_context_overview": {"type": "string", "title": "Scientific context overview"},
+                        "stakeholder_role_profiles": {
+                            "type": "array",
+                            "title": "Stakeholder role profiles",
+                            "items": {
+                                "type": "object",
+                                "required": ["role", "focus"],
+                                "properties": {
+                                    "role": {"type": "string", "title": "Role"},
+                                    "focus": {"type": "string", "title": "Focus"}
+                                }
+                            }
+                        },
+                        "evidence_analysis_task": {
+                            "type": "string",
+                            "title": "Evidence analysis task"
+                        },
+                        "debate_structure": {
+                            "type": "array",
+                            "title": "Debate structure steps",
+                            "items": {"type": "string"}
+                        },
+                        "reflection_questions": {
+                            "type": "array",
+                            "title": "Reflection questions",
+                            "items": {"type": "string"}
+                        },
+                        "assessment_rubric": {
+                            "type": "array",
+                            "title": "Assessment rubric (skill + criteria)",
+                            "items": {
+                                "type": "object",
+                                "required": ["skill", "criteria"],
+                                "properties": {
+                                    "skill": {"type": "string", "title": "Skill"},
+                                    "criteria": {"type": "string", "title": "Criteria"}
+                                }
+                            }
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom alignment",
+                            "required": ["level", "description"],
+                            "properties": {
+                                "level": {"type": "string", "title": "Bloom level"},
+                                "description": {"type": "string", "title": "Bloom alignment description"}
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "scientific_context_overview_template": "Students explore the benefits and risks of {scientific_issue}, drawing on current scientific research.",
+                    "stakeholder_role_profiles": [
+                        {"role": "Biotechnology Scientist", "focus": "Agricultural innovation and increased yields."},
+                        {"role": "Environmental Activist", "focus": "Ecological concerns and biodiversity impacts."},
+                        {"role": "Farmer", "focus": "Productivity, economic stability, and livelihood."},
+                        {"role": "Public Health Expert", "focus": "Food safety, regulation, and long-term health outcomes."}
+                    ],
+                    "evidence_analysis_task_template": "Students analyze scientific studies and popular articles about {scientific_issue}, identifying key findings and uncertainties.",
+                    "debate_structure": [
+                        "Evidence presentation",
+                        "Argument development",
+                        "Counterargument responses",
+                        "Final evaluation vote"
+                    ],
+                    "reflection_questions": [
+                        "How should scientific uncertainty influence decision-making?",
+                        "Which evidence was most persuasive and why?"
+                    ],
+                    "assessment_rubric": [
+                        {"skill": "Evidence interpretation", "criteria": "Accurately uses and explains scientific data."},
+                        {"skill": "Argument logic", "criteria": "Presents clear, coherent reasoning supported by evidence."},
+                        {"skill": "Critical thinking", "criteria": "Evaluates opposing viewpoints and limitations of evidence."}
+                    ],
+                    "bloom_alignment": {
+                        "level": "Analyze / Evaluate",
+                        "description_template": "Students analyze scientific evidence on {scientific_issue} and evaluate competing claims during debate."
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a scientific debate activity around a controversial issue. Output must include: Scientific context overview, Stakeholder role profiles, Evidence analysis task, Debate structure, Reflection questions, Assessment rubric, and Bloom alignment.",
+                    "context": "This template is for science and interdisciplinary courses that teach evidence-based argumentation. Ensure roles are balanced and encourage respectful, critical discussion."
+                }
+            }
+        },
+        {
+            # TEMPLATE 32: Policy Debate & Decision-Making Simulation
+            "template": {
+                "slug": "policy_debate_decision_simulation",
+                "name": "Policy Debate & Decision-Making Simulation",
+                "description": "Teaches students how to debate real-world policy decisions and evaluate trade-offs between competing solutions.",
+                "category": "subject_specific",
+                "subject_default": "social_studies",
+                "grade_bands_supported": ["9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "e.g. Year 10"
+                        },
+                        "policy_issue": {
+                            "type": "string",
+                            "title": "Policy issue",
+                            "description": "e.g. Should governments ban single-use plastics?"
+                        },
+                        "debate_roles": {
+                            "type": "array",
+                            "title": "Debate roles",
+                            "description": "Roles such as Government, Environmental Activists, Business Owners, Consumers.",
+                            "items": {"type": "string"}
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom level",
+                            "description": "e.g. Analyze → Evaluate."
+                        },
+                        "activity_format": {
+                            "type": "string",
+                            "title": "Activity format",
+                            "description": "e.g. Policy Simulation."
+                        },
+                        "duration": {
+                            "type": "string",
+                            "title": "Duration",
+                            "description": "e.g. 50 minutes."
+                        }
+                    },
+                    "required": ["grade_level", "policy_issue", "debate_roles", "bloom_level", "activity_format", "duration"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "PolicyDebateDecisionSimulationOutput",
+                    "required": [
+                        "policy_issue_overview",
+                        "role_assignment_sheets",
+                        "debate_structure",
+                        "critical_thinking_prompts",
+                        "student_task",
+                        "assessment_rubric",
+                        "bloom_alignment"
+                    ],
+                    "properties": {
+                        "policy_issue_overview": {"type": "string", "title": "Policy issue overview"},
+                        "role_assignment_sheets": {
+                            "type": "array",
+                            "title": "Role assignment sheets",
+                            "items": {
+                                "type": "object",
+                                "required": ["role", "goal"],
+                                "properties": {
+                                    "role": {"type": "string", "title": "Role"},
+                                    "goal": {"type": "string", "title": "Goal"}
+                                }
+                            }
+                        },
+                        "debate_structure": {
+                            "type": "array",
+                            "title": "Debate structure steps",
+                            "items": {"type": "string"}
+                        },
+                        "critical_thinking_prompts": {
+                            "type": "array",
+                            "title": "Critical thinking prompts",
+                            "items": {"type": "string"}
+                        },
+                        "student_task": {"type": "string", "title": "Student task"},
+                        "assessment_rubric": {
+                            "type": "array",
+                            "title": "Assessment rubric (skill + criteria)",
+                            "items": {
+                                "type": "object",
+                                "required": ["skill", "criteria"],
+                                "properties": {
+                                    "skill": {"type": "string", "title": "Skill"},
+                                    "criteria": {"type": "string", "title": "Criteria"}
+                                }
+                            }
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom alignment",
+                            "required": ["level", "description"],
+                            "properties": {
+                                "level": {"type": "string", "title": "Bloom level"},
+                                "description": {"type": "string", "title": "Bloom alignment description"}
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "policy_issue_overview_template": "Students explore environmental, economic, and social perspectives on {policy_issue}, considering trade-offs between different policy options.",
+                    "role_assignment_sheets": [
+                        {"role": "Government", "goal": "Reduce environmental damage while maintaining political and economic stability."},
+                        {"role": "Environmental Activists", "goal": "Advocate for strong sustainability policies and ambitious targets."},
+                        {"role": "Business Owners", "goal": "Protect economic interests, jobs, and business viability."},
+                        {"role": "Consumers", "goal": "Balance convenience, cost, and sustainability."}
+                    ],
+                    "debate_structure": [
+                        "Stakeholder opening arguments",
+                        "Evidence presentation",
+                        "Cross-examination questions",
+                        "Policy negotiation",
+                        "Final decision vote"
+                    ],
+                    "critical_thinking_prompts": [
+                        "What trade-offs exist between economic growth and environmental protection?",
+                        "Which policy solution seems most balanced, and for whom?"
+                    ],
+                    "student_task_template": "Students write a short policy recommendation explaining their final position on {policy_issue} and justifying it with evidence.",
+                    "assessment_rubric": [
+                        {"skill": "Argument reasoning", "criteria": "Provides logical justification and recognizes trade-offs."},
+                        {"skill": "Evidence use", "criteria": "Uses credible, relevant examples and data."},
+                        {"skill": "Perspective awareness", "criteria": "Considers multiple stakeholder viewpoints fairly."}
+                    ],
+                    "bloom_alignment": {
+                        "level": "Analyze → Evaluate",
+                        "description_template": "Students analyze policy trade-offs and evaluate competing solutions related to {policy_issue}."
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a policy debate and decision-making simulation for a real-world issue. Output must include: Policy issue overview, Role assignment sheets, Debate structure, Critical thinking prompts, Student task, Assessment rubric, and Bloom alignment.",
+                    "context": "This template is for civics, social studies, and interdisciplinary humanities courses. Ensure the simulation highlights trade-offs, multiple perspectives, and evidence-based decision-making."
+                }
+            }
+        },
+        {
             # TEMPLATE 2: Activity Suggestion / Engagement Builder
             "template": {
                 "slug": "learning_activity",
