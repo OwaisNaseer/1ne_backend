@@ -1,4 +1,6 @@
-"""Content Registry domain services (lazy exports)."""
+"""
+Recommendation engine services (lazy exports).
+"""
 
 from __future__ import annotations
 
@@ -7,9 +9,8 @@ from typing import Any
 
 
 _LAZY_EXPORTS = {
-    "ContentRegistryService": "app.domains.content_registry.services.content_registry_service",
-    "ContentRegistryServiceError": "app.domains.content_registry.services.content_registry_service",
-    "RecommendationMappingService": "app.domains.content_registry.services.recommendation_mapping_service",
+    "RecommendationRankingService": "app.domains.recommendation_engine.services.recommendation_ranking_service",
+    "RecommendationScoringService": "app.domains.recommendation_engine.services.recommendation_scoring_service",
 }
 
 
@@ -25,3 +26,4 @@ def __dir__() -> list[str]:
 
 
 __all__ = list(_LAZY_EXPORTS.keys())
+

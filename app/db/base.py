@@ -87,4 +87,20 @@ from app.domains.teacher_intelligence.models import (  # noqa: F401, E402
 from app.domains.content_registry.models import ContentRegistryItem  # noqa: F401, E402
 
 # Import content factory models
-from app.domains.content_factory.models import ContentGenerationJob  # noqa: F401, E402
+from app.domains.content_factory.models import (  # noqa: F401, E402
+    ContentGenerationJob,
+    ContentGenerationReview,
+)
+
+# Import learning progress models
+from app.domains.learning_progress.models import (  # noqa: F401, E402
+    LearningSession,
+    LearningEvent,
+    RecommendationEvent,
+    ContentFeedback,
+)
+
+# Import recommendation analytics models
+from app.domains.recommendation_analytics.models import (  # noqa: F401, E402
+    RecommendationPerformanceSnapshot,
+)

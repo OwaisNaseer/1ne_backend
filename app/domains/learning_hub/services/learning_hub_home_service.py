@@ -23,6 +23,7 @@ from app.domains.teacher_identity.models import (
     TeacherCareerDocument,
 )
 from app.domains.content_registry.services import RecommendationMappingService
+from app.domains.learning_progress.services import ProgressAggregationService
 from app.domains.learning_hub import schemas as hub_schemas
 
 # Fields that count toward profile completeness (spec)
@@ -36,17 +37,90 @@ _COMPLETENESS_FIELDS = [
     "years_experience",
 ]
 
+_COLD_START = "cold_start"
+_WARM_START = "warm_start"
+_PERSONALIZED = "personalized"
+
+
+def _has_meaningful_profile_data(ctp: Dict[str, Any], profile_completeness: hub_schemas.ProfileCompleteness) -> bool:
+    if not ctp:
+        return False
+    identity = ctp.get("identity") or {}
+    environment = ctp.get("environment") or {}
+    profile_fields = [
+        identity.get("country"),
+        identity.get("region"),
+        identity.get("subjects"),
+        identity.get("grade_band"),
+        environment.get("school_type"),
+        environment.get("language_preference"),
+    ]
+    populated = sum(1 for field in profile_fields if field)
+    return populated >= 4 and profile_completeness.score >= 0.45
+
+
+def _detect_learning_hub_mode(
+    ctp: Dict[str, Any],
+    snapshot: Any,
+    ml_output: Any,
+    profile_completeness: hub_schemas.ProfileCompleteness,
+    progress_overview: Any,
+) -> str:
+    identity = ctp.get("identity") or {}
+    environment = ctp.get("environment") or {}
+    profile_ready = _has_meaningful_profile_data(ctp, profile_completeness)
+    behavior_sessions = int(getattr(progress_overview, "total_sessions", 0) or 0) if progress_overview else 0
+    behavior_completed = int(getattr(progress_overview, "completed_content_count", 0) or 0) if progress_overview else 0
+    behavior_ready = behavior_sessions >= 4 and behavior_completed >= 1
+    snapshot_ready = snapshot is not None
+    ml_ready = ml_output is not None
+
+    has_any_signal = any(
+        [
+            profile_ready,
+            snapshot_ready,
+            ml_ready,
+            behavior_sessions > 0,
+            bool(identity.get("subjects")),
+            bool(identity.get("grade_band")),
+            bool(environment.get("school_type")),
+        ]
+    )
+
+    if profile_completeness.score < 0.45 and not behavior_ready and not snapshot_ready and not ml_ready:
+        return _COLD_START
+
+    if profile_ready and snapshot_ready and ml_ready and behavior_ready:
+        return _PERSONALIZED
+
+    if profile_ready or has_any_signal:
+        return _WARM_START
+
+    return _COLD_START
+
 
 def _compute_profile_completeness(
     db: Session, teacher_id: UUID
 ) -> hub_schemas.ProfileCompleteness:
     """Score 0-1 and missing_fields from context + at least one identity record."""
     missing: List[str] = []
-    ctx = (
-        db.query(TeacherProfileContext)
-        .filter(TeacherProfileContext.user_id == teacher_id)
-        .first()
-    )
+    ctx = None
+    try:
+        ctx = (
+            db.query(TeacherProfileContext)
+            .filter(TeacherProfileContext.user_id == teacher_id)
+            .first()
+        )
+    except Exception:
+        # Partial migrations / missing optional tables -> treat profile as incomplete.
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return hub_schemas.ProfileCompleteness(
+            score=0.0,
+            missing_fields=list(_COMPLETENESS_FIELDS) + ["teaching_context"],
+        )
 
     if not ctx:
         return hub_schemas.ProfileCompleteness(
@@ -69,11 +143,19 @@ def _compute_profile_completeness(
     if not (getattr(ctx, "years_experience", None) and str(ctx.years_experience or "").strip()):
         missing.append("years_experience")
 
-    has_identity = (
-        db.query(TeacherExperience).filter(TeacherExperience.user_id == teacher_id).first()
-        or db.query(TeacherCertification).filter(TeacherCertification.user_id == teacher_id).first()
-        or db.query(TeacherCareerDocument).filter(TeacherCareerDocument.user_id == teacher_id).first()
-    )
+    has_identity = False
+    try:
+        has_identity = (
+            db.query(TeacherExperience).filter(TeacherExperience.user_id == teacher_id).first()
+            or db.query(TeacherCertification).filter(TeacherCertification.user_id == teacher_id).first()
+            or db.query(TeacherCareerDocument).filter(TeacherCareerDocument.user_id == teacher_id).first()
+        )
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        has_identity = False
     if not has_identity:
         missing.append("experience_or_certification_or_document")
 
@@ -178,15 +260,52 @@ class LearningHubHomeService:
     def get_home(self, teacher_id: UUID) -> hub_schemas.LearningHubHomeResponse:
         """Build deterministic home payload for the teacher. Ensures fresh intelligence first."""
         refresh_service = IntelligenceRefreshService(self.db)
-        refresh_service.ensure_fresh_teacher_intelligence(teacher_id)
+        try:
+            refresh_service.ensure_fresh_teacher_intelligence(teacher_id)
+        except Exception:  # pragma: no cover - defensive
+            # If intelligence tables aren’t present (e.g., partial migrations),
+            # degrade gracefully to cold-start mode with seeded recommendations.
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
 
         assembler = CTPAssemblerService(self.db)
         snapshot_svc = FeatureSnapshotService(self.db)
         output_svc = MLOutputService(self.db)
+        progress_svc = ProgressAggregationService(self.db)
 
-        ctp = assembler.assemble(teacher_id)
-        snapshot = snapshot_svc.get_latest(teacher_id)
-        ml_output = output_svc.get_latest(teacher_id, pipeline_name="pipeline2")
+        ctp = {}
+        try:
+            ctp = assembler.assemble(teacher_id) or {}
+        except Exception as exc:  # pragma: no cover - defensive
+            # If optional CTP sources/tables are missing, fall back to cold-start mode.
+            # We keep home deterministic and non-empty via seeded recommendations.
+            ctp = {}
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
+
+        snapshot = None
+        try:
+            snapshot = snapshot_svc.get_latest(teacher_id)
+        except Exception:  # pragma: no cover - defensive
+            snapshot = None
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
+
+        ml_output = None
+        try:
+            ml_output = output_svc.get_latest(teacher_id, pipeline_name="pipeline2")
+        except Exception:  # pragma: no cover - defensive
+            ml_output = None
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
 
         profile_completeness = _compute_profile_completeness(self.db, teacher_id)
         teacher_summary = _teacher_summary_from_ctp(ctp)
@@ -213,10 +332,27 @@ class LearningHubHomeService:
         if ctp:
             identity = ctp.get("identity") or {}
             locale = str(identity.get("language_preference") or identity.get("locale") or "en").strip() or "en"
+        progress_overview = None
+        try:
+            progress_overview = progress_svc.get_progress_overview(teacher_id)
+        except Exception:  # pragma: no cover - defensive
+            progress_overview = None
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
+        mode = _detect_learning_hub_mode(
+            ctp=ctp,
+            snapshot=snapshot,
+            ml_output=ml_output,
+            profile_completeness=profile_completeness,
+            progress_overview=progress_overview,
+        )
         rec_response = mapping_svc.get_learning_hub_recommendations(
             teacher_id=teacher_id,
             locale=locale,
             limit=6,
+            mode=mode,
         )
 
         return hub_schemas.LearningHubHomeResponse(
@@ -229,4 +365,6 @@ class LearningHubHomeService:
             next_actions=next_actions,
             primary_recommendations=rec_response.primary_recommendations,
             secondary_recommendations=rec_response.secondary_recommendations,
+            progress_overview=progress_overview.model_dump(),
+            mode=mode,
         )

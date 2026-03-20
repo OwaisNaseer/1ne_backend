@@ -130,6 +130,10 @@ class Settings(BaseSettings):
     # Role tagging: min chars for exercise/exam blocks (anti false-positive)
     ROLE_MIN_CHARS_FOR_QUESTION_BLOCK: int = 200
 
+    # Learning Hub / recommendations
+    ENABLE_RECOMMENDATION_DEBUG: bool = False
+    MIN_CONTENT_PER_LOCALE: int = 6
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

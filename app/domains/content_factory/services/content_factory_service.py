@@ -2,9 +2,11 @@
 Content Factory Service: main entry for generating micro-courses.
 Creates job and runs orchestrator.
 """
-from typing import List, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+from sqlalchemy import case, desc, func
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
@@ -38,6 +40,7 @@ class ContentFactoryService:
         locale: str = "en",
         requested_by_user_id: Optional[UUID] = None,
         generation_strategy: str = ContentGenerationStrategy.TOPIC_BASED.value,
+        source: Optional[str] = None,
     ) -> ContentGenerationJob:
         """Create a pending content generation job."""
         job = ContentGenerationJob(
@@ -52,6 +55,7 @@ class ContentFactoryService:
             status=JobStatus.PENDING.value,
             current_step=None,
             retry_count=0,
+            source=source,
         )
         self.db.add(job)
         self.db.commit()
@@ -67,16 +71,107 @@ class ContentFactoryService:
         self,
         status: Optional[str] = None,
         content_type: Optional[str] = None,
+        locale: Optional[str] = None,
+        source: Optional[str] = None,
         skip: int = 0,
         limit: int = 50,
+        sort: Optional[str] = None,
     ) -> List[ContentGenerationJob]:
-        """List jobs with optional filters."""
-        q = self.db.query(ContentGenerationJob).order_by(ContentGenerationJob.created_at.desc())
+        """List jobs with optional filters.
+
+        sort:
+            - recent: newest created_at first (default).
+            - ops: surface awaiting_human_approval, failed, running, pending first, then by updated_at.
+        """
+        q = self.db.query(ContentGenerationJob)
         if status is not None:
             q = q.filter(ContentGenerationJob.status == status)
         if content_type is not None:
             q = q.filter(ContentGenerationJob.content_type == content_type)
+        if locale is not None:
+            q = q.filter(ContentGenerationJob.locale == locale)
+        if source is not None:
+            q = q.filter(ContentGenerationJob.source == source)
+
+        mode = (sort or "recent").strip().lower()
+        if mode == "ops":
+            priority = case(
+                (ContentGenerationJob.status == JobStatus.AWAITING_HUMAN_APPROVAL.value, 0),
+                (ContentGenerationJob.status == JobStatus.FAILED.value, 1),
+                (ContentGenerationJob.status == JobStatus.REJECTED.value, 2),
+                (ContentGenerationJob.status == JobStatus.RUNNING.value, 3),
+                (ContentGenerationJob.status == JobStatus.PUBLISHING.value, 4),
+                (ContentGenerationJob.status == JobStatus.PENDING.value, 5),
+                (ContentGenerationJob.status == JobStatus.REVIEWING.value, 6),
+                (ContentGenerationJob.status == JobStatus.COMPLETED.value, 7),
+                else_=8,
+            )
+            q = q.order_by(
+                priority.asc(),
+                desc(ContentGenerationJob.updated_at),
+                desc(ContentGenerationJob.created_at),
+            )
+        else:
+            q = q.order_by(desc(ContentGenerationJob.created_at))
+
         return q.offset(skip).limit(limit).all()
+
+    def get_jobs_summary(self) -> Dict[str, Any]:
+        """
+        Aggregate counts for admin operations dashboard.
+
+        stuck_count: jobs in pending or running with no update for >= 2 hours (UTC).
+        published_generated_count: registry rows published and sourced from content factory.
+        """
+        rows = (
+            self.db.query(ContentGenerationJob.status, func.count(ContentGenerationJob.id))
+            .group_by(ContentGenerationJob.status)
+            .all()
+        )
+        by_status = {str(s): int(c) for s, c in rows}
+
+        def _c(key: str) -> int:
+            return int(by_status.get(key, 0))
+
+        now = datetime.now(timezone.utc)
+        stuck_threshold = now - timedelta(hours=2)
+        stuck_count = (
+            self.db.query(func.count(ContentGenerationJob.id))
+            .filter(
+                ContentGenerationJob.status.in_(
+                    [JobStatus.PENDING.value, JobStatus.RUNNING.value]
+                ),
+                ContentGenerationJob.updated_at < stuck_threshold,
+            )
+            .scalar()
+        )
+        stuck_count = int(stuck_count or 0)
+
+        from app.domains.content_registry.models import ContentRegistryItem
+
+        published_generated = (
+            self.db.query(func.count(ContentRegistryItem.id))
+            .filter(
+                ContentRegistryItem.source_type == "content_factory",
+                ContentRegistryItem.status == "published",
+            )
+            .scalar()
+        )
+        published_generated = int(published_generated or 0)
+
+        return {
+            "pending_count": _c(JobStatus.PENDING.value),
+            "running_count": _c(JobStatus.RUNNING.value),
+            "reviewing_count": _c(JobStatus.REVIEWING.value),
+            "awaiting_human_approval_count": _c(JobStatus.AWAITING_HUMAN_APPROVAL.value),
+            "publishing_count": _c(JobStatus.PUBLISHING.value),
+            "failed_count": _c(JobStatus.FAILED.value),
+            "rejected_count": _c(JobStatus.REJECTED.value),
+            "completed_count": _c(JobStatus.COMPLETED.value),
+            "stuck_count": stuck_count,
+            "stuck_threshold_hours": 2,
+            "published_generated_count": published_generated,
+        }
 
     async def generate_micro_course(
         self,
@@ -86,10 +181,13 @@ class ContentFactoryService:
         difficulty: Optional[str] = None,
         locale: str = "en",
         requested_by_user_id: Optional[UUID] = None,
+        generation_mode: str = "on_demand",
     ) -> ContentGenerationJob:
         """
-        Create a micro-course generation job and run the workflow synchronously (blocking).
-        Returns the job after completion or failure.
+        Create a micro-course generation job.
+
+        - `on_demand`: run the workflow synchronously (blocking) and return the completed job.
+        - `gap_detection`: enqueue an async `gap_detection` job for the background worker.
         """
         job = self.create_job(
             content_type="micro_course",
@@ -100,6 +198,15 @@ class ContentFactoryService:
             locale=locale,
             requested_by_user_id=requested_by_user_id,
             generation_strategy=ContentGenerationStrategy.TOPIC_BASED.value,
+            source="gap_detection" if generation_mode == "gap_detection" else None,
         )
+        if generation_mode == "gap_detection":
+            # Topic consistency: gap jobs are usually "Foundational teaching strategies for {subject}".
+            if subject:
+                job.topic = f"Foundational teaching strategies for {subject}"
+                self.db.commit()
+                self.db.refresh(job)
+            return job
+
         orchestrator = GenerationOrchestratorService(self.db)
         return await orchestrator.run_micro_course_job(job.id)

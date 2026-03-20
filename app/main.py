@@ -1,6 +1,7 @@
 """
 FastAPI application factory and main entry point.
 """
+import asyncio
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -25,6 +26,8 @@ from app.core.exceptions import (
     InvalidCredentialsError,
 )
 from app.api.v1 import router as v1_router
+from app.db.session import SessionLocal
+from app.domains.content_factory.services.gap_generation_worker import GapGenerationWorker
 
 # Setup logging before creating the app
 setup_logging()
@@ -88,6 +91,50 @@ app.add_middleware(
 
 
 # ========== Global Exception Handlers ==========
+
+# Gap-detection background processor
+#
+# The learning hub personalization flow enqueues gap jobs, but the repository
+# includes a dedicated worker class that must be actively processed for jobs
+# to turn into published `content_registry` items.
+#
+# We run a conservative loop that processes at most one pending job at a time.
+@app.on_event("startup")
+async def _start_gap_generation_worker() -> None:
+    async def loop() -> None:
+        while True:
+            db = None
+            try:
+                db = SessionLocal()
+                worker = GapGenerationWorker(db)
+                await worker.process_once()
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.error(f"GapGenerationWorker loop error: {e}", exc_info=True)
+            finally:
+                if db is not None:
+                    try:
+                        db.close()
+                    except Exception:
+                        pass
+
+            # When there is work, process_once may take a long time (LLM + publishing).
+            # This sleep only applies after a cycle completes (or finds no pending job).
+            await asyncio.sleep(20)
+
+    app.state.gap_worker_task = asyncio.create_task(loop())
+
+
+@app.on_event("shutdown")
+async def _stop_gap_generation_worker() -> None:
+    task = getattr(app.state, "gap_worker_task", None)
+    if task:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 @app.exception_handler(AuthenticationError)
 async def authentication_error_handler(request: Request, exc: AuthenticationError):
@@ -222,22 +269,36 @@ async def operational_error_handler(request: Request, exc: OperationalError):
 async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
     """Handle general SQLAlchemy errors."""
     logger.error(f"Database error: {str(exc)}", exc_info=True)
-    
+
+    exc_str = str(exc)
+    exc_lower = exc_str.lower()
+    is_schema_mismatch = (
+        "does not exist" in exc_lower
+        and ("content_generation_jobs" in exc_lower or "content_registry" in exc_lower)
+        and ("column" in exc_lower or "relation" in exc_lower)
+    )
+    if is_schema_mismatch:
+        # Operationally safe guidance: schema mismatch is almost always an un-run migration.
+        detail = "Database schema is out of date. Please run `alembic upgrade head` and retry."
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": detail},
+        )
+
     # In development, provide more details for debugging
     if settings.ENVIRONMENT != "prod":
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
                 "detail": "A database error occurred. Please try again later.",
-                "error": str(exc),
+                "error": exc_str,
                 "type": type(exc).__name__,
             },
         )
-    else:
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "A database error occurred. Please try again later."},
-        )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "A database error occurred. Please try again later."},
+    )
 
 
 @app.exception_handler(ValueError)

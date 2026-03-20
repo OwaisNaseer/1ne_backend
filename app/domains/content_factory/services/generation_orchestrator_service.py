@@ -17,6 +17,9 @@ from app.domains.content_factory.services.validation_service import (
     ValidationService,
     ValidationServiceError,
 )
+from app.domains.content_factory.services.publishing_policy_service import (
+    PublishingPolicyService,
+)
 from app.domains.content_factory.workflows.micro_course_workflow import run_micro_course_pipeline
 
 logger = get_logger(__name__)
@@ -33,6 +36,7 @@ class GenerationOrchestratorService:
         self._router = ModelRouter()
         self._validation = ValidationService()
         self._publishing = PublishingService(db)
+        self._policy = PublishingPolicyService()
 
     def _get_job(self, job_id: UUID) -> Optional[ContentGenerationJob]:
         return self.db.query(ContentGenerationJob).filter(ContentGenerationJob.id == job_id).first()
@@ -123,11 +127,56 @@ class GenerationOrchestratorService:
                 self.db.refresh(job)
                 return await self.run_micro_course_job(job_id)
 
+            # Evaluate publishing policy
+            review_section = full_content.get("review") or {}
+            review_status = review_section.get("review_status")
+            issues = review_section.get("issues_found") or []
+            has_blocking_issues = bool(issues)
+            decision = self._policy.decide(
+                content_type=job.content_type,
+                generation_strategy=job.generation_strategy,
+                quality_score=job.quality_score,
+                review_status=review_status,
+                has_blocking_issues=has_blocking_issues,
+            )
+            job.publication_policy_decision = decision["decision"]
+            logger.info(
+                "Publishing policy decision job_id=%s decision=%s reason=%s",
+                job.id,
+                decision["decision"],
+                decision["reason"],
+            )
+
+            if decision["decision"] == "reject":
+                job.status = JobStatus.REJECTED.value
+                job.rejection_reason = decision["reason"]
+                job.completed_at = datetime.now(timezone.utc)
+                self.db.commit()
+                self.db.refresh(job)
+                return job
+
+            if decision["decision"] == "require_approval":
+                job.status = JobStatus.AWAITING_HUMAN_APPROVAL.value
+                job.current_step = "awaiting_human_approval"
+                job.review_required = 1
+                self.db.commit()
+                self.db.refresh(job)
+                logger.info(
+                    "Job awaiting human approval; job_id=%s decision_reason=%s",
+                    job.id,
+                    decision["reason"],
+                )
+                return job
+
+            # auto_publish
             job.status = JobStatus.PUBLISHING.value
             job.current_step = "publishing"
             self.db.commit()
             self.db.refresh(job)
-            logger.info("Workflow status change job_id=%s status=publishing", job_id)
+            logger.info(
+                "Workflow status change job_id=%s status=publishing (auto_publish)",
+                job_id,
+            )
 
             content_id = self._publishing.publish_micro_course(
                 full_content=full_content,
@@ -142,9 +191,14 @@ class GenerationOrchestratorService:
             job.current_step = "completed"
             job.result_content_id = content_id
             job.completed_at = datetime.now(timezone.utc)
+            job.review_required = 0
             self.db.commit()
             self.db.refresh(job)
-            logger.info("Workflow status change job_id=%s status=completed result_content_id=%s", job_id, content_id)
+            logger.info(
+                "Workflow status change job_id=%s status=completed result_content_id=%s",
+                job_id,
+                content_id,
+            )
             return job
 
         except ValidationServiceError as e:

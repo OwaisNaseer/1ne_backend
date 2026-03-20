@@ -19,7 +19,9 @@ class JobStatus(str, enum.Enum):
 
     PENDING = "pending"
     RUNNING = "running"
-    REVIEWING = "reviewing"
+    REVIEWING = "reviewing"  # system validation / quality checking
+    AWAITING_HUMAN_APPROVAL = "awaiting_human_approval"
     PUBLISHING = "publishing"
     COMPLETED = "completed"
     FAILED = "failed"
+    REJECTED = "rejected"

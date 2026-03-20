@@ -101,7 +101,10 @@ class ContentRegistryListItem(BaseModel):
     category: Optional[str] = None
     estimated_duration_min: Optional[int] = None
     difficulty: Optional[str] = None
+    source_type: Optional[str] = None
+    published_at: Optional[datetime] = None
     created_at: datetime
+    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -119,6 +122,14 @@ class RecommendationCard(BaseModel):
     estimated_duration_min: Optional[int] = None
     difficulty: Optional[str] = None
     route: Optional[str] = None
+    content_slug: Optional[str] = Field(
+        None,
+        description="Stable slug from registry (delivery/tags/content_id) for client-side resolution.",
+    )
+    delivery: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Subset of json_blob.delivery: route, slug, media_steps when present.",
+    )
     score: Optional[float] = None
     reason: Optional[str] = None
 

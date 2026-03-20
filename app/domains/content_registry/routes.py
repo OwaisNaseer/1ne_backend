@@ -45,12 +45,21 @@ def list_items(
     locale: Optional[str] = None,
     category: Optional[str] = None,
     difficulty: Optional[str] = None,
+    source_type: Optional[str] = Query(
+        None,
+        description="Filter by registry source_type (e.g. starter_seed, content_factory).",
+    ),
     skip: int = 0,
     limit: int = 100,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """List content registry items with optional filters."""
+    if source_type is not None and len(source_type) > 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="source_type filter too long",
+        )
     service = ContentRegistryService(db)
     items = service.list_items(
         content_type=content_type,
@@ -58,6 +67,7 @@ def list_items(
         locale=locale,
         category=category,
         difficulty=difficulty,
+        source_type=source_type if source_type else None,
         skip=skip,
         limit=limit,
     )

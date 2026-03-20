@@ -2,7 +2,7 @@
 Pydantic schemas for Learning Hub (V1 home orchestration).
 """
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -71,5 +71,7 @@ class LearningHubHomeResponse(BaseModel):
     next_actions: List[NextAction] = Field(default_factory=list)
     primary_recommendations: List[RecommendationCard] = Field(default_factory=list)
     secondary_recommendations: List[RecommendationCard] = Field(default_factory=list)
+    progress_overview: Optional[Dict[str, Any]] = None
+    mode: Literal["cold_start", "warm_start", "personalized"] = "cold_start"
 
     model_config = ConfigDict(from_attributes=False)

@@ -18,6 +18,8 @@ try:
     from app.domains.learning_hub import routes as learning_hub_routes
     from app.domains.content_registry import routes as content_registry_routes
     from app.domains.content_factory import routes as content_factory_routes
+    from app.domains.learning_progress import routes as learning_progress_routes
+    from app.domains.recommendation_analytics import routes as recommendation_analytics_routes
 
     router = APIRouter()
     
@@ -41,6 +43,12 @@ try:
 
     # Content Factory (agentic content generation)
     router.include_router(content_factory_routes.router)
+
+    # Learning Progress (sessions, events, feedback)
+    router.include_router(learning_progress_routes.router)
+
+    # Recommendation Analytics (performance snapshots)
+    router.include_router(recommendation_analytics_routes.router)
 
     # Subscription routes
     router.include_router(subscription_routes.router)
