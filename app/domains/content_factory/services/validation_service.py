@@ -60,3 +60,33 @@ class ValidationService:
         errors = self.validate_micro_course(full_content)
         if errors:
             raise ValidationServiceError("; ".join(errors))
+
+    def validate_generic_content(
+        self,
+        *,
+        content_type: str,
+        title: str,
+        summary: str,
+        estimated_duration_min: int | None,
+    ) -> list[str]:
+        errors: list[str] = []
+        t = (title or "").strip()
+        s = (summary or "").strip()
+        if len(t) < 12:
+            errors.append("Title too short")
+        if len(s) < 40:
+            errors.append("Summary too short")
+        d = estimated_duration_min
+        ct = (content_type or "").strip().lower()
+        if d is None:
+            errors.append("Missing estimated duration")
+        else:
+            if ct == "ai_guided_tutorial" and not (8 <= d <= 25):
+                errors.append("Tutorial duration out of range")
+            if ct in ("learning_path", "path_module") and not (60 <= d <= 180):
+                errors.append("Path duration out of range")
+            if ct in ("research", "resource") and not (5 <= d <= 10):
+                errors.append("Research duration out of range")
+            if ct == "micro_course" and not (5 <= d <= 12):
+                errors.append("Micro-course duration out of range")
+        return errors

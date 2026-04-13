@@ -2,7 +2,7 @@
 Generation Orchestrator: control generation workflow, update job status, call validation and publishing.
 """
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Any
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -40,6 +40,148 @@ class GenerationOrchestratorService:
 
     def _get_job(self, job_id: UUID) -> Optional[ContentGenerationJob]:
         return self.db.query(ContentGenerationJob).filter(ContentGenerationJob.id == job_id).first()
+
+    def _build_generic_payload(self, job: ContentGenerationJob) -> dict[str, Any]:
+        topic = (job.topic or "").strip()
+        subject = (job.subject or "instructional practice").replace("_", " ")
+        grade = (job.grade_band or "mixed grades").replace("_", " ")
+        if job.content_type == "ai_guided_tutorial":
+            duration = 14
+            subtitle = f"Interactive walkthrough for {subject} in {grade}"
+            summary = (
+                f"Step-by-step tutorial on {topic.lower()} with practical classroom checkpoints, "
+                "demonstration moments, and implementation prompts."
+            )
+            blob = {"steps": ["context setup", "guided demo", "classroom adaptation", "reflection"], "kind": "tutorial"}
+        elif job.content_type in ("learning_path", "path_module"):
+            duration = 90
+            subtitle = f"Structured mastery pathway for {subject}"
+            summary = (
+                f"High-impact learning path focused on {topic.lower()} across planning, execution, "
+                "evidence collection, and iterative improvement cycles."
+            )
+            module_base = [
+                ("foundation", "Foundations", "Beginner"),
+                ("practice", "Guided Practice", "Intermediate"),
+                ("application", "Classroom Application", "Intermediate"),
+            ]
+            modules = []
+            for idx, (mid, label, level) in enumerate(module_base, start=1):
+                slug = f"{(job.subject or 'general').replace('_', '-')}-{mid}-{idx}"
+                modules.append(
+                    {
+                        "id": f"{job.id.hex[:8]}-{mid}",
+                        "slug": slug,
+                        "title": f"{label}: {topic}",
+                        "description": f"{label} module tailored for {subject}.",
+                        "duration": "30 min",
+                        "level": level,
+                        "impact": "High" if idx == 1 else "Medium",
+                        "skillIds": ["instructional-design", "assessment", "engagement"][: (idx + 1)],
+                        "learningOutcomes": [
+                            f"Apply {label.lower()} techniques in daily planning",
+                            "Measure impact using classroom evidence",
+                        ],
+                        "assessment": {
+                            "type": "Implementation checkpoint",
+                            "description": "Submit a practical classroom artifact.",
+                            "points": 30,
+                        },
+                        "realWorldApplication": "Use this in your next teaching cycle.",
+                        "content": [
+                            {"type": "video", "title": f"{label} walkthrough", "duration": "8 min", "points": 10},
+                            {"type": "reading", "title": "Teacher playbook", "duration": "10 min", "points": 10},
+                            {"type": "interactive", "title": "Practice simulation", "duration": "12 min", "points": 10},
+                        ],
+                        "detail": {
+                            "moduleLabel": f"Module {idx}",
+                            "backPathSlug": (job.subject or "general").replace("_", "-"),
+                            "lessons": [
+                                {
+                                    "id": f"{slug}-lesson-1",
+                                    "title": f"{label} overview",
+                                    "type": "video",
+                                    "duration": "8 min",
+                                    "points": 10,
+                                    "content": {
+                                        "keyPoints": ["Core strategy", "Context adaptation"],
+                                        "transcript": "Step-by-step guidance for classroom implementation.",
+                                    },
+                                },
+                                {
+                                    "id": f"{slug}-lesson-2",
+                                    "title": "Classroom application",
+                                    "type": "interactive",
+                                    "duration": "12 min",
+                                    "points": 10,
+                                    "content": {
+                                        "description": "Apply strategy to your current class context.",
+                                        "steps": ["Choose one class", "Adapt strategy", "Run and reflect"],
+                                    },
+                                },
+                            ],
+                        },
+                    }
+                )
+            blob = {
+                "kind": "learning_path",
+                "aiGrowthRecommendationContent": {
+                    "type": "path",
+                    "themeId": "adaptive-engagement",
+                    "estimatedTime": "90 min",
+                    "impactLevel": "High",
+                    "heroSubtitle": "AI Growth Path",
+                    "heroDescription": summary,
+                    "aiGuidance": {
+                        "recommendation": f"Prioritize {topic} to improve outcomes.",
+                        "reason": "Based on your profile signals and recent activity patterns.",
+                        "nextSteps": [
+                            "Complete Module 1 this week",
+                            "Apply one strategy in class",
+                            "Track and review outcomes",
+                        ],
+                        "personalizedTip": "Focus on one class section first, then scale.",
+                    },
+                    "skillImpacts": [
+                        {
+                            "skillId": "instructional-design",
+                            "before": 42,
+                            "after": 68,
+                            "improvement": 26,
+                            "description": "Higher lesson coherence and clarity.",
+                        },
+                        {
+                            "skillId": "assessment",
+                            "before": 38,
+                            "after": 60,
+                            "improvement": 22,
+                            "description": "Improved evidence-based adjustments.",
+                        },
+                    ],
+                    "modules": modules,
+                    "storageKey": f"growth-path-{job.id.hex[:8]}",
+                },
+            }
+        elif job.content_type in ("research", "resource"):
+            duration = 7
+            subtitle = f"Evidence-backed insight for {subject}"
+            summary = (
+                f"Concise research brief on {topic.lower()} with evidence interpretation, classroom implications, "
+                "and actionable next steps."
+            )
+            blob = {"sections": ["key finding", "why it matters", "classroom action"], "kind": "research"}
+        else:
+            duration = 8
+            subtitle = f"Professional micro-course for {subject}"
+            summary = f"Focused micro-course on {topic.lower()}."
+            blob = {"kind": "micro_course_generic"}
+        return {
+            "title": topic,
+            "subtitle": subtitle,
+            "summary": summary,
+            "estimated_duration_min": duration,
+            "json_blob": blob,
+        }
 
     def _update_job(
         self,
@@ -208,6 +350,71 @@ class GenerationOrchestratorService:
             self.db.commit()
             self.db.refresh(job)
             logger.warning("Job %s failed validation: %s", job_id, e)
+            return job
+        except Exception as e:
+            job.status = JobStatus.FAILED.value
+            job.error_message = str(e)[:2000]
+            job.completed_at = datetime.now(timezone.utc)
+            self.db.commit()
+            self.db.refresh(job)
+            logger.exception("Job %s failed: %s", job_id, e)
+            return job
+
+    async def run_job(self, job_id: UUID) -> ContentGenerationJob:
+        job = self._get_job(job_id)
+        if not job:
+            raise ValueError("Job not found: " + str(job_id))
+        if job.job_type == "micro_course" or job.content_type == "micro_course":
+            return await self.run_micro_course_job(job_id)
+
+        if job.status not in (JobStatus.PENDING.value, JobStatus.RUNNING.value):
+            return job
+        job.status = JobStatus.RUNNING.value
+        job.started_at = job.started_at or datetime.now(timezone.utc)
+        job.current_step = "generic_generation"
+        self.db.commit()
+        self.db.refresh(job)
+        try:
+            payload = self._build_generic_payload(job)
+            errors = self._validation.validate_generic_content(
+                content_type=job.content_type,
+                title=payload["title"],
+                summary=payload["summary"],
+                estimated_duration_min=payload["estimated_duration_min"],
+            )
+            if errors:
+                job.status = JobStatus.FAILED.value
+                job.error_message = "; ".join(errors)[:2000]
+                job.completed_at = datetime.now(timezone.utc)
+                self.db.commit()
+                self.db.refresh(job)
+                return job
+
+            job.status = JobStatus.PUBLISHING.value
+            job.current_step = "publishing"
+            job.quality_score = 0.82
+            self.db.commit()
+            self.db.refresh(job)
+            content_id = self._publishing.publish_generated_content(
+                content_type=job.content_type,
+                topic=payload["title"],
+                subject=job.subject,
+                grade_band=job.grade_band,
+                difficulty=job.difficulty,
+                locale=job.locale,
+                job_id=job.id,
+                generated_blob=payload["json_blob"],
+                summary=payload["summary"],
+                subtitle=payload["subtitle"],
+                estimated_duration_min=payload["estimated_duration_min"],
+                tags={"job_type": job.job_type, "source": job.source or "content_factory"},
+            )
+            job.status = JobStatus.COMPLETED.value
+            job.current_step = "completed"
+            job.result_content_id = content_id
+            job.completed_at = datetime.now(timezone.utc)
+            self.db.commit()
+            self.db.refresh(job)
             return job
         except Exception as e:
             job.status = JobStatus.FAILED.value

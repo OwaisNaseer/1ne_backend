@@ -46,6 +46,16 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         if '/worksheets/generate' in request.url.path and request.method == 'POST':
             return await call_next(request)
+        # Auth + hub home can exceed 30s on cold DB / SSL reconnect (demo + cloud Postgres)
+        path = request.url.path
+        if path.startswith("/api/v1/auth/login") or path.startswith("/api/v1/auth/register"):
+            return await call_next(request)
+        if path.startswith("/api/v1/auth/refresh") or path.startswith("/api/v1/auth/signup"):
+            return await call_next(request)
+        if path == "/api/v1/learning-hub/home":
+            return await call_next(request)
+        if path in ("/health", "/health/ready", "/"):
+            return await call_next(request)
         
         try:
             # Wrap the request handling in a timeout

@@ -59,6 +59,13 @@ class PublishingPolicyService:
             ContentGenerationStrategy.GAP_BASED.value,
             ContentGenerationStrategy.CURRICULUM_BASED.value,
         ):
+            if quality_score is not None and quality_score >= auto_publish_threshold:
+                reason = (
+                    f"Gap-based strategy quality_score {quality_score:.2f} "
+                    f">= auto_publish_threshold {auto_publish_threshold:.2f}; auto_publish"
+                )
+                logger.info("Publishing policy: auto_publish - %s", reason)
+                return {"decision": "auto_publish", "reason": reason}
             reason = f"Generation strategy {strat} requires human approval"
             logger.info("Publishing policy: require_approval - %s", reason)
             return {"decision": "require_approval", "reason": reason}
@@ -66,6 +73,13 @@ class PublishingPolicyService:
         # 4. Content-type rules
         ctype = (content_type or "").lower()
         if ctype in ("learning_path", "ai_guided_tutorial"):
+            if quality_score is not None and quality_score >= auto_publish_threshold:
+                reason = (
+                    f"Content type {ctype} quality_score {quality_score:.2f} "
+                    f">= auto_publish_threshold {auto_publish_threshold:.2f}; auto_publish"
+                )
+                logger.info("Publishing policy: auto_publish - %s", reason)
+                return {"decision": "auto_publish", "reason": reason}
             reason = f"Content type {ctype} requires human approval"
             logger.info("Publishing policy: require_approval - %s", reason)
             return {"decision": "require_approval", "reason": reason}

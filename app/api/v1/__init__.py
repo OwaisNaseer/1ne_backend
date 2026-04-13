@@ -20,6 +20,7 @@ try:
     from app.domains.content_factory import routes as content_factory_routes
     from app.domains.learning_progress import routes as learning_progress_routes
     from app.domains.recommendation_analytics import routes as recommendation_analytics_routes
+    from app.domains.personalization import routes as personalization_routes
 
     router = APIRouter()
     
@@ -49,6 +50,12 @@ try:
 
     # Recommendation Analytics (performance snapshots)
     router.include_router(recommendation_analytics_routes.router)
+
+    # Personalization (persistent user personalization profile + unlock + activity)
+    router.include_router(personalization_routes.router)
+    router.include_router(personalization_routes.admin_router)
+    router.include_router(personalization_routes.activity_router)
+    router.include_router(personalization_routes.content_router)
 
     # Subscription routes
     router.include_router(subscription_routes.router)

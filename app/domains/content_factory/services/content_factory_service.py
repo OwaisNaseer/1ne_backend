@@ -67,6 +67,15 @@ class ContentFactoryService:
         """Get job by id."""
         return self.db.query(ContentGenerationJob).filter(ContentGenerationJob.id == job_id).first()
 
+    def delete_job(self, job_id: UUID) -> bool:
+        """Delete a job by id. Returns True when deleted."""
+        job = self.get_job(job_id)
+        if not job:
+            return False
+        self.db.delete(job)
+        self.db.commit()
+        return True
+
     def list_jobs(
         self,
         status: Optional[str] = None,
@@ -210,3 +219,45 @@ class ContentFactoryService:
 
         orchestrator = GenerationOrchestratorService(self.db)
         return await orchestrator.run_micro_course_job(job.id)
+
+    async def retry_job(self, job_id: UUID, requested_by_user_id: Optional[UUID] = None) -> ContentGenerationJob:
+        """
+        Retry a failed/rejected job by creating a fresh job with copied inputs.
+
+        For `source=gap_detection`, returns a new pending async job.
+        For other sources, runs orchestrator immediately and returns final state.
+        """
+        original = self.get_job(job_id)
+        if not original:
+            raise ContentFactoryServiceError(f"Job not found: {job_id}")
+        if original.status not in (JobStatus.FAILED.value, JobStatus.REJECTED.value):
+            raise ContentFactoryServiceError(
+                f"Retry allowed only for failed/rejected jobs (current={original.status})"
+            )
+
+        new_job = ContentGenerationJob(
+            requested_by_user_id=requested_by_user_id or original.requested_by_user_id,
+            content_type=original.content_type,
+            job_type=original.job_type or "micro_course",
+            generation_strategy=original.generation_strategy or ContentGenerationStrategy.TOPIC_BASED.value,
+            topic=original.topic,
+            subject=original.subject,
+            target_subject=original.target_subject,
+            grade_band=original.grade_band,
+            difficulty=original.difficulty,
+            locale=original.locale,
+            status=JobStatus.PENDING.value,
+            current_step=None,
+            retry_count=0,
+            priority=original.priority or 0,
+            source=original.source,
+        )
+        self.db.add(new_job)
+        self.db.commit()
+        self.db.refresh(new_job)
+
+        if original.source == "gap_detection":
+            return new_job
+
+        orchestrator = GenerationOrchestratorService(self.db)
+        return await orchestrator.run_micro_course_job(new_job.id)

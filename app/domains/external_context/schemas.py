@@ -1,12 +1,14 @@
 """
 Pydantic schemas for teacher profile context and context resolution.
 """
-from typing import Optional, List
+from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from app.domains.auth.models import ContextResolutionStatus
+from app.domains.personalization.schemas import PersonalizationSyncReceipt
 
 
 # Resolution status values for API
@@ -78,3 +80,4 @@ class ProfileUpdateResponse(BaseModel):
     profile: dict  # UserProfile as dict
     context_resolution_status: str = Field(..., description="resolved | partial | not_found")
     recommendations: Optional[List[str]] = None
+    personalization_sync: Optional[PersonalizationSyncReceipt] = None

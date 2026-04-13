@@ -5,7 +5,7 @@ Uses teacher_intelligence services; does not duplicate their logic.
 from __future__ import annotations
 
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -24,14 +24,40 @@ PIPELINE_NAME = "pipeline2"
 
 
 def _build_v1_results(cluster_label: int) -> Dict[str, Any]:
-    """Normalize Pipeline2 output to V1 ml_outputs.results shape."""
+    """Normalize Pipeline2 output to V1 ml_outputs.results shape, including persona enrichment."""
+    from ml.pipeline2.snapshot_adapter import get_persona_for_cluster
+    persona = get_persona_for_cluster(cluster_label)
     return {
         "cluster_id": str(cluster_label),
-        "persona_tag": None,
-        "top_gaps": [],
-        "recommended_targets": [],
+        "persona_tag": persona["tag"],
+        "persona_description": persona["description"],
+        "top_gaps": persona["top_gaps"],
+        "recommended_targets": persona["recommended_targets"],
         "pipeline_source": "pipeline2",
     }
+
+
+def _get_model_confidence(resolved_version: str) -> Optional[float]:
+    """Load silhouette score for the selected K from metrics.json as confidence proxy."""
+    try:
+        from ml.pipeline2.artifacts import get_artifact_path
+        import json, pathlib
+        metrics_path = pathlib.Path(get_artifact_path(resolved_version, "metrics.json"))
+        if not metrics_path.exists():
+            return None
+        metrics = json.loads(metrics_path.read_text())
+        selected_k = metrics.get("selected_k")
+        silhouette_scores = metrics.get("silhouette_scores") or []
+        k_min = metrics.get("k_min", 2)
+        if selected_k is None or not silhouette_scores:
+            return None
+        idx = int(selected_k) - int(k_min)
+        if 0 <= idx < len(silhouette_scores):
+            score = float(silhouette_scores[idx])
+            return max(0.0, min(1.0, score))
+    except Exception:
+        pass
+    return None
 
 
 class Pipeline2IntegrationService:
@@ -78,6 +104,7 @@ class Pipeline2IntegrationService:
             model = load_model(resolved_version)
             cluster_label = model.predict_from_profile_text(profile_text)
             results = _build_v1_results(cluster_label)
+            confidence_score = _get_model_confidence(resolved_version)
 
             output = output_svc.save_output(
                 teacher_id=teacher_id,
@@ -86,7 +113,14 @@ class Pipeline2IntegrationService:
                 model_version=model_version,
                 results=results,
                 feature_snapshot_id=snapshot.id,
-                confidence_score=None,
+                confidence_score=confidence_score,
+            )
+            logger.info(
+                "Pipeline2 persona assigned teacher_id=%s cluster_id=%s persona_tag=%s confidence=%.3f",
+                teacher_id,
+                cluster_label,
+                results.get("persona_tag"),
+                confidence_score or 0.0,
             )
 
             runtime_ms = int((time.perf_counter() - started) * 1000)

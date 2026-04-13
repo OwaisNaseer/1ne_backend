@@ -103,25 +103,21 @@ app.add_middleware(
 async def _start_gap_generation_worker() -> None:
     async def loop() -> None:
         while True:
-            db = None
             try:
-                db = SessionLocal()
-                worker = GapGenerationWorker(db)
+                # Do not hold a pooled connection here: process_once uses its own
+                # short-lived sessions; an outer SessionLocal would sit checked out
+                # for the entire run_job duration and exhaust the pool under load.
+                worker = GapGenerationWorker()
                 await worker.process_once()
             except asyncio.CancelledError:
                 raise
             except Exception as e:
                 logger.error(f"GapGenerationWorker loop error: {e}", exc_info=True)
-            finally:
-                if db is not None:
-                    try:
-                        db.close()
-                    except Exception:
-                        pass
 
-            # When there is work, process_once may take a long time (LLM + publishing).
-            # This sleep only applies after a cycle completes (or finds no pending job).
-            await asyncio.sleep(20)
+            # Keep polling aggressive enough for progressive UX:
+            # if only a few jobs are pending, users should not wait tens of seconds
+            # between each generation attempt.
+            await asyncio.sleep(2)
 
     app.state.gap_worker_task = asyncio.create_task(loop())
 
@@ -342,13 +338,21 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 
 @app.get("/health")
-async def health_check():
-    """Health check endpoint with database connectivity check."""
+def health_check():
+    """
+    Liveness probe — returns immediately (no DB).
+    Use GET /health/ready for a database ping (may be slow on cold cloud Postgres).
+    """
+    return {"status": "ok", "liveness": True}
+
+
+@app.get("/health/ready")
+def health_ready():
+    """Readiness: verifies DB connectivity. Sync route runs in a worker thread."""
     from app.db.session import SessionLocal
     from sqlalchemy import text
-    
+
     try:
-        # Check database connection
         db = SessionLocal()
         try:
             db.execute(text("SELECT 1"))
@@ -358,13 +362,11 @@ async def health_check():
         return {"status": "ok", "database": db_status}
     except Exception as e:
         logger.warning(f"Database health check failed: {e}")
-        # Return 200 OK even if database is disconnected - backend is still running
-        # This prevents frontend from thinking backend is down
         return {
-            "status": "degraded", 
-            "database": "disconnected", 
+            "status": "degraded",
+            "database": "disconnected",
             "message": "Backend is running but database is unavailable",
-            "error": str(e) if settings.ENVIRONMENT != "prod" else None
+            "error": str(e) if settings.ENVIRONMENT != "prod" else None,
         }
 
 

@@ -19,6 +19,34 @@ class ProfileCompleteness(BaseModel):
     missing_fields: List[str] = Field(default_factory=list)
 
 
+class ProfileSectionStatus(BaseModel):
+    """Status of a single profile section for the completion gate UI."""
+    key: str
+    label: str
+    complete: bool
+    count: int = 0                       # number of records (for identity sections)
+    route: str = ""                      # frontend route to complete this section
+    description: str = ""               # human-readable hint
+
+
+class ProfileCompletionStatusResponse(BaseModel):
+    """
+    GET /api/v1/learning-hub/profile-completion-status
+
+    Returns a structured breakdown the frontend uses to render the
+    ProfileCompletionGate — checklist of required sections with CTAs.
+    """
+    score: float = Field(..., ge=0.0, le=1.0, description="0-1 completeness fraction")
+    is_sufficient: bool = Field(..., description="True when score >= 0.45 (warm-start threshold)")
+    missing_count: int
+    sections: List[ProfileSectionStatus]
+    teaching_context_complete: bool
+    has_identity_record: bool
+    guidance_message: str = ""
+
+    model_config = ConfigDict(from_attributes=False)
+
+
 # ---------- Teacher summary (from context / CTP) ----------
 class TeacherSummary(BaseModel):
     """Summary card from profile context and identity."""

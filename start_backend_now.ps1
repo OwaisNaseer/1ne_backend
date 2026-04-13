@@ -24,20 +24,20 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Dependencies OK" -ForegroundColor Green
 Write-Host ""
 
-# Clear port if needed
-$existing = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue
+# Clear port if needed (matches default 1ne-frontend .env: VITE_API_BASE_URL port 8001)
+$existing = Get-NetTCPConnection -LocalPort 8001 -ErrorAction SilentlyContinue
 if ($existing) {
-    Write-Host "Port 8000 is in use. Clearing..." -ForegroundColor Yellow
+    Write-Host "Port 8001 is in use. Clearing..." -ForegroundColor Yellow
     $existing | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
     Start-Sleep -Seconds 2
 }
 
 # Start server
-Write-Host "Starting server on http://127.0.0.1:8000..." -ForegroundColor Green
+Write-Host "Starting server on http://127.0.0.1:8001..." -ForegroundColor Green
 Write-Host "Server will start in this window." -ForegroundColor Cyan
 Write-Host "Press Ctrl+C to stop" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Waiting for startup..." -ForegroundColor Yellow
 Write-Host ""
 
-.\venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+.\venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001

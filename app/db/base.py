@@ -104,3 +104,20 @@ from app.domains.learning_progress.models import (  # noqa: F401, E402
 from app.domains.recommendation_analytics.models import (  # noqa: F401, E402
     RecommendationPerformanceSnapshot,
 )
+
+# Import personalization domain models
+from app.domains.personalization.models import (  # noqa: F401, E402
+    UserPersonalizationProfile,
+    ProfileVersion,
+    PersonalizationSnapshot,
+    PersonalizationJob,
+    PersonalizedContentAssignment,
+    RecommendationSlate,
+    RecommendationSlateItem,
+    UnlockRule,
+    SectionInventoryConfig,
+    UnlockState,
+    UnlockEvent,
+    UserActivityEvent,
+    SectionReadiness,
+)

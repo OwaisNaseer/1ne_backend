@@ -5,7 +5,7 @@ Includes retry logic and robust error handling for connection issues.
 from typing import Generator
 import time
 
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import OperationalError, DisconnectionError, TimeoutError
 
@@ -24,15 +24,28 @@ statement_timeout = "-c statement_timeout=10000"  # 10 seconds in milliseconds
 timezone_setting = "-c timezone=utc"
 db_options = f"{statement_timeout} {timezone_setting}"
 
+
+def _postgres_connect_args() -> dict:
+    """psycopg2/libpq kwargs for SQLAlchemy; keepalives help with dropped SSL on cloud poolers."""
+    args: dict = {
+        "connect_timeout": 15,
+        "sslmode": "require" if is_cloud_db else "prefer",
+        "options": db_options,
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 3,
+    }
+    return args
+
+
 engine = create_engine(
     settings.DATABASE_URL,
+    # Avoid extra pg_type query on connect (can fail when SSL drops mid-handshake on cloud DBs).
+    use_native_hstore=False,
     pool_pre_ping=True,  # Check connection before using (important for cloud DBs)
     echo=settings.ENVIRONMENT == "dev",  # Echo SQL queries in dev mode
-    connect_args={
-        "connect_timeout": 10,  # Connection timeout (increased for better reliability)
-        "sslmode": "require" if is_cloud_db else "prefer",  # SSL required for Supabase/cloud databases
-        "options": db_options,  # Statement timeout + timezone
-    } if "postgresql" in settings.DATABASE_URL else {},
+    connect_args=_postgres_connect_args() if "postgresql" in settings.DATABASE_URL else {},
     pool_timeout=30,  # Pool timeout (30 seconds - increased for better reliability)
     pool_size=10,  # Increased pool size for better concurrency
     max_overflow=20,  # Allow more overflow connections
@@ -66,62 +79,60 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 def get_db() -> Generator[Session, None, None]:
     """
     Dependency function for FastAPI to get database session.
-    Includes retry logic for connection failures.
-    
-    Yields:
-        Session: SQLAlchemy database session
+    Retries only SessionLocal() creation; yield/commit/close follow the standard pattern
+    so the generator does not break exception propagation (Python 3.12+).
     """
-    db = None
+    db: Session | None = None
     max_retries = 3
-    retry_delay = 0.5  # Start with 0.5 seconds
-    
+    retry_delay = 0.5
+
     for attempt in range(max_retries):
         try:
             db = SessionLocal()
-            # Skip connection test to speed up - pool_pre_ping already handles this
-            # db.execute(text("SELECT 1"))  # Removed to speed up connection
-            yield db
-            db.commit()
-            break  # Success, exit retry loop
+            break
         except (OperationalError, DisconnectionError, TimeoutError) as e:
-            if db:
-                try:
-                    db.rollback()
-                    db.close()
-                except Exception:
-                    pass
-                db = None
-            
             error_msg = str(e).lower()
-            is_connection_error = any(keyword in error_msg for keyword in [
-                "connection", "timeout", "network", "could not connect",
-                "server closed", "connection lost", "connection refused",
-                "temporarily unavailable", "pool"
-            ])
-            
+            is_connection_error = any(
+                keyword in error_msg
+                for keyword in [
+                    "connection",
+                    "timeout",
+                    "network",
+                    "could not connect",
+                    "server closed",
+                    "connection lost",
+                    "connection refused",
+                    "temporarily unavailable",
+                    "pool",
+                    "ssl",
+                ]
+            )
             if attempt < max_retries - 1 and is_connection_error:
-                wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
+                wait_time = retry_delay * (2**attempt)
                 logger.warning(
-                    f"Database connection failed (attempt {attempt + 1}/{max_retries}): {str(e)}. "
-                    f"Retrying in {wait_time:.2f} seconds..."
+                    "Database connection failed (attempt %s/%s): %s. Retrying in %.2fs...",
+                    attempt + 1,
+                    max_retries,
+                    str(e),
+                    wait_time,
                 )
                 time.sleep(wait_time)
                 continue
-            else:
-                logger.error(f"Database connection error after {attempt + 1} attempts: {e}", exc_info=True)
-                raise
-        except Exception as e:
-            if db:
-                try:
-                    db.rollback()
-                except Exception:
-                    pass
-            logger.error(f"Database session error: {e}", exc_info=True)
+            logger.error("Database connection error after %s attempts: %s", attempt + 1, e, exc_info=True)
             raise
-        finally:
-            if db and attempt == max_retries - 1:  # Only close on final attempt
-                try:
-                    db.close()
-                except Exception:
-                    pass
+
+    if db is None:
+        raise RuntimeError("Could not create database session")
+
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 

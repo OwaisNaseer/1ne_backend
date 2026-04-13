@@ -15,13 +15,13 @@ from typing import Any, Dict, Optional
 # Starter seed slugs -> first-class React routes (see 1ne-frontend/src/routes/config.jsx)
 SLUG_TO_ROUTE: Dict[str, str] = {
     "classroom-management-quick-wins": "/learning-hub/classroom-management",
-    "classroom-management-learning-path": "/learning-hub/classroom-management",
+    "classroom-management-learning-path": "/learning-hub/student-engagement-path",
     "student-engagement-strategies": "/learning-hub/student-engagement-course",
     "formative-assessment-essentials": "/learning-hub/assessment-strategies",
     "differentiation-made-simple": "/learning-hub/differentiation-course",
     "lesson-planning-with-ai": "/learning-hub/lesson-planner-tutorial",
-    # Mastery path: closest existing surface for structured lesson-planning PD
-    "lesson-planning-learning-path": "/learning-hub/digital-literacy-course",
+    # Learning-path slugs must resolve to growth-path destinations (never micro-course pages).
+    "lesson-planning-learning-path": "/learning-hub/ai-assessment-path",
 }
 
 FACTORY_CATEGORY_TO_MICRO_COURSE_ROUTE: Dict[str, str] = {
@@ -34,6 +34,21 @@ FACTORY_CATEGORY_TO_MICRO_COURSE_ROUTE: Dict[str, str] = {
     "lesson_planning": "/learning-hub/digital-literacy-course",
 }
 
+FACTORY_CATEGORY_TO_GROWTH_PATH_ROUTE: Dict[str, str] = {
+    "student_engagement": "/learning-hub/student-engagement-path",
+    "differentiation": "/learning-hub/advanced-differentiation-path",
+    "assessment_strategies": "/learning-hub/ai-assessment-path",
+    # Safe fallback for adjacent generated themes.
+    "lesson_planning": "/learning-hub/ai-assessment-path",
+    "classroom_management": "/learning-hub/student-engagement-path",
+}
+
+GROWTH_PATH_ROUTES = {
+    "/learning-hub/student-engagement-path",
+    "/learning-hub/advanced-differentiation-path",
+    "/learning-hub/ai-assessment-path",
+}
+
 FACTORY_CATEGORY_TO_TUTORIAL_ROUTE: Dict[str, str] = {
     "differentiation": "/learning-hub/differentiation-tutorial",
     "lesson_planning": "/learning-hub/lesson-planner-tutorial",
@@ -41,6 +56,7 @@ FACTORY_CATEGORY_TO_TUTORIAL_ROUTE: Dict[str, str] = {
 }
 
 _STARTER_SLUG_RE = re.compile(r"^starter-[a-z]{2}-(.+)$", re.IGNORECASE)
+_NON_SLUG_RE = re.compile(r"[^a-z0-9\-]+")
 
 
 def parse_starter_slug(content_id: str) -> Optional[str]:
@@ -94,31 +110,47 @@ def resolve_learning_hub_route(item: Any) -> str:
     blob: Dict[str, Any] = item.json_blob or {}
     delivery = blob.get("delivery") or {}
     explicit = validate_frontend_route(delivery.get("route"))
-    if explicit:
-        return explicit
-
     slug = resolve_delivery_slug(item)
-    if slug and slug in SLUG_TO_ROUTE:
-        return SLUG_TO_ROUTE[slug]
 
     ct = str(item.content_type or "").strip().lower()
+
+    def _route_allowed_for_type(route: Optional[str], content_type: str) -> bool:
+        if not route:
+            return False
+        if content_type in ("learning_path", "path_module"):
+            return route in GROWTH_PATH_ROUTES
+        return True
 
     # AI-generated content from content_factory does not have starter slug mappings.
     # We route these items based on their semantic registry `category` when possible.
     source_type = getattr(item, "source_type", None)
+    if explicit and _route_allowed_for_type(explicit, ct):
+        return explicit
+
+    if slug and slug in SLUG_TO_ROUTE:
+        mapped = SLUG_TO_ROUTE[slug]
+        if _route_allowed_for_type(mapped, ct):
+            return mapped
+
     if source_type == "content_factory":
+        raw_slug = (slug or str(getattr(item, "content_id", "") or "")).strip().lower().replace("_", "-")
+        content_slug = _NON_SLUG_RE.sub("-", raw_slug).strip("-") or "generated-content"
         cat = str(getattr(item, "category", "") or "").strip().lower()
         if ct == "ai_guided_tutorial":
-            # Pick a real tutorial route as a safe fallback so Start/Continue can render.
-            return FACTORY_CATEGORY_TO_TUTORIAL_ROUTE.get(cat, "/learning-hub/lesson-planner-tutorial")
-        if ct in ("micro_course", "learning_path"):
-            # Pick a real course route as a safe fallback so Start/Continue can render.
-            return FACTORY_CATEGORY_TO_MICRO_COURSE_ROUTE.get(cat, "/learning-hub/differentiation-course")
+            return f"/learning-hub/ai-guided-tutorials-demonstrations/{content_slug}"
+        if ct == "learning_path":
+            if cat in ("specialist", "specialist_tracks"):
+                return f"/learning-hub/specialist-deep-dive-tracks/{content_slug}"
+            return f"/learning-hub/ai-growth-recommendations/{content_slug}"
+        if ct == "micro_course":
+            return f"/learning-hub/personalized-micro-courses/{content_slug}"
+        if ct in ("research", "resource"):
+            return f"/learning-hub/research-insights-library/{content_slug}"
         return "/learning-hub"
 
     if ct == "ai_guided_tutorial":
         return "/learning-hub"
-    if ct in ("micro_course", "learning_path"):
+    if ct in ("micro_course", "learning_path", "path_module"):
         return "/learning-hub"
 
     return "/learning-hub"

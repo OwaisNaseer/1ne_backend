@@ -10,6 +10,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.logging import get_logger
 from app.domains.auth.models import TeacherProfileContext
 from app.domains.teacher_intelligence.services import (
     CTPAssemblerService,
@@ -18,13 +19,18 @@ from app.domains.teacher_intelligence.services import (
     IntelligenceRefreshService,
 )
 from app.domains.teacher_identity.models import (
-    TeacherExperience,
+    TeacherAchievement,
     TeacherCertification,
     TeacherCareerDocument,
+    TeacherEducation,
+    TeacherExperience,
 )
 from app.domains.content_registry.services import RecommendationMappingService
 from app.domains.learning_progress.services import ProgressAggregationService
 from app.domains.learning_hub import schemas as hub_schemas
+from app.domains.content_registry.enums import ContentType
+
+logger = get_logger(__name__)
 
 # Fields that count toward profile completeness (spec)
 _COMPLETENESS_FIELDS = [
@@ -145,12 +151,16 @@ def _compute_profile_completeness(
 
     has_identity = False
     try:
-        has_identity = (
+        has_identity = bool(
             db.query(TeacherExperience).filter(TeacherExperience.user_id == teacher_id).first()
             or db.query(TeacherCertification).filter(TeacherCertification.user_id == teacher_id).first()
             or db.query(TeacherCareerDocument).filter(TeacherCareerDocument.user_id == teacher_id).first()
         )
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "learning_hub.profile_completeness.identity_check_failed teacher_id=%s error=%s",
+            teacher_id, exc,
+        )
         try:
             db.rollback()
         except Exception:
@@ -355,6 +365,43 @@ class LearningHubHomeService:
             mode=mode,
         )
 
+        # Ensure home payload always has actionable growth recommendation metadata.
+        # If profile/ML signals are sparse, derive focus_areas + next_actions from ranked cards
+        # so frontend can render AI growth recommendations without falling back to dummy-only UI.
+        if not focus_areas:
+            ranked_cards = [
+                c
+                for c in ((rec_response.primary_recommendations or []) + (rec_response.secondary_recommendations or []))
+                if str(getattr(c, "content_type", "") or "").strip().lower()
+                in {ContentType.LEARNING_PATH.value, ContentType.PATH_MODULE.value}
+            ]
+            focus_areas = [
+                hub_schemas.FocusArea(
+                    title=(card.title or "Recommended skill"),
+                    source="ml_output",
+                    priority=idx + 1,
+                )
+                for idx, card in enumerate(ranked_cards[:3])
+                if getattr(card, "title", None)
+            ]
+
+        if not next_actions:
+            ranked_cards = [
+                c
+                for c in ((rec_response.primary_recommendations or []) + (rec_response.secondary_recommendations or []))
+                if str(getattr(c, "content_type", "") or "").strip().lower()
+                in {ContentType.LEARNING_PATH.value, ContentType.PATH_MODULE.value}
+            ]
+            next_actions = [
+                hub_schemas.NextAction(
+                    action_type="explore_recommendations",
+                    label=(card.title or "Recommended skill"),
+                    reason=(card.reason or "Recommended based on your profile and learning activity."),
+                )
+                for card in ranked_cards[:3]
+                if getattr(card, "title", None)
+            ]
+
         return hub_schemas.LearningHubHomeResponse(
             teacher_id=teacher_id,
             generated_at=datetime.now(timezone.utc),
@@ -368,3 +415,192 @@ class LearningHubHomeService:
             progress_overview=progress_overview.model_dump(),
             mode=mode,
         )
+
+
+# ---------------------------------------------------------------------------
+# Profile completion status — used by the ProfileCompletionGate UI
+# ---------------------------------------------------------------------------
+
+def _count_identity_records(db: Session, teacher_id: UUID, model_class: Any) -> int:
+    """Safe count of identity records; returns 0 on any DB error."""
+    try:
+        return db.query(model_class).filter(model_class.user_id == teacher_id).count()
+    except Exception as exc:
+        logger.warning(
+            "learning_hub.profile_completion_status.count_failed model=%s teacher_id=%s error=%s",
+            model_class.__name__, teacher_id, exc,
+        )
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return 0
+
+
+def get_profile_completion_status(
+    db: Session, teacher_id: UUID
+) -> hub_schemas.ProfileCompletionStatusResponse:
+    """
+    Return a structured profile completion breakdown for the Learning Hub gate UI.
+
+    Covers both teaching context (country, region, subjects, grade_band, school_type,
+    language_preference, years_experience) and identity sections (experience, education,
+    certifications, skills/achievements, career documents).
+    """
+    # Re-use existing completeness computation for the score.
+    completeness = _compute_profile_completeness(db, teacher_id)
+    missing = set(completeness.missing_fields)
+
+    ctx = None
+    try:
+        ctx = (
+            db.query(TeacherProfileContext)
+            .filter(TeacherProfileContext.user_id == teacher_id)
+            .first()
+        )
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
+    # ---------- Teaching context fields ----------
+    context_fields = [
+        hub_schemas.ProfileSectionStatus(
+            key="country",
+            label="Country",
+            complete="country" not in missing,
+            route="/profile",
+            description="Where you teach",
+        ),
+        hub_schemas.ProfileSectionStatus(
+            key="region",
+            label="Region / State",
+            complete="region" not in missing,
+            route="/profile",
+            description="Your teaching region",
+        ),
+        hub_schemas.ProfileSectionStatus(
+            key="subjects",
+            label="Subjects",
+            complete="subjects" not in missing,
+            route="/profile",
+            description="Subjects you teach",
+        ),
+        hub_schemas.ProfileSectionStatus(
+            key="grade_band",
+            label="Grade Band",
+            complete="grade_band" not in missing,
+            route="/profile",
+            description="Grade levels you teach",
+        ),
+        hub_schemas.ProfileSectionStatus(
+            key="school_type",
+            label="School Type",
+            complete="school_type" not in missing,
+            route="/profile",
+            description="Type of school you work at",
+        ),
+        hub_schemas.ProfileSectionStatus(
+            key="language_preference",
+            label="Teaching Language",
+            complete="language_preference" not in missing,
+            route="/profile",
+            description="Primary language of instruction",
+        ),
+        hub_schemas.ProfileSectionStatus(
+            key="years_experience",
+            label="Years of Experience",
+            complete="years_experience" not in missing,
+            route="/profile",
+            description="How long you've been teaching",
+        ),
+    ]
+
+    # ---------- Identity / career sections ----------
+    exp_count = _count_identity_records(db, teacher_id, TeacherExperience)
+    edu_count = _count_identity_records(db, teacher_id, TeacherEducation)
+    cert_count = _count_identity_records(db, teacher_id, TeacherCertification)
+    achieve_count = _count_identity_records(db, teacher_id, TeacherAchievement)
+    doc_count = _count_identity_records(db, teacher_id, TeacherCareerDocument)
+
+    identity_fields = [
+        hub_schemas.ProfileSectionStatus(
+            key="experience",
+            label="Teaching Experience",
+            complete=exp_count > 0,
+            count=exp_count,
+            route="/profile?tab=experience",
+            description="Add positions you've held",
+        ),
+        hub_schemas.ProfileSectionStatus(
+            key="education",
+            label="Education",
+            complete=edu_count > 0,
+            count=edu_count,
+            route="/profile?tab=education",
+            description="Your academic qualifications",
+        ),
+        hub_schemas.ProfileSectionStatus(
+            key="certifications",
+            label="Certifications",
+            complete=cert_count > 0,
+            count=cert_count,
+            route="/profile?tab=certifications",
+            description="Teaching licenses and credentials",
+        ),
+        hub_schemas.ProfileSectionStatus(
+            key="achievements",
+            label="Achievements",
+            complete=achieve_count > 0,
+            count=achieve_count,
+            route="/profile?tab=achievements",
+            description="Awards, publications, or recognitions",
+        ),
+        hub_schemas.ProfileSectionStatus(
+            key="documents",
+            label="Career Documents",
+            complete=doc_count > 0,
+            count=doc_count,
+            route="/profile?tab=documents",
+            description="CV, resume, or portfolio upload",
+        ),
+    ]
+
+    all_sections = context_fields + identity_fields
+    has_identity_record = "experience_or_certification_or_document" not in missing
+    teaching_context_complete = not any(
+        f in missing for f in _COMPLETENESS_FIELDS
+    )
+    missing_count = len([s for s in all_sections if not s.complete])
+
+    # Build a short guidance message for the banner
+    if completeness.score == 0.0:
+        guidance_message = (
+            "Start by adding your teaching context — country, subjects, and grade band — "
+            "then add at least one experience or certification to unlock your personalized Learning Hub."
+        )
+    elif completeness.score < 0.45:
+        guidance_message = (
+            f"You're {int(completeness.score * 100)}% complete. "
+            "Add a few more profile details to unlock personalized recommendations."
+        )
+    elif not has_identity_record:
+        guidance_message = (
+            "Great start! Add at least one experience record, certification, or document "
+            "to enable full AI personalization."
+        )
+    else:
+        guidance_message = (
+            "Your profile is ready. Add more details any time to improve your recommendations."
+        )
+
+    return hub_schemas.ProfileCompletionStatusResponse(
+        score=completeness.score,
+        is_sufficient=completeness.score >= 0.45,
+        missing_count=missing_count,
+        sections=all_sections,
+        teaching_context_complete=teaching_context_complete,
+        has_identity_record=has_identity_record,
+        guidance_message=guidance_message,
+    )

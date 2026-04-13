@@ -64,6 +64,11 @@ from app.domains.auth.services.signup_service import SignupService
 from app.domains.auth.services.membership_service import MembershipService
 from app.domains.auth.services.session_service import SessionService
 from app.domains.external_context.schemas import ProfileUpdateRequest, ProfileUpdateResponse
+from app.domains.personalization.schemas import PersonalizationSyncReceipt
+from app.domains.personalization.services.personalization_sync_service import (
+    build_full_snapshot,
+    enqueue_sync_with_db,
+)
 from sqlalchemy.orm import joinedload
 
 logger = get_logger(__name__)
@@ -1216,6 +1221,7 @@ async def update_current_user_profile(
 @router.patch("/users/profile", response_model=ProfileUpdateResponse)
 async def update_user_profile_with_context(
     body: ProfileUpdateRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1251,6 +1257,14 @@ async def update_user_profile_with_context(
                 **update_kwargs,
             )
             db.refresh(current_user)
+
+    # Capture pre-mutation snapshot for personalization sync (must be before upsert)
+    old_snapshot_for_sync: Optional[dict] = None
+    if req.teaching_context is not None:
+        try:
+            old_snapshot_for_sync = build_full_snapshot(db, current_user.id)
+        except Exception:
+            old_snapshot_for_sync = None
 
     # Upsert teaching context if provided
     context_resolution_status = ctx_service.get_resolution_status(current_user.id)
@@ -1327,10 +1341,24 @@ async def update_user_profile_with_context(
             "Please review or complete the optional fields for accurate Professional Learning Hub recommendations."
         ]
 
+    personalization_sync = None
+    if req.teaching_context is not None and old_snapshot_for_sync is not None:
+        new_snapshot = build_full_snapshot(db, current_user.id)
+        sync_raw = enqueue_sync_with_db(
+            background_tasks,
+            db,
+            current_user.id,
+            old_snapshot_for_sync,
+            new_snapshot,
+            trigger="patch_users_profile_teaching_context",
+        )
+        personalization_sync = PersonalizationSyncReceipt(**sync_raw)
+
     return ProfileUpdateResponse(
         profile=profile_dict,
         context_resolution_status=context_resolution_status,
         recommendations=recommendations,
+        personalization_sync=personalization_sync,
     )
 
 

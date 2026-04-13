@@ -7,9 +7,17 @@ cd 1ne_backend
 .\start_server.ps1
 ```
 
+**Local frontend (`1ne-frontend`)** defaults to `VITE_API_BASE_URL=http://127.0.0.1:8001` in `.env`. Run the API on **port 8001** so login and API calls work without changing the frontend. Example:
+
+```powershell
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
+```
+
+Or use `.\start_backend_now.ps1` (uses port 8001 when your venv is at `venv\`).
+
 ## What to Expect
 
-1. **Server starts on:** `http://127.0.0.1:8000`
+1. **Server starts on:** `http://127.0.0.1:8000` (or **8001** if you follow the frontend default above)
 2. **You should see:** `Application startup complete`
 3. **FastAPI docs:** `http://127.0.0.1:8000/docs`
 

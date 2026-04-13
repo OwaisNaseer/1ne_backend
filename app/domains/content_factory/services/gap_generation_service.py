@@ -6,10 +6,11 @@ is detected. It only enqueues jobs; it never runs generation synchronously.
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Set
 
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -67,12 +68,19 @@ class GapGenerationService:
         job_type: str,
     ) -> bool:
         """Check if a similar pending/active gap_detection job already exists."""
+        running_fresh_after = datetime.now(timezone.utc) - timedelta(hours=2)
         q = self.db.query(ContentGenerationJob).filter(
             ContentGenerationJob.source == "gap_detection",
             ContentGenerationJob.job_type == job_type,
             ContentGenerationJob.locale == locale,
-            ContentGenerationJob.status.in_(
-                [JobStatus.PENDING.value, JobStatus.RUNNING.value, JobStatus.AWAITING_HUMAN_APPROVAL.value]
+            or_(
+                ContentGenerationJob.status.in_(
+                    [JobStatus.PENDING.value, JobStatus.AWAITING_HUMAN_APPROVAL.value]
+                ),
+                and_(
+                    ContentGenerationJob.status == JobStatus.RUNNING.value,
+                    ContentGenerationJob.updated_at >= running_fresh_after,
+                ),
             ),
         )
         if subject:

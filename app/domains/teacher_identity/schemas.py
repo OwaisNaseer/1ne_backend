@@ -7,6 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, ConfigDict
 
+from app.domains.personalization.schemas import PersonalizationSyncReceipt
 from app.domains.teacher_identity.enums import (
     CareerDocumentType,
     CareerDocumentStatus,
@@ -65,6 +66,7 @@ class ExperienceResponse(BaseModel):
     location_country: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    personalization_sync: Optional[PersonalizationSyncReceipt] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -108,6 +110,7 @@ class EducationResponse(BaseModel):
     description: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    personalization_sync: Optional[PersonalizationSyncReceipt] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -151,6 +154,7 @@ class CertificationResponse(BaseModel):
     document_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
+    personalization_sync: Optional[PersonalizationSyncReceipt] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -185,6 +189,7 @@ class AchievementResponse(BaseModel):
     description: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    personalization_sync: Optional[PersonalizationSyncReceipt] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -206,6 +211,7 @@ class CareerDocumentResponse(BaseModel):
     uploaded_at: datetime
     created_at: datetime
     updated_at: datetime
+    personalization_sync: Optional[PersonalizationSyncReceipt] = None
 
     model_config = ConfigDict(from_attributes=True)
 

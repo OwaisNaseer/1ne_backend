@@ -197,13 +197,18 @@ class RecommendationRankingService:
         self,
         bucket: List[RecommendationCard],
         seen: Set[str],
+        seen_fingerprints: Set[str],
         card: RecommendationCard,
         limit: int,
     ) -> bool:
-        if card.content_id in seen or len(bucket) >= limit:
+        # Deduplicate both by content_id and by semantic fingerprint to avoid
+        # repeated cards when multiple generated items share the same title/topic.
+        fp = f"{_norm(card.content_type)}|{_norm(card.category)}|{_norm(card.title)}"
+        if card.content_id in seen or fp in seen_fingerprints or len(bucket) >= limit:
             return False
         bucket.append(card)
         seen.add(card.content_id)
+        seen_fingerprints.add(fp)
         return True
 
     def _get_cold_start_recommendations(
@@ -217,6 +222,7 @@ class RecommendationRankingService:
         primary: List[RecommendationCard] = []
         secondary: List[RecommendationCard] = []
         seen: Set[str] = set()
+        seen_fingerprints: Set[str] = set()
 
         candidates = [item for item in published if self._is_valid_candidate(item, getattr(item, "locale", ""))]
         candidates = [item for item in candidates if self._is_foundational(item) or _norm(item.difficulty) in {"beginner", "introductory"}]
@@ -237,10 +243,10 @@ class RecommendationRankingService:
         for total, item, scored in scored_items:
             card = self._item_to_card(item, score=total, reason=self._card_reason("cold_start", scored, "Recommended for new learners"))
             target = primary if len(primary) < min(3, limit) else secondary
-            if self._unique_append(target, seen, card, min(3, limit)):
+            if self._unique_append(target, seen, seen_fingerprints, card, min(3, limit)):
                 continue
             if len(secondary) < min(3, limit):
-                self._unique_append(secondary, seen, card, min(3, limit))
+                self._unique_append(secondary, seen, seen_fingerprints, card, min(3, limit))
 
         if not primary:
             return self._fallback_cold_start(published, behavior, analytics_index, limit)
@@ -257,6 +263,7 @@ class RecommendationRankingService:
         primary: List[RecommendationCard] = []
         secondary: List[RecommendationCard] = []
         seen: Set[str] = set()
+        seen_fingerprints: Set[str] = set()
 
         scored_items = []
         for item in published:
@@ -277,9 +284,9 @@ class RecommendationRankingService:
         for total, item, scored in scored_items:
             card = self._item_to_card(item, score=total, reason=self._card_reason("warm_start", scored, "Selected for your teaching context"))
             if len(primary) < min(3, limit):
-                self._unique_append(primary, seen, card, min(3, limit))
+                self._unique_append(primary, seen, seen_fingerprints, card, min(3, limit))
             elif len(secondary) < min(3, limit):
-                self._unique_append(secondary, seen, card, min(3, limit))
+                self._unique_append(secondary, seen, seen_fingerprints, card, min(3, limit))
 
         if not primary:
             return self._fallback_cold_start(published, behavior, analytics_index, limit)
@@ -296,6 +303,7 @@ class RecommendationRankingService:
         primary: List[RecommendationCard] = []
         secondary: List[RecommendationCard] = []
         seen: Set[str] = set()
+        seen_fingerprints: Set[str] = set()
         for item in published:
             if not self._is_valid_candidate(item, getattr(item, "locale", "")):
                 continue
@@ -310,9 +318,9 @@ class RecommendationRankingService:
                 reason="Popular among teachers",
             )
             if len(primary) < min(3, limit):
-                self._unique_append(primary, seen, card, min(3, limit))
+                self._unique_append(primary, seen, seen_fingerprints, card, min(3, limit))
             elif len(secondary) < min(3, limit):
-                self._unique_append(secondary, seen, card, min(3, limit))
+                self._unique_append(secondary, seen, seen_fingerprints, card, min(3, limit))
             if len(primary) >= 3 and len(secondary) >= 3:
                 break
         return RecommendationMappingResponse(primary_recommendations=primary[:3], secondary_recommendations=secondary[:3])
@@ -329,6 +337,7 @@ class RecommendationRankingService:
         primary: List[RecommendationCard] = []
         secondary: List[RecommendationCard] = []
         seen: Set[str] = set()
+        seen_fingerprints: Set[str] = set()
 
         published_index = {item.content_id: item for item in published if item}
 
@@ -340,6 +349,7 @@ class RecommendationRankingService:
             self._unique_append(
                 primary,
                 seen,
+                seen_fingerprints,
                 self._item_to_card(
                     item,
                     score=self._score_with_starter_penalty(
@@ -375,6 +385,7 @@ class RecommendationRankingService:
                 self._unique_append(
                     primary,
                     seen,
+                    seen_fingerprints,
                     self._item_to_card(item, score=total, reason=self._card_reason("personalized", scored, "Recommended by your learning profile")),
                     min(3, limit),
                 )
@@ -395,9 +406,9 @@ class RecommendationRankingService:
                     reason=self._card_reason("personalized", scored, "Matches your goals and recent activity"),
                 )
                 if len(primary) < 3:
-                    self._unique_append(primary, seen, card, min(3, limit))
+                    self._unique_append(primary, seen, seen_fingerprints, card, min(3, limit))
                 elif len(secondary) < 3:
-                    self._unique_append(secondary, seen, card, min(3, limit))
+                    self._unique_append(secondary, seen, seen_fingerprints, card, min(3, limit))
             if len(primary) >= 3 and len(secondary) >= 3:
                 break
 
@@ -563,6 +574,96 @@ class RecommendationRankingService:
                             response.secondary_recommendations[-1] = card
         except Exception as exc:  # pragma: no cover - defensive
             logger.warning("Failed to inject non-starter recommendation: %s", exc)
+
+        # Guarantee at least one learning_path recommendation in the home payload.
+        # The frontend AI Growth Recommendations panel only renders when the home payload
+        # includes learning-path-like registry cards in primary/secondary recommendations.
+        try:
+            has_learning_path = any(
+                (getattr(c, "content_type", "") or "").strip() == ContentType.LEARNING_PATH.value
+                for c in (response.primary_recommendations + response.secondary_recommendations)
+            )
+            if not has_learning_path:
+                path_candidates = [
+                    it
+                    for it in published
+                    if getattr(it, "content_type", None) == ContentType.LEARNING_PATH.value
+                ]
+                if path_candidates:
+                    # Prefer non-starter content if the pool is healthy; otherwise allow starter paths.
+                    non_starter = [it for it in path_candidates if not self._is_starter_item(it)]
+                    pool = non_starter if non_starter else path_candidates
+                    best_item = None
+                    best_total = float("-inf")
+                    for it in pool:
+                        scored = self.scoring.score_item(it, behavior, analytics_index.get(it.content_id))
+                        total = self._score_with_starter_penalty(
+                            it,
+                            self._score_for_mode(mode, scored),
+                            healthy_non_starter_pool=healthy_non_starter_pool,
+                        )
+                        if total > best_total:
+                            best_total = total
+                            best_item = it
+                    if best_item is not None:
+                        best_card = self._item_to_card(
+                            best_item,
+                            score=best_total,
+                            reason="Recommended learning path for your growth",
+                        )
+                        if response.primary_recommendations:
+                            response.primary_recommendations[-1] = best_card
+                        elif response.secondary_recommendations and len(response.secondary_recommendations) < 3:
+                            response.secondary_recommendations.append(best_card)
+                        else:
+                            # If primary is empty but secondary has 3 items, replace the last one.
+                            if response.secondary_recommendations:
+                                response.secondary_recommendations[-1] = best_card
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Failed to inject learning_path recommendation: %s", exc)
+
+        # Guarantee at least one card for each home section type:
+        # - micro_course (Personalized micro-courses)
+        # - ai_guided_tutorial (AI-guided tutorials)
+        # - learning_path (AI Growth Recommendations)
+        # This keeps section composition stable without mixing entity types.
+        try:
+            def _inject_required_type(ctype: str, reason: str) -> None:
+                cards_all = response.primary_recommendations + response.secondary_recommendations
+                if any((getattr(c, "content_type", "") or "").strip() == ctype for c in cards_all):
+                    return
+                candidates = [it for it in published if getattr(it, "content_type", None) == ctype]
+                if not candidates:
+                    return
+                non_starter = [it for it in candidates if not self._is_starter_item(it)]
+                pool = non_starter if non_starter else candidates
+                best_item = None
+                best_total = float("-inf")
+                for it in pool:
+                    scored = self.scoring.score_item(it, behavior, analytics_index.get(it.content_id))
+                    total = self._score_with_starter_penalty(
+                        it,
+                        self._score_for_mode(mode, scored),
+                        healthy_non_starter_pool=healthy_non_starter_pool,
+                    )
+                    if total > best_total:
+                        best_total = total
+                        best_item = it
+                if best_item is None:
+                    return
+                best_card = self._item_to_card(best_item, score=best_total, reason=reason)
+                if response.primary_recommendations:
+                    response.primary_recommendations[-1] = best_card
+                elif len(response.secondary_recommendations) < 3:
+                    response.secondary_recommendations.append(best_card)
+                elif response.secondary_recommendations:
+                    response.secondary_recommendations[-1] = best_card
+
+            _inject_required_type(ContentType.MICRO_COURSE.value, "Recommended micro-course for your profile")
+            _inject_required_type(ContentType.AI_GUIDED_TUTORIAL.value, "Recommended guided tutorial for your profile")
+            _inject_required_type(ContentType.LEARNING_PATH.value, "Recommended learning path for your growth")
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Failed to enforce section type coverage: %s", exc)
 
         # Simple gap detection:
         # - insufficient pool OR too few results -> enqueue async jobs

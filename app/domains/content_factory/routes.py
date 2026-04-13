@@ -14,7 +14,10 @@ from app.domains.auth.models import User
 from app.domains.content_factory import schemas as factory_schemas
 from app.domains.content_factory.enums import JobStatus
 from app.domains.content_factory.models import ContentGenerationJob
-from app.domains.content_factory.services.content_factory_service import ContentFactoryService
+from app.domains.content_factory.services.content_factory_service import (
+    ContentFactoryService,
+    ContentFactoryServiceError,
+)
 from app.domains.content_factory.services.review_service import ContentReviewService
 
 router = APIRouter(prefix="/api/v1/content-factory", tags=["content-factory"])
@@ -76,6 +79,76 @@ async def request_micro_course(
         generation_mode=data.generation_mode,
     )
     return job
+
+
+@router.get(
+    "/jobs/by-user/{user_id}",
+    summary="Admin: job status summary for a specific teacher",
+)
+def jobs_by_user(
+    user_id: UUID,
+    current_user: User = Depends(require_any_role("super_admin", "org_admin")),
+    db: Session = Depends(get_db),
+):
+    """
+    Return generation job counts and recent jobs for a specific teacher user.
+    Used by the admin dashboard to inspect per-user pipeline health.
+    """
+    from app.domains.content_factory.enums import JobStatus as JS
+    from sqlalchemy import func
+
+    counts_raw = (
+        db.query(ContentGenerationJob.status, func.count(ContentGenerationJob.id))
+        .filter(ContentGenerationJob.requested_by_user_id == user_id)
+        .group_by(ContentGenerationJob.status)
+        .all()
+    )
+    counts = {row[0]: row[1] for row in counts_raw}
+
+    recent_jobs = (
+        db.query(ContentGenerationJob)
+        .filter(ContentGenerationJob.requested_by_user_id == user_id)
+        .order_by(ContentGenerationJob.created_at.desc())
+        .limit(10)
+        .all()
+    )
+
+    from app.domains.learning_hub.services.learning_hub_home_service import get_profile_completion_status
+    try:
+        profile_status = get_profile_completion_status(db, user_id)
+        profile_score = profile_status.score
+        profile_missing = profile_status.missing_count
+        profile_is_sufficient = profile_status.is_sufficient
+    except Exception:
+        profile_score = 0.0
+        profile_missing = -1
+        profile_is_sufficient = False
+
+    return {
+        "user_id": str(user_id),
+        "profile_completeness_score": round(profile_score, 3),
+        "profile_is_sufficient": profile_is_sufficient,
+        "profile_missing_sections": profile_missing,
+        "job_counts": {
+            "pending": counts.get(JS.PENDING.value, 0),
+            "running": counts.get(JS.RUNNING.value, 0),
+            "completed": counts.get(JS.COMPLETED.value, 0),
+            "failed": counts.get(JS.FAILED.value, 0),
+            "reviewing": counts.get(JS.REVIEWING.value, 0),
+        },
+        "recent_jobs": [
+            {
+                "id": str(j.id),
+                "status": j.status,
+                "content_type": j.content_type,
+                "topic": j.topic,
+                "created_at": j.created_at.isoformat() if j.created_at else None,
+                "error_message": j.error_message,
+                "current_step": j.current_step,
+            }
+            for j in recent_jobs
+        ],
+    }
 
 
 @router.get(
@@ -188,6 +261,36 @@ def get_job(
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
     return job
+
+
+@router.post(
+    "/jobs/{id:uuid}/retry",
+    response_model=factory_schemas.ContentGenerationJobResponse,
+)
+async def retry_job(
+    id: UUID,
+    current_user: User = Depends(require_any_role("super_admin", "org_admin")),
+    db: Session = Depends(get_db),
+):
+    """Retry a failed/rejected job by cloning inputs into a fresh job."""
+    service = ContentFactoryService(db)
+    try:
+        return await service.retry_job(id, requested_by_user_id=current_user.id)
+    except ContentFactoryServiceError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.delete("/jobs/{id:uuid}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_job(
+    id: UUID,
+    current_user: User = Depends(require_any_role("super_admin", "org_admin")),
+    db: Session = Depends(get_db),
+):
+    """Delete a content generation job (admin)."""
+    service = ContentFactoryService(db)
+    ok = service.delete_job(id)
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
 
 @router.get(
