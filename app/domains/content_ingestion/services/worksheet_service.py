@@ -689,6 +689,42 @@ ALGEBRAIC EXPRESSION TOPIC — STRICT REQUIREMENTS:
 - Do NOT write questions on prime numbers, factors, HCF, LCM, or integers unless the CONTEXT explicitly is about algebra.
 """
 
+        difficulty_line = (
+            f"- Target difficulty: {target_difficulty.upper()}. "
+            if target_difficulty
+            else "- Difficulty: ~20% easy, ~60% medium, ~20% hard. "
+        )
+        medium_requirement = ""
+        if target_difficulty == "medium":
+            medium_requirement = f"""
+CRITICAL DIFFICULTY REQUIREMENT FOR MEDIUM:
+- At least 2-3 out of {num_questions} questions MUST be multi-step.
+- Multi-step means: "First find X, then use X to find Y" OR "Given A and B, find C" OR scenario-based problems requiring multiple operations.
+- Examples of multi-step questions:
+  * "If set A = {{1,2,3}} and set B = {{3,4,5}}, first find A∩B, then find (A∩B)∪{{6}}."
+  * "A student has 5 books. First, identify how many are math books, then calculate the total cost."
+- DO NOT write all single-step questions. At least 20% must require multiple steps.
+"""
+        hard_requirement = ""
+        if target_difficulty == "hard":
+            hard_requirement = f"""
+CRITICAL DIFFICULTY REQUIREMENT FOR HARD:
+- At least 3-4 out of {num_questions} questions MUST be multi-step OR require justification/explanation.
+- Multi-step: "First find X, then use X to find Y, then verify Z" OR complex scenarios with multiple constraints.
+- Justify/explain: Questions asking "justify", "explain why", "show that", "prove", "derive".
+- Examples:
+  * "Prove that if A⊆B and B⊆C, then A⊆C. Justify each step."
+  * "Given sets A, B, C, first find A∪B, then find (A∪B)∩C, then explain why this equals (A∩C)∪(B∩C)."
+- DO NOT write all single-step questions. At least 35% must be multi-step or justify/explain.
+"""
+        easy_requirement = (
+            "- EASY difficulty: All questions should be single-step. "
+            "No 'justify', 'explain why', 'prove', 'derive'. "
+            "Simple recall or one-operation problems only. "
+            if target_difficulty == "easy"
+            else ""
+        )
+
         system_message = f"""You are an international-standard assessment author and a strict JSON generator.
 
 CRITICAL: You MUST generate questions strictly about the topic: "{topic_text}". Use ONLY the provided book excerpts. If excerpts do not contain the topic, do not invent content from other topics.
@@ -755,27 +791,10 @@ OUTPUT JSON SCHEMA (MUST match exactly). Return ONLY this JSON, no other text:
 
 QUESTION RULES:
 - Exactly {mcq_count} MCQ and exactly {short_count} short questions.
-{f"- Target difficulty: {target_difficulty.upper()}. " if target_difficulty else "- Difficulty: ~20% easy, ~60% medium, ~20% hard. "}
-{f"""
-CRITICAL DIFFICULTY REQUIREMENT FOR MEDIUM:
-- At least 2-3 out of {num_questions} questions MUST be multi-step.
-- Multi-step means: "First find X, then use X to find Y" OR "Given A and B, find C" OR scenario-based problems requiring multiple operations.
-- Examples of multi-step questions:
-  * "If set A = {{1,2,3}} and set B = {{3,4,5}}, first find A∩B, then find (A∩B)∪{{6}}."
-  * "A student has 5 books. First, identify how many are math books, then calculate the total cost."
-- DO NOT write all single-step questions. At least 20% must require multiple steps.
-""" if target_difficulty == "medium" else ""}
-{f"""
-CRITICAL DIFFICULTY REQUIREMENT FOR HARD:
-- At least 3-4 out of {num_questions} questions MUST be multi-step OR require justification/explanation.
-- Multi-step: "First find X, then use X to find Y, then verify Z" OR complex scenarios with multiple constraints.
-- Justify/explain: Questions asking "justify", "explain why", "show that", "prove", "derive".
-- Examples:
-  * "Prove that if A⊆B and B⊆C, then A⊆C. Justify each step."
-  * "Given sets A, B, C, first find A∪B, then find (A∪B)∩C, then explain why this equals (A∩C)∪(B∩C)."
-- DO NOT write all single-step questions. At least 35% must be multi-step or justify/explain.
-""" if target_difficulty == "hard" else ""}
-{f"- EASY difficulty: All questions should be single-step. No 'justify', 'explain why', 'prove', 'derive'. Simple recall or one-operation problems only. " if target_difficulty == "easy" else ""}
+{difficulty_line}
+{medium_requirement}
+{hard_requirement}
+{easy_requirement}
 - MCQ marks = 1. Short marks = 2 or 3.
 - Every question must cite relevant chunks from CONTEXT. Use LaTeX for math: $formula$.
 - Language: International English, grade-appropriate (Grade {grade}), short sentences, no advanced vocabulary.
