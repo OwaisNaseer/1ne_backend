@@ -1,9 +1,9 @@
 """
 Schemas for YouTube quiz generation endpoint.
 """
-from typing import List
+from typing import List, Literal, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 GRADE_BANDS = {
@@ -39,6 +39,16 @@ QUESTION_STYLES = {
     "Quick check",
     "Discussion prompt",
 }
+
+QUESTION_STYLE_TO_KEY = {
+    "Multiple choice": "multiple_choice",
+    "Higher-order thinking": "higher_order",
+    "Quick check": "quick_check",
+    "Discussion prompt": "discussion_prompt",
+}
+
+QuestionStyle = Literal["multiple_choice", "higher_order", "quick_check", "discussion_prompt"]
+QuickCheckResponseType = Literal["one_word", "short_phrase", "true_false"]
 
 
 class YouTubeQuizGenerateRequest(BaseModel):
@@ -103,7 +113,49 @@ class YouTubeQuizSection(BaseModel):
 
     heading: str
     details: str
-    questions: List[str] = Field(default_factory=list)
+    questions: List["YouTubeQuizQuestion"] = Field(default_factory=list)
+
+
+class YouTubeQuizQuestion(BaseModel):
+    """One typed quiz question with style-aware fields."""
+
+    id: str = Field(..., min_length=1)
+    style: QuestionStyle
+    prompt: str = Field(..., min_length=1)
+    options: Optional[List[str]] = None
+    correct_option_index: Optional[int] = None
+    sample_answer: Optional[str] = None
+    rubric_points: Optional[List[str]] = None
+    expected_response_type: Optional[QuickCheckResponseType] = None
+    answer: Optional[Union[str, bool]] = None
+
+    @model_validator(mode="after")
+    def validate_style_specific_fields(self) -> "YouTubeQuizQuestion":
+        if self.style == "multiple_choice":
+            if not self.options or len(self.options) != 4:
+                raise ValueError("Multiple choice questions require exactly 4 options.")
+            if self.correct_option_index is None:
+                raise ValueError("Multiple choice questions require correct_option_index.")
+            if self.correct_option_index < 0 or self.correct_option_index >= len(self.options):
+                raise ValueError("correct_option_index must reference one of the 4 options.")
+
+        if self.style in {"higher_order", "discussion_prompt"}:
+            if not self.sample_answer or not self.sample_answer.strip():
+                raise ValueError(f"{self.style} questions require sample_answer.")
+            if not self.rubric_points or len([item for item in self.rubric_points if item.strip()]) == 0:
+                raise ValueError(f"{self.style} questions require non-empty rubric_points.")
+
+        if self.style == "quick_check":
+            if self.expected_response_type is None:
+                raise ValueError("quick_check questions require expected_response_type.")
+            if self.answer is None:
+                raise ValueError("quick_check questions require answer.")
+            if self.expected_response_type == "true_false" and not isinstance(self.answer, bool):
+                raise ValueError("quick_check true_false answers must be boolean.")
+            if self.expected_response_type in {"one_word", "short_phrase"} and not isinstance(self.answer, str):
+                raise ValueError("quick_check text response answers must be string.")
+
+        return self
 
 
 class YouTubeQuizGenerateResponse(BaseModel):
