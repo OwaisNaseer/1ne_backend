@@ -4330,6 +4330,1468 @@ def get_template_data() -> list[Dict[str, Any]]:
                 }
             }
         },
+        {
+            # TEMPLATE 25: Tool Recommendations
+            "template": {
+                "slug": "tool_recommendations",
+                "name": "Tool Recommendations",
+                "description": "Discover the best MagicSchool tools to use based on your specific needs.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "educator_description": {
+                            "type": "string",
+                            "title": "Describe Yourself as an Educator and/or Your Needs:",
+                            "description": "Share your context and what support you need.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "attachment_file_name": {
+                            "type": "string",
+                            "title": "Attached file (optional)",
+                            "description": "Optional file name from Add File for context (no file parsing in this version).",
+                        },
+                    },
+                    "required": ["grade_level", "educator_description"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ToolRecommendationsOutput",
+                    "required": ["tool_recommendations"],
+                    "properties": {
+                        "tool_recommendations": {
+                            "type": "string",
+                            "title": "Tool Recommendations",
+                            "description": "Markdown response with educator tools, student tools, and a short follow-up prompt.",
+                        },
+                    },
+                },
+                "stub_config": {
+                    "tool_recommendations_template": (
+                        "## MagicSchool for Educators Tool Recommendations\n\n"
+                        "1. [Math Spiral Review](https://app.magicschool.ai/tools/math-spiral-review) - Generate targeted spiral review problem sets to reinforce algebra, geometry, and pre-calculus skills for {grade_level}; useful for bellringers, homework, or quick formative checks that align with secondary math pacing.\n"
+                        "2. [5E Model Lesson Plan](https://app.magicschool.ai/tools/5e-model-lesson-plan) - Create Engage/Explore/Explain/Elaborate/Evaluate lesson plans for high school science labs and units; great for designing inquiry-based biology, chemistry, or physics lessons that meet rigor for {grade_level}.\n"
+                        "3. [Science Labs](https://app.magicschool.ai/tools/science-labs) - Generate custom, standards-aware lab activities and materials (procedures, materials, safety notes) tailored to your topic and grade level.\n"
+                        "4. [Multiple Explanations](https://app.magicschool.ai/tools/multiple-explanations) - Produce alternate explanations and scaffolds for challenging math/science concepts so you can reteach using different representations.\n"
+                        "5. [Rubric Generator](https://app.magicschool.ai/tools/rubric-generator) - Build clear, standards-aligned rubrics for lab reports and projects to communicate expectations and speed up grading.\n\n"
+                        "## MagicSchool for Students (MagicStudent) Tool Recommendations\n\n"
+                        "1. [Math Review (Student)](https://app.magicschool.ai/magic-student/room/new?tool=math-review-s) - Student-facing practice and review questions for algebra and geometry topics.\n"
+                        "2. [AI Tutor (Student)](https://app.magicschool.ai/magic-student/room/new?tool=tutor-me-s) - On-demand tutoring assistant for homework support and worked examples.\n"
+                        "3. [Multiple Explanations (Student)](https://app.magicschool.ai/magic-student/room/new?tool=multiple-explanations-s) - Helps students who struggle with one explanation style by offering alternative concept explanations.\n"
+                        "4. [Text Proofreader (Student)](https://app.magicschool.ai/magic-student/room/new?tool=proofreader-s) - Lets students check lab reports and written responses for clarity and correctness before submission.\n"
+                        "5. [Quiz Me! (Student)](https://app.magicschool.ai/magic-student/room/new?tool=quiz-me-s) - Self-quizzing tool students can use to practice for tests or check mastery of standards.\n\n"
+                        "Review these recommendations and tell me if you want the suggested teacher tools organized into a weekly workflow, or if you'd like sample outputs (a spiral review set, a 5E lesson outline, or a ready-to-run lab) created for a specific topic."
+                    ),
+                },
+                "prompt_definition": {
+                    "description": (
+                        "Recommend the most relevant MagicSchool teacher and MagicStudent tools based on the educator's context."
+                    ),
+                    "context": (
+                        "Return exactly one markdown field: tool_recommendations. "
+                        "Structure it with a teacher tools section, a student tools section, numbered recommendations with links, and a concise follow-up offer."
+                    ),
+                    "exemplar_input": {
+                        "grade_level": "9th grade",
+                        "educator_description": (
+                            "I'm a special education teacher who co-teaches math and science in high school. "
+                            "What tools would be helpful for a frog dissection lab and teaching vocabulary?"
+                        ),
+                    },
+                    "exemplar_output": {
+                        "tool_recommendations": (
+                            "## MagicSchool for Educators Tool Recommendations\n\n"
+                            "1. [Math Spiral Review](https://app.magicschool.ai/tools/math-spiral-review) - Generate targeted spiral review problem sets to reinforce algebra, geometry, and pre-calculus skills for 9th grade.\n"
+                            "2. [5E Model Lesson Plan](https://app.magicschool.ai/tools/5e-model-lesson-plan) - Create inquiry-based lesson plans for science labs and units with clearer structure and pacing.\n"
+                            "3. [Science Labs](https://app.magicschool.ai/tools/science-labs) - Generate custom, standards-aware lab activities and materials (procedures, safety notes, and assessment checkpoints).\n"
+                            "4. [Multiple Explanations](https://app.magicschool.ai/tools/multiple-explanations) - Offer differentiated explanations for complex terms and concepts so students can access content in multiple ways.\n"
+                            "5. [Rubric Generator](https://app.magicschool.ai/tools/rubric-generator) - Build clear, standards-aligned rubrics for lab reports and projects.\n\n"
+                            "## MagicSchool for Students (MagicStudent) Tool Recommendations\n\n"
+                            "1. [Math Review (Student)](https://app.magicschool.ai/magic-student/room/new?tool=math-review-s) - Student-facing review and practice for algebra/geometry topics.\n"
+                            "2. [AI Tutor (Student)](https://app.magicschool.ai/magic-student/room/new?tool=tutor-me-s) - On-demand support for homework, concept checks, and worked examples.\n"
+                            "3. [Multiple Explanations (Student)](https://app.magicschool.ai/magic-student/room/new?tool=multiple-explanations-s) - Helps students revisit challenging ideas using alternative explanation styles.\n"
+                            "4. [Text Proofreader (Student)](https://app.magicschool.ai/magic-student/room/new?tool=proofreader-s) - Improves clarity and correctness in student lab write-ups before submission.\n"
+                            "5. [Quiz Me! (Student)](https://app.magicschool.ai/magic-student/room/new?tool=quiz-me-s) - Self-quizzing practice to build retention before tests.\n\n"
+                            "Review these recommendations and tell me if you'd like a weekly workflow plan or sample outputs for your next biology/science unit."
+                        ),
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 26: Feedback Writer
+            "template": {
+                "slug": "feedback_writer",
+                "name": "Feedback Writer",
+                "description": "Generate structured writing feedback with strengths, growth areas, and clear next steps.",
+                "category": "communication",
+                "subject_default": "english",
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "assignment_description": {
+                            "type": "string",
+                            "title": "Describe the assignment",
+                            "description": "Describe the writing task and success criteria.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "feedback_rubric": {
+                            "type": "string",
+                            "title": "Type of feedback or rubric",
+                            "description": "Paste rubric criteria, focus skills, or scoring guidance.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "additional_instructions": {
+                            "type": "string",
+                            "title": "Additional instructions for the feedback (optional)",
+                            "description": "Optional tone, focus, or grading constraints.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "student_writing": {
+                            "type": "string",
+                            "title": "Insert the writing you want feedback on",
+                            "description": "Paste student writing for targeted feedback.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "assignment_description",
+                        "feedback_rubric",
+                        "student_writing",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "FeedbackWriterOutput",
+                    "required": [
+                        "areas_of_strength",
+                        "areas_for_growth",
+                        "writing_mechanics_feedback",
+                        "next_steps",
+                        "encouraging_summary",
+                    ],
+                    "properties": {
+                        "areas_of_strength": {
+                            "type": "string",
+                            "title": "Areas of Strength",
+                            "description": "Specific strengths tied to evidence from the writing.",
+                        },
+                        "areas_for_growth": {
+                            "type": "string",
+                            "title": "Areas for Growth",
+                            "description": "Actionable improvement points with examples.",
+                        },
+                        "writing_mechanics_feedback": {
+                            "type": "string",
+                            "title": "General Feedback on Writing Mechanics",
+                            "description": "Mechanics notes such as grammar, punctuation, sentence flow, and clarity.",
+                        },
+                        "next_steps": {
+                            "type": "string",
+                            "title": "Suggested Revision Next Steps",
+                            "description": "2-4 concrete revision steps the student can do next.",
+                        },
+                        "encouraging_summary": {
+                            "type": "string",
+                            "title": "Encouraging Summary",
+                            "description": "A short supportive closing statement.",
+                        },
+                    },
+                },
+                "stub_config": {
+                    "areas_of_strength_template": (
+                        "- You clearly explain the core idea of the assignment and keep your response focused on the prompt.\n"
+                        "- You include relevant text evidence and connect examples back to your analysis.\n"
+                        "- Your writing shows strong effort and thoughtful interpretation for {grade_level} expectations."
+                    ),
+                    "areas_for_growth_template": (
+                        "- Go deeper in your analysis by explaining why each example matters, not only what happens.\n"
+                        "- Vary sentence openings to improve flow and reduce repeated phrasing.\n"
+                        "- Add one additional example from another part of the text to strengthen your argument."
+                    ),
+                    "writing_mechanics_feedback_template": (
+                        "- Improve formal tone in a few places by replacing conversational wording.\n"
+                        "- Check punctuation and comma usage in longer sentences.\n"
+                        "- Review transitions between paragraphs so each idea connects more smoothly."
+                    ),
+                    "next_steps_template": (
+                        "1. Revise one paragraph by adding deeper explanation after your evidence.\n"
+                        "2. Replace at least two informal phrases with academic wording.\n"
+                        "3. Add one more supporting quote and explain its significance.\n"
+                        "4. Re-read aloud once to catch clarity and punctuation issues."
+                    ),
+                    "encouraging_summary_template": (
+                        "You are on the right track. With a bit more depth and polish, this can become a strong final piece."
+                    ),
+                },
+                "prompt_definition": {
+                    "description": (
+                        "Generate clear, rubric-aligned writing feedback for student work."
+                    ),
+                    "context": (
+                        "Return exactly these sections: areas_of_strength, areas_for_growth, "
+                        "writing_mechanics_feedback, next_steps, encouraging_summary. "
+                        "Use direct, supportive language; cite concrete evidence from the student writing; "
+                        "keep feedback actionable and age-appropriate for the selected grade level."
+                    ),
+                    "exemplar_input": {
+                        "grade_level": "8th grade",
+                        "assignment_description": (
+                            "Analyze imagery in 'Of Mice and Men' and include at least three textual examples."
+                        ),
+                        "feedback_rubric": (
+                            "Accurate analysis of imagery, use of evidence, organization, and clear writing mechanics."
+                        ),
+                        "additional_instructions": (
+                            "Focus on conventions and use of evidence. Keep tone supportive and specific."
+                        ),
+                        "student_writing": (
+                            "In 'Of Mice and Men,' Steinbeck uses imagery to show the hard life during the Great Depression. "
+                            "One example is George describing the dream ranch with Lennie. Another is the rabbits Lennie wants "
+                            "to care for. These images help us feel the characters' hopes and struggles."
+                        ),
+                    },
+                    "exemplar_output": {
+                        "areas_of_strength": (
+                            "- You identify multiple examples of imagery and connect them to the novel's themes.\n"
+                            "- Your references to George's dream ranch and Lennie's rabbits show clear textual awareness.\n"
+                            "- Your response stays focused on the prompt and presents a clear central idea."
+                        ),
+                        "areas_for_growth": (
+                            "- Push your analysis further by explaining why each image is significant to character development.\n"
+                            "- Add one additional example from a different scene to show range.\n"
+                            "- Expand commentary after each example so your reasoning is more detailed."
+                        ),
+                        "writing_mechanics_feedback": (
+                            "- Use more formal wording in place of conversational phrases.\n"
+                            "- Combine short sentences where appropriate to improve flow.\n"
+                            "- Check punctuation in compound sentences for clarity."
+                        ),
+                        "next_steps": (
+                            "1. Add one new quotation with analysis.\n"
+                            "2. Revise at least one paragraph to include deeper commentary.\n"
+                            "3. Replace informal wording with academic language.\n"
+                            "4. Proofread for punctuation and sentence variety."
+                        ),
+                        "encouraging_summary": (
+                            "Great start. Your ideas are clear, and with deeper explanation your analysis will become much stronger."
+                        ),
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 27: Text Rewriter
+            "template": {
+                "slug": "text_rewriter",
+                "name": "Text Rewriter",
+                "description": "Take any text and rewrite it with custom criteria.",
+                "category": "communication",
+                "subject_default": "english",
+                "grade_bands_supported": ["6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "original_text": {
+                            "type": "string",
+                            "title": "Original Text",
+                            "description": "Paste the original text you want rewritten.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "rewrite_instruction": {
+                            "type": "string",
+                            "title": "Rewrite so that",
+                            "description": "Explain how the text should be rewritten (length, tone, style, clarity, or audience).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["original_text", "rewrite_instruction"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TextRewriterOutput",
+                    "required": ["rewritten_text"],
+                    "properties": {
+                        "rewritten_text": {
+                            "type": "string",
+                            "title": "Rewritten Text",
+                            "description": "The rewritten version of the original text that follows the instruction.",
+                        }
+                    },
+                },
+                "stub_config": {
+                    "rewritten_text_template": (
+                        "Choose a work of fiction with a rebel character who disrupts societal, familial, or political affairs. "
+                        "In a focused essay, analyze how the rebel's complex motivation shapes your interpretation of the work as a whole."
+                    ),
+                },
+                "prompt_definition": {
+                    "description": (
+                        "Rewrite the provided text using the exact user instruction while preserving the original meaning unless instructed otherwise."
+                    ),
+                    "context": (
+                        "Return exactly one field: rewritten_text. "
+                        "Provide only the rewritten passage, ready to use. "
+                        "Do not include explanations, labels, or extra commentary."
+                    ),
+                    "exemplar_input": {
+                        "original_text": (
+                            "Many works of literature feature a rebel character who changes or disrupts the existing state of societal, "
+                            "familial, or political affairs in the text. They may break social norms, challenge long-held values, "
+                            "subvert expectations, or participate in other forms of resistance. The character's motivation for this "
+                            "rebellious behavior is often complex. Either from your own reading or from the list below, choose a work "
+                            "of fiction in which a character changes or disrupts the existing state of societal, familial, or political "
+                            "affairs. Then, in a well-written essay, analyze how the complex motivation of the rebel contributes to an "
+                            "interpretation of the work as a whole."
+                        ),
+                        "rewrite_instruction": "it is half as long",
+                    },
+                    "exemplar_output": {
+                        "rewritten_text": (
+                            "Choose a work of fiction with a rebel character who disrupts societal, familial, or political affairs. "
+                            "In a well-written essay, analyze how the rebel's complex motivation contributes to your interpretation "
+                            "of the work as a whole."
+                        ),
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 28: Multiple Choice Quiz / Assessment
+            "template": {
+                "slug": "mc_assessment",
+                "name": "Multiple Choice Quiz / Assessment",
+                "description": "Generate a multiple choice assessment, quiz, or test based on any topic, standard(s), or criteria.",
+                "category": "assessment",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "number_of_questions": {
+                            "type": "integer",
+                            "title": "Number of Questions",
+                            "description": "How many multiple choice questions to generate.",
+                            "minimum": 3,
+                            "maximum": 25,
+                            "default": 5,
+                        },
+                        "options_per_question": {
+                            "type": "integer",
+                            "title": "Number of Options per Question",
+                            "description": "How many answer options each question should have.",
+                            "minimum": 3,
+                            "maximum": 6,
+                            "default": 4,
+                        },
+                        "topic_standard_text": {
+                            "type": "string",
+                            "title": "Topic, Standard, Text, or Description of the Assessment (be specific)",
+                            "description": "Main topic and scope of the quiz/assessment.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "standards_to_align": {
+                            "type": "string",
+                            "title": "Standards Set to Align to",
+                            "description": "Optional standard set(s), e.g., CCSS, TEKS, NGSS, state standards.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "attachment_file_name": {
+                            "type": "string",
+                            "title": "Attached file (optional)",
+                            "description": "Optional Add File metadata only (no file parsing in this version).",
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "number_of_questions",
+                        "options_per_question",
+                        "topic_standard_text",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "MultipleChoiceAssessmentOutput",
+                    "required": ["title", "questions", "answer_key_note", "answer_key"],
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "title": "Assessment title",
+                        },
+                        "questions": {
+                            "type": "array",
+                            "title": "Questions",
+                            "items": {
+                                "type": "object",
+                                "required": ["number", "question", "options"],
+                                "properties": {
+                                    "number": {"type": "integer", "title": "Question number"},
+                                    "question": {"type": "string", "title": "Question stem"},
+                                    "options": {
+                                        "type": "array",
+                                        "title": "Options",
+                                        "items": {"type": "string"},
+                                    },
+                                },
+                            },
+                        },
+                        "answer_key_note": {
+                            "type": "string",
+                            "title": "Answer key note",
+                        },
+                        "answer_key": {
+                            "type": "array",
+                            "title": "Answer key",
+                            "items": {"type": "string"},
+                        },
+                        "standards_alignment": {
+                            "type": "array",
+                            "title": "Standards alignment",
+                            "items": {"type": "string"},
+                        },
+                        "review_note": {
+                            "type": "string",
+                            "title": "Review note",
+                        },
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a multiple choice quiz/assessment aligned to the requested grade level, topic, and standards. Return clear question stems with labeled options, answer key, and optional standards alignment.",
+                    "context": "Output must match output_schema exactly with title, questions, answer_key_note, answer_key, optional standards_alignment, and optional review_note.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "number_of_questions": 5,
+                        "options_per_question": 4,
+                        "topic_standard_text": "Diagnostic assessment on the process of mitosis",
+                        "standards_to_align": "Any standards worldwide (CCSS, TEKS, Ontario, Florida)",
+                    },
+                    "exemplar_output": {
+                        "title": "Diagnostic Assessment on the Process of Mitosis",
+                        "questions": [
+                            {
+                                "number": 1,
+                                "question": "Which of the following best describes the process of mitosis?",
+                                "options": [
+                                    "a. The division of DNA into two identical daughter cells",
+                                    "b. The exchange of genetic material between homologous chromosomes",
+                                    "c. The joining of a sperm and egg cell to form a zygote",
+                                    "d. The duplication of chromosomes followed by their separation into two identical nuclei",
+                                ],
+                            },
+                            {
+                                "number": 2,
+                                "question": "What is the purpose of mitosis in the cell cycle?",
+                                "options": [
+                                    "a. To repair damaged DNA",
+                                    "b. To produce gametes for sexual reproduction",
+                                    "c. To create genetic diversity",
+                                    "d. To generate two identical daughter cells",
+                                ],
+                            },
+                            {
+                                "number": 3,
+                                "question": "During which phase of mitosis do the chromosomes line up at the equator of the cell?",
+                                "options": [
+                                    "a. Prophase",
+                                    "b. Metaphase",
+                                    "c. Anaphase",
+                                    "d. Telophase",
+                                ],
+                            },
+                            {
+                                "number": 4,
+                                "question": "What happens to the nuclear membrane during mitosis?",
+                                "options": [
+                                    "a. It disappears during prophase and reappears during telophase",
+                                    "b. It remains intact throughout the entire process",
+                                    "c. It dissolves during metaphase and reforms during anaphase",
+                                    "d. It separates into two halves during telophase",
+                                ],
+                            },
+                            {
+                                "number": 5,
+                                "question": "Which of the following is NOT a stage of mitosis?",
+                                "options": [
+                                    "a. Interphase",
+                                    "b. Prophase",
+                                    "c. Metaphase",
+                                    "d. Telophase",
+                                ],
+                            },
+                        ],
+                        "answer_key_note": "Answer Key (Always review AI generated answers for accuracy - Math is more likely to be inaccurate):",
+                        "answer_key": ["1. d", "2. d", "3. b", "4. a", "5. a"],
+                        "standards_alignment": [
+                            "MS-LS1-3: Use argument supported by evidence for how the body is a system of interacting subsystems composed of groups of cells.",
+                            "MS-LS3-1: Develop and use a model to describe why structural changes to genes (mutations) located on chromosomes may affect proteins and may result in harmful, beneficial, or neutral effects to the structure and function of the organism.",
+                        ],
+                        "review_note": "Review this closely for accuracy, especially in math, as AI may have limitations.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 29: Academic Content Generator
+            "template": {
+                "slug": "academic_content_generator",
+                "name": "Academic Content",
+                "description": "Generate custom academic content based on the criteria of your choice.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "topic_standard_objective": {
+                            "type": "string",
+                            "title": "Topic, standard, objective (be as specific as possible)",
+                            "description": "Main objective/topic for the generated content.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "text_length": {
+                            "type": "string",
+                            "title": "Text Length",
+                            "description": "Requested approximate output length (e.g., 1 page exactly).",
+                            "maxLength": 200,
+                        },
+                        "content_type": {
+                            "type": "string",
+                            "title": "Content Type",
+                            "description": "Type of academic content (e.g., textbook page, reading passage, explainer notes).",
+                            "maxLength": 200,
+                        },
+                        "additional_criteria": {
+                            "type": "string",
+                            "title": "Additional Criteria",
+                            "description": "Any additional requirements to include.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "attachment_file_name": {
+                            "type": "string",
+                            "title": "Attached file (optional)",
+                            "description": "Optional Add File metadata only (no file parsing in this version).",
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "topic_standard_objective",
+                        "text_length",
+                        "content_type",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "AcademicContentOutput",
+                    "required": ["academic_content"],
+                    "properties": {
+                        "academic_content": {
+                            "type": "string",
+                            "title": "Academic Content",
+                            "description": "Main generated academic content with headings, bold sections, and bullet points.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate academic content tailored to grade level, topic/objective, requested length, content type, and additional criteria. Keep the writing age-appropriate, factual, and instruction-ready.",
+                    "context": "Output must match output_schema exactly with a single field academic_content. Inside that field, provide well-structured markdown with heading(s), bolded subheads, and bullets where helpful.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "topic_standard_objective": "SWBAT explain the differences between ethnic and religious groups - they are studying southern Africa",
+                        "text_length": "1 Page exactly",
+                        "content_type": "Textbook page",
+                        "additional_criteria": "Make sure that it explicitly names several of the ethnic and religious groups in southern Africa",
+                    },
+                    "exemplar_output": {
+                        "academic_content": (
+                            "## Understanding Ethnic and Religious Diversity in Southern Africa\n\n"
+                            "In Southern Africa, there is a rich tapestry of ethnic and religious groups that contribute to the region's cultural diversity.\n\n"
+                            "One prominent ethnic group in Southern Africa is the Zulu people. Another significant ethnic group is the Xhosa people. The San people, also known as the Bushmen, are one of the oldest ethnic groups in the region.\n\n"
+                            "Religiously, Southern Africa is diverse as well. Christianity is the dominant religion with denominations such as Catholicism, Anglicanism, and various independent churches. Islam is also practiced by a significant minority. Additionally, traditional African religions, such as ancestral worship and animism, continue to be practiced.\n\n"
+                            "**What students will be able to do (SWBAT):** Explain the differences between ethnic groups and religious groups and identify several ethnic and religious groups found in southern Africa.\n\n"
+                            "**What is an ethnic group?**\n"
+                            "An ethnic group is a group of people who share a common cultural background, including language, ancestry, and traditions.\n\n"
+                            "**What is a religious group?**\n"
+                            "A religious group is a community of people who share beliefs about spirituality, rituals, sacred texts, and worship practices.\n\n"
+                            "**Key differences (easy to remember):**\n"
+                            "- Ethnicity is about culture, ancestry, and language.\n"
+                            "- Religion is about beliefs, worship, and spiritual practices.\n"
+                            "- A person can belong to one ethnic group and follow any religion (or no religion).\n"
+                            "- Ethnic identity is usually inherited; religious identity can be chosen or changed.\n\n"
+                            "**Examples in southern Africa - Ethnic groups (named):**\n"
+                            "- Zulu\n"
+                            "- Xhosa\n"
+                            "- Shona\n"
+                            "- Ndebele\n"
+                            "- Tswana\n"
+                            "- Venda\n\n"
+                            "**Examples in southern Africa - Religious groups (named):**\n"
+                            "- Christianity\n"
+                            "- African Traditional Religions\n"
+                            "- Islam\n"
+                            "- Hinduism\n"
+                            "- No religious affiliation / secular\n\n"
+                            "**How ethnicity and religion interact in southern Africa:**\n"
+                            "- Many ethnic groups practice Christianity alongside African Traditional Religions.\n"
+                            "- Ethnic traditions often remain strong even when religious beliefs change.\n"
+                            "- Historical migration and colonialism brought new religions and mixed cultures.\n\n"
+                            "**Short classroom activity (1-2 minutes):**\n"
+                            "Ask students to pick one ethnic group and one religious group named above and explain how these identities might shape a person's life.\n\n"
+                            "**Summary:**\n"
+                            "Ethnic groups are tied to shared culture and ancestry. Religious groups are tied to shared beliefs and worship."
+                        )
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 30: Text Proofreader
+            "template": {
+                "slug": "text_proofreader",
+                "name": "Text Proofreader",
+                "description": "Proofread any text - correcting grammar, spelling, punctuation, and adding clarity.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "original_text": {
+                            "type": "string",
+                            "title": "Original Text",
+                            "description": "Paste the source text you want to proofread.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "attachment_file_name": {
+                            "type": "string",
+                            "title": "Attached file (optional)",
+                            "description": "Optional file name from Add File for context (no file parsing in this version).",
+                        },
+                    },
+                    "required": ["original_text"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TextProofreaderOutput",
+                    "required": ["title", "rewritten_text", "applied_criteria"],
+                    "properties": {
+                        "title": { "type": "string", "title": "Response title" },
+                        "rewritten_text": {
+                            "type": "string",
+                            "title": "Proofread text",
+                            "description": "Primary proofread version of the original text.",
+                        },
+                        "applied_criteria": {
+                            "type": "array",
+                            "title": "Applied criteria",
+                            "description": "Short bullets summarizing how proofreading improvements were applied.",
+                            "items": {"type": "string"},
+                        },
+                        "optional_alternatives": {
+                            "type": "array",
+                            "title": "Optional alternatives",
+                            "description": "Optional alternate proofreading versions.",
+                            "items": {"type": "string"},
+                        },
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Proofread user-provided text, correcting grammar, spelling, punctuation, and adding clarity while preserving the original meaning.",
+                    "context": "Output must match output_schema exactly with title, rewritten_text, applied_criteria, and optional optional_alternatives. If attachment_file_name is provided, treat it as context metadata only.",
+                    "exemplar_input": {
+                        "original_text": "In 'Of Mice and Men,' John Steinbeck uses lots of vivid descriptions to depict the hardships of life during the Great Depression. These descriptions help readers empathize with the characters and enhance the book's appeal. One prominent example is when George describes the dream ranch he envisions with Lennie.\n\nIn the book, George says, 'O.K. Someday—we're gonna get the jack together and we're gonna have a little house and a couple of acres an' a cow and some pigs...' This imagery creates a tranquil setting where they can live happily. The house, the acres, and the animals give us a good feeling. It's like a movie in our mind, and we can see it clearly.\n\nAnother image is when George talks about the rabbits Lennie wants to take care for. George says, 'We'll have a big vegetable patch and a rabbit hutch and chickens. And when it rains in the winter, we'll just say the hell with 'go' to work, and we'll build up a fire in the stove and set around it an' listen to the rain comin' down on the roof.' This description conjures an inviting space for relaxation. The rain, the fire, and the rabbits evoke a sense of warmth, creating a delightful mental image.",
+                    },
+                    "exemplar_output": {
+                        "title": "Text Proofreader Result",
+                        "rewritten_text": "In 'Of Mice and Men,' John Steinbeck uses lots of vivid descriptions to depict the hardships of life during the Great Depression. These descriptions help readers empathize with the characters and enhance the book's appeal. One prominent example is when George describes the dream ranch he envisions with Lennie.\n\nIn the book, George says, 'O.K. Someday—we're gonna get the jack together and we're gonna have a little house and a couple of acres an' a cow and some pigs...' This imagery creates a tranquil setting where they can live happily. The house, the acres, and the animals give readers a good feeling. It's like a movie in our minds—we can see it clearly.\n\nAnother image is when George talks about the rabbits Lennie wants to take care of. George says, 'We'll have a big vegetable patch and a rabbit hutch and chickens. And when it rains in the winter, we'll just say the hell with 'go' to work, and we'll build up a fire in the stove and set around it, an' listen to the rain comin' down on the roof.' This description conjures an inviting space for relaxation. The rain, the fire, and the rabbits evoke a sense of warmth, creating a delightful mental image.",
+                        "applied_criteria": [
+                            "Corrected grammar and word choice (for example, 'take care for' -> 'take care of' and improved phrasing for clarity).",
+                            "Cleaned up punctuation and sentence boundaries, especially around the quoted dialogue and commas.",
+                            "Improved readability by tightening a few transitions while preserving the original meaning and examples.",
+                            "Maintained the structure of the explanation and ensured each paragraph connects back to the effect on readers.",
+                        ],
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 31: Professional Email
+            "template": {
+                "slug": "professional_email",
+                "name": "Professional Email",
+                "description": "Generate a professional email communication.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "author_name": {
+                            "type": "string",
+                            "title": "Author Name",
+                            "description": "Name to sign at the end of the email.",
+                            "maxLength": 200,
+                        },
+                        "email_content": {
+                            "type": "string",
+                            "title": "Content to include in the email",
+                            "description": "Paste the message details you want included in the email.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["author_name", "email_content"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ProfessionalEmailOutput",
+                    "required": ["subject:"],
+                    "properties": {
+                        "subject:": {
+                            "type": "string",
+                            "title": "Subject:",
+                            "description": "Subject value followed by the email body content."
+                        },
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Write a professional, ready-to-send email. Use the provided email_content to create a clear subject and a polished message body. Keep the tone respectful and appropriate for educational stakeholders. Add a brief thank-you line and close with 'Best regards,' followed by the author_name as the signature.",
+                    "context": "The output must be split into the section key: subject:. Write HUMAN-READABLE content only; no JSON inside the section. Put the subject value first, then a blank line, then the email body paragraphs, and end with the signature.",
+                    "exemplar_input": {
+                        "author_name": "Mrs. Smith",
+                        "email_content": "Please see my earlier email regarding the changes to that basketball schedule for this season. We need to make sure that we have one administrator at each home game. I will start a google form where we can all sign up to be present at one or two games.",
+                    },
+                    "exemplar_output": {
+                        "subject:": "Administrator Coverage for Home Basketball Games\n\nPlease see my earlier email about the changes to that basketball schedule for this season. We need to make sure that we have one administrator at each home game. I will start a Google Form where we can all sign up to be present at one or two games.\n\nThank you for your support — I appreciate your help in ensuring we have coverage.\n\nBest regards,\nMrs. Smith",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 32: IEP Generator
+            "template": {
+                "slug": "iep_generator",
+                "name": "IEP Generator",
+                "description": "Generate an Individualized Education Program (IEP) draft.",
+                "category": "behavior",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "student_name": {
+                            "type": "string",
+                            "title": "Student Name",
+                            "description": "Name of the student for the IEP.",
+                            "maxLength": 200,
+                        },
+                        "grade": {
+                            "type": "string",
+                            "title": "Grade",
+                            "description": "Select the grade level for the student.",
+                            "enum": [
+                                "K",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "abilities_needs_strengths": {
+                            "type": "string",
+                            "title": "Description of abilities, needs, and strengths",
+                            "description": "Describe the student's abilities, needs, and strengths for the IEP.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "sensory_strategies": {
+                            "type": "string",
+                            "title": "Description of sensory strategies, include the main needs",
+                            "description": "Describe the student's sensory strategies and sensory-related needs.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "sensory_balance_activities": {
+                            "type": "string",
+                            "title": "Can you suggest activities to help improve [Student Name]'s sensory balance?",
+                            "description": "Suggest sensory balance activities that could be implemented in the classroom.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                    },
+                    "required": [
+                        "student_name",
+                        "grade",
+                        "abilities_needs_strengths",
+                        "sensory_strategies",
+                        "sensory_balance_activities",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "IEPGeneratorOutput",
+                    "required": ["iep_draft"],
+                    "properties": {
+                        "iep_draft": {
+                            "type": "string",
+                            "title": "Student IEP Draft - Review closely before implementation",
+                            "description": "Markdown IEP draft with clear headings, bold measurable goals, and bullet lists.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a complete IEP draft for the student using the provided abilities/needs/strengths and sensory information.",
+                    "context": "Output must match output_schema exactly with a single field iep_draft. Write the IEP in HUMAN-READABLE markdown only. Include the following headings in order: Present Levels of Performance; Student Needs and Impact of Disability; Goals and Objectives; Accommodations and Modifications. Under Goals and Objectives, include multiple bold Measurable Goals and supporting Objectives as bullet lists. Under Accommodations and Modifications, include a bullet list of supports.",
+                    "exemplar_input": {
+                        "student_name": "Student Name",
+                        "grade": "4th grade",
+                        "abilities_needs_strengths": "Student Name is a 4th-grade learner with strong curiosity and a clear willingness to participate when routines are predictable. They benefit from structured transitions and visual supports. Sensory processing differences impact attention, engagement, and comfort during unstructured moments.",
+                        "sensory_strategies": "Student Name benefits from predictable sensory supports including scheduled breaks, access to a sensory tool box, and calming input when overwhelmed (e.g., quiet space, reduced noise, movement opportunities). They may show sensory sensitivities during loud environments, crowded spaces, or when unexpected changes occur.",
+                        "sensory_balance_activities": "Suggest classroom and movement activities that support sensory regulation. Examples include guided movement breaks, sensory-friendly work stations, structured sensory circuits, and planned opportunities for proprioceptive and vestibular input. Provide activities that can be implemented during transitions and short breaks."
+                    },
+                    "exemplar_output": {
+                        "iep_draft": "## Present Levels of Performance\n\nStudent Name is a 4th-grade learner who demonstrates strengths in curiosity, participation, and effort when expectations are clear. Student Name may require additional support to manage sensory input and maintain attention during transitions and high-stimulation activities.\n\nStudent Name’s sensory processing needs affect how they experience classroom environments. Loud or unpredictable situations can reduce engagement and increase the likelihood of off-task behavior, withdrawal, or avoidance. With consistent routines and sensory supports, Student Name can participate more successfully and demonstrate improved readiness for learning.\n\n## Student Needs and Impact of Disability\n\n- Student Name needs structured routines and clear expectations to support self-regulation.\n- Student Name needs sensory strategies to manage overwhelm and support continued participation.\n- Student Name needs opportunities for movement and sensory input in predictable ways to improve focus and reduce stress.\n\n## Goals and Objectives\n\n**Measurable Goal: Enhancing Social Communication Skills**\n\n- **Objective:** During structured classroom discussions, Student Name will participate in a turn-taking routine (e.g., initiate and respond using a sentence starter) in 4 out of 5 opportunities across 3 consecutive sessions.\n- **Objective:** Student Name will use an appropriate communication strategy (request help, ask for a break, or express a need) when support is needed in 4 out of 5 observed opportunities.\n\n**Measurable Goal: Managing Sensory Sensitivities**\n\n- **Objective:** When exposed to a predictable classroom trigger (e.g., noisy transition), Student Name will use a taught regulation strategy (break card, quiet corner routine, or sensory tool) within 5 minutes in 4 out of 5 opportunities.\n- **Objective:** Student Name will remain engaged in assigned task activities for at least 10 minutes with no more than 2 redirections in 4 out of 5 opportunities.\n\n**Measurable Goal: Building Flexibility with Routines**\n\n- **Objective:** Student Name will transition using a visual schedule and transition script with successful completion in 4 out of 5 opportunities across 3 consecutive weeks.\n- **Objective:** Student Name will demonstrate coping behavior (breathing routine, coping statement, or request for support) after unexpected changes in 4 out of 5 opportunities.\n\n## Accommodations and Modifications\n\n- Provide a predictable daily schedule with visual cues and explicit transition warnings.\n- Offer scheduled sensory breaks (planned and signaled) and access to a sensory tool box.\n- Implement a quiet/calming area for regulation when Student Name becomes overwhelmed.\n- Allow movement breaks and sensory-friendly work options (e.g., alternative seating or short activity circuit).\n- Use sentence starters and communication supports to encourage appropriate social interaction and help-seeking.\n- Provide positive reinforcement for use of regulation and communication strategies.\n\n",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 33: Report Card Comments
+            "template": {
+                "slug": "report_card_comments",
+                "name": "Report Card Comments",
+                "description": "Generate report card comments with a student's strengths and areas for growth.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the student's grade level.",
+                            "enum": [
+                                "K",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "student_pronouns": {
+                            "type": "string",
+                            "title": "Student Pronouns",
+                            "description": "e.g., he/she/they.",
+                            "maxLength": 100,
+                        },
+                        "areas_of_strength": {
+                            "type": "string",
+                            "title": "Areas of Strength",
+                            "description": "Areas to celebrate.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "areas_for_growth": {
+                            "type": "string",
+                            "title": "Areas for Growth",
+                            "description": "Areas to improve.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "student_pronouns",
+                        "areas_of_strength",
+                        "areas_for_growth",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ReportCardCommentsOutput",
+                    "required": ["comments"],
+                    "properties": {
+                        "comments": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Final report card comments with strengths and opportunities for growth.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate concise, professional report card comments using the student's strengths and growth areas.",
+                    "context": "Output must match output_schema exactly with one field: comments. Write markdown-ready prose using this exact format: **Areas of Strength:** <paragraph> followed by a blank line then **Opportunities for Growth:** <paragraph>. Keep tone supportive, specific, and actionable for families.",
+                    "exemplar_input": {
+                        "grade_level": "8th grade",
+                        "student_pronouns": "he",
+                        "areas_of_strength": "Homework completion, good friend, punctual",
+                        "areas_for_growth": "Distracted easily, struggles with independent work",
+                    },
+                    "exemplar_output": {
+                        "comments": "**Areas of Strength:** The student consistently demonstrates his strength in completing homework assignments on time. He is a reliable and responsible student in this aspect. Additionally, he is known for being a good friend to his classmates, showing kindness and empathy towards others. Lastly, he is punctual and arrives to class promptly, demonstrating excellent time management skills.\n\n**Opportunities for Growth:** While the student possesses many strengths, he sometimes gets easily distracted during independent work. Encouraging him to stay focused and providing strategies to help him stay on task will support his growth in this area. While he may struggle with independent work, with guidance and practice, he can develop the skills necessary to work more independently and become a more self-sufficient learner.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 34: Informational Texts
+            "template": {
+                "slug": "informational_text_generator",
+                "name": "Informational Texts",
+                "description": "Generate original informational texts customized to the topic of your choice.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "text_length": {
+                            "type": "string",
+                            "title": "Text Length",
+                            "description": "Choose the target length for the informational text.",
+                            "enum": ["1 paragraph", "1 page", "2 pages"],
+                        },
+                        "informational_text_type": {
+                            "type": "string",
+                            "title": "Informational Text Type",
+                            "description": "Select the style of informational writing.",
+                            "enum": [
+                                "Expository",
+                                "Literary Nonfiction",
+                                "How-To / Procedural",
+                                "Cause and Effect",
+                                "Compare and Contrast",
+                                "Problem and Solution",
+                            ],
+                        },
+                        "topic": {
+                            "type": "string",
+                            "title": "Topic (be as specific as possible)",
+                            "description": "Provide the topic and any specific angle or focus to include.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "text_length",
+                        "informational_text_type",
+                        "topic",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "InformationalTextsOutput",
+                    "required": ["informational_text"],
+                    "properties": {
+                        "informational_text": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Final informational text in clean markdown format.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Write an original informational text appropriate for the selected grade level, length, and text type.",
+                    "context": "Output must match output_schema exactly with one field: informational_text. The informational_text should be markdown-ready prose with a clear title and organized paragraphs/subheadings when appropriate. Keep tone academic and age-appropriate.",
+                    "exemplar_input": {
+                        "grade_level": "9th grade",
+                        "text_length": "1 page",
+                        "informational_text_type": "Expository",
+                        "topic": "Impacts of social media use on adolescents",
+                    },
+                    "exemplar_output": {
+                        "informational_text": "# The Impacts of Social Media Use on Adolescents\n\nSocial media has become an integral part of daily life for many adolescents. Platforms such as Instagram, TikTok, Snapchat, and YouTube provide opportunities for connection, creativity, and learning. At the same time, heavy use can affect mental health, attention, and decision-making. Understanding both the benefits and the risks helps students make healthier choices online.\n\n## Mental Health and Self-Esteem\n\nOne major impact of social media is its influence on mental health and self-image. Positive online spaces can help teens feel included and supported. However, constant comparison to curated posts can lead to insecurity, anxiety, and low self-esteem. When teens measure themselves against unrealistic online standards, they may feel pressure to look or act a certain way.\n\n## Attention, Sleep, and Academic Performance\n\nFrequent notifications and endless scrolling can disrupt focus and reduce productivity. Many adolescents report spending more time online than intended, which can interfere with homework and studying. Late-night device use is also linked to poor sleep quality, and less sleep can negatively affect memory, mood, and classroom performance.\n\n## Relationships and Communication\n\nSocial media can strengthen friendships by helping teens stay connected outside of school. It can also create conflict when messages are misunderstood or when cyberbullying occurs. Because online communication lacks facial expressions and tone, small disagreements can quickly escalate. Learning respectful digital communication is essential.\n\n## Positive Uses of Social Media\n\nDespite the challenges, social media can be used in meaningful ways. Teens can follow educational creators, join academic communities, explore career interests, and share creative projects. Advocacy campaigns and peer support groups can also promote awareness of important social issues.\n\n## Strategies for Healthier Use\n\n- Set daily time limits and take regular screen breaks.\n- Turn off non-essential notifications during study time.\n- Follow accounts that inspire learning and well-being.\n- Avoid comparing your real life to curated online posts.\n- Prioritize sleep by avoiding screens before bedtime.\n- Talk to a trusted adult if online experiences feel harmful.\n\nIn conclusion, social media can be both helpful and harmful for adolescents. Its impact depends on how it is used. With thoughtful habits and digital awareness, teens can benefit from online opportunities while protecting their mental health, academic success, and relationships.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 35: Text Summarizer
+            "template": {
+                "slug": "summarizer",
+                "name": "Text Summarizer",
+                "description": "Summarize any text in whatever length you choose.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "length_of_summary": {
+                            "type": "string",
+                            "title": "Length of summary",
+                            "description": "Select the target summary length.",
+                            "enum": ["1 paragraph", "2 paragraphs", "3 paragraphs", "1 page"],
+                        },
+                        "original_text": {
+                            "type": "string",
+                            "title": "Original Text",
+                            "description": "Paste the original text you want summarized.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["length_of_summary", "original_text"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TextSummarizerOutput",
+                    "required": ["summary"],
+                    "properties": {
+                        "summary": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Final summarized text in clear, readable markdown.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Summarize the provided text according to the selected summary length.",
+                    "context": "Output must match output_schema exactly with one field: summary. Write polished, human-readable prose. Preserve key ideas and sequence. Use a clear title when helpful and optional subheadings for readability.",
+                    "exemplar_input": {
+                        "length_of_summary": "3 paragraphs",
+                        "original_text": "The Water Cycle: A Natural Marvel\n\nThe water cycle, also known as the hydrological cycle, is a continuous and vital process that governs the movement of water on Earth. This intricate system comprises several stages, ensuring a dynamic exchange of water between the atmosphere, land, and oceans.\n\n1. Evaporation:\nThe water cycle begins with evaporation, where the sun's radiant energy transforms liquid water from oceans, rivers, lakes, and even plants into water vapor. This invisible water vapor rises into the atmosphere, forming clouds.\n\n2. Condensation:\nAs warm, moist air rises, it encounters cooler temperatures at higher altitudes. This leads to condensation, during which the water vapor changes back into tiny water droplets that cluster together to form clouds.\n\n3. Precipitation:\nWhen the concentration of water droplets in clouds becomes too heavy, gravity takes over, and precipitation occurs. This can take various forms, including rain, snow, sleet, or hail.\n\n4. Infiltration and Runoff:\nAfter precipitation, water either infiltrates into the ground, replenishing groundwater and supporting plant life, or flows over the surface as runoff, eventually reaching rivers, lakes, and oceans.\n\n5. Transpiration:\nTranspiration is a lesser-known but equally significant component of the water cycle. In this stage, plants release water vapor through tiny pores in their leaves.\n\nIn conclusion, the water cycle is a fundamental natural process that sustains life on Earth.",
+                    },
+                    "exemplar_output": {
+                        "summary": "# The Water Cycle: A Natural Marvel\n\nThe water cycle, also known as the hydrological cycle, is a continuous and vital process that governs the movement of water on Earth. This intricate system comprises several stages, ensuring a dynamic exchange of water between the atmosphere, land, and oceans.\n\nEvaporation begins the cycle as the sun's energy transforms liquid water from oceans, rivers, and lakes into water vapor that rises into the atmosphere. As this warm, moist air cools, condensation occurs, forming clouds from tiny droplets. When clouds become saturated, precipitation returns water to Earth's surface as rain, snow, sleet, or hail.\n\nAfter precipitation, water either infiltrates the ground to recharge groundwater or moves as runoff to streams, rivers, and oceans. Plants also contribute through transpiration, releasing water vapor back into the air. Together, these interconnected stages maintain Earth's water distribution and support ecosystems, weather systems, and life.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 36: Text Translator
+            "template": {
+                "slug": "translator",
+                "name": "Text Translator",
+                "description": "Translate any text or uploaded document into any language.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "language_to_translate_to": {
+                            "type": "string",
+                            "title": "Language to translate to",
+                            "description": "Target language for translation.",
+                            "enum": [
+                                "Spanish",
+                                "French",
+                                "German",
+                                "Italian",
+                                "Portuguese",
+                                "Arabic",
+                                "Hindi",
+                                "Chinese (Simplified)",
+                                "Japanese",
+                                "Korean",
+                            ],
+                        },
+                        "original_text": {
+                            "type": "string",
+                            "title": "Original Text",
+                            "description": "Paste the source text that should be translated.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["language_to_translate_to", "original_text"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TextTranslatorOutput",
+                    "required": ["translation"],
+                    "properties": {
+                        "translation": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Final translated text in the requested language.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Translate the provided text accurately into the requested target language while preserving meaning, tone, and structure.",
+                    "context": "Output must match output_schema exactly with one field: translation. Return translated text only in readable prose/markdown. Keep names/placeholders (like [Parent's Name]) preserved and translated naturally where appropriate.",
+                    "exemplar_input": {
+                        "language_to_translate_to": "Spanish",
+                        "original_text": "Dear [Parent's Name],\n\nI trust this email finds you well. I am writing to share some encouraging news regarding your child's performance in my math class.\n\nOver the past few weeks, I have had the opportunity to observe a significant improvement in your student's understanding and application of mathematical concepts. Their dedication to academic growth and consistent effort have truly stood out, and I wanted to take a moment to express my appreciation for their hard work.\n\nNot only has your child demonstrated a commendable grasp of challenging mathematical principles, but they have also shown a willingness to engage actively in class discussions and seek clarification when needed. Their enthusiasm for learning is both admirable and infectious, contributing positively to the overall classroom environment.\n\nI believe it is crucial to acknowledge and celebrate the achievements of our students, and your child's progress in math is certainly worthy of recognition. It is evident that they have been investing time and effort into their studies, and as a result, they are reaping the rewards of their commitment.\n\nI encourage you to continue providing support and encouragement to your child in their academic journey. Your involvement plays a vital role in fostering a positive attitude toward learning and contributes to their overall success. If you have any questions or would like to discuss your child's progress further, please feel free to reach out. I am more than happy to schedule a meeting or provide additional information as needed.\n\nThank you for your ongoing support, and I look forward to witnessing your child's continued growth and success in my math class.\n\nBest regards,",
+                    },
+                    "exemplar_output": {
+                        "translation": "Ciertamente! Aquí está la traducción del texto al español:\n\nEstimado/a [Nombre del Padre/Madre],\n\nEspero que este correo electrónico le encuentre bien. Le escribo para compartir algunas noticias alentadoras sobre el desempeño de su hijo/a en mi clase de matemáticas.\n\nEn las últimas semanas, he tenido la oportunidad de observar una mejora significativa en la comprensión y aplicación de conceptos matemáticos por parte de su estudiante. Su dedicación al crecimiento académico y su esfuerzo constante realmente se han destacado, y quería tomar un momento para expresar mi agradecimiento por su arduo trabajo.\n\nNo solo su hijo/a ha demostrado un entendimiento encomiable de principios matemáticos desafiantes, sino que también ha mostrado disposición para participar activamente en las discusiones de clase y buscar aclaraciones cuando es necesario. Su entusiasmo por el aprendizaje es tanto admirable como contagioso, contribuyendo positivamente al ambiente general de la clase.\n\nCreo que es crucial reconocer y celebrar los logros de nuestros estudiantes, y el progreso de su hijo/a en matemáticas ciertamente merece reconocimiento. Es evidente que han estado invirtiendo tiempo y esfuerzo en sus estudios, y como resultado, están cosechando los frutos de su compromiso.\n\nLe animo a seguir brindando apoyo y estímulo a su hijo/a en su trayectoria académica. Su participación desempeña un papel vital en fomentar una actitud positiva hacia el aprendizaje y contribuye a su éxito general. Si tiene alguna pregunta o le gustaría discutir el progreso de su hijo/a en mayor detalle, no dude en ponerse en contacto. Estoy más que encantado de programar una reunión o proporcionar información adicional según sea necesario.\n\nGracias por su continuo apoyo, y espero con interés presenciar el crecimiento continuo y el éxito de su hijo/a en mi clase de matemáticas.\n\nSaludos cordiales,",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 37: Email Responder
+            "template": {
+                "slug": "email-responder",
+                "name": "Email Responder",
+                "description": "Generate a custom professional email response to an email that you received.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "author_name": {
+                            "type": "string",
+                            "title": "Author Name",
+                            "description": "Name to sign at the end of the response.",
+                            "maxLength": 200,
+                        },
+                        "email_you_are_responding_to": {
+                            "type": "string",
+                            "title": "Email you're responding to",
+                            "description": "Paste the email message you are replying to.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "what_you_want_to_communicate_in_response": {
+                            "type": "string",
+                            "title": "What you want to communicate in response",
+                            "description": "Key points you want included in your response email.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                    },
+                    "required": [
+                        "email_you_are_responding_to",
+                        "what_you_want_to_communicate_in_response",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "EmailResponderOutput",
+                    "required": ["email_response"],
+                    "properties": {
+                        "email_response": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Final professional email response text.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Write a professional email response based on the incoming email and the user's intended message.",
+                    "context": "Output must match output_schema exactly with one field: email_response. Start with 'Email Response:' followed by the full response draft. Keep tone professional, concise, and friendly. Use the provided author_name as sign-off when available.",
+                    "exemplar_input": {
+                        "author_name": "Jane Smith",
+                        "email_you_are_responding_to": "Hello Jane,\n\nI hope you are doing well. I am reaching out to see if your school would be open to partnering with us on a feasibility study for using MagicSchool AI in dissertation-level research. I would love to discuss this with you and explore possibilities.\n\nBest regards,\nAlex",
+                        "what_you_want_to_communicate_in_response": "That sounds great lets set up time",
+                    },
+                    "exemplar_output": {
+                        "email_response": "Email Response: Hi there,\n\nThank you for reaching out to us! We are thrilled at the prospect of partnering with you for your feasibility study using MagicSchool AI for your dissertation. Let's schedule a time to discuss this further and explore the possibilities. Please let me know your availability, and we can set up a meeting to delve into the details.\n\nLooking forward to connecting with you soon!\n\nBest regards,\n[Your Name]",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 38: Text Dependent Questions
+            "template": {
+                "slug": "text-dependent-questions",
+                "name": "Text Dependent Questions",
+                "description": "Generate text-dependent questions based on any text.",
+                "category": "assessment",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "number_of_questions": {
+                            "type": "string",
+                            "title": "Number of Questions",
+                            "description": "Choose how many questions to generate.",
+                            "enum": ["3", "5", "7", "10"],
+                        },
+                        "question_types": {
+                            "type": "string",
+                            "title": "Question Types",
+                            "description": "Comprehension, Literary Devices, Theme, Mix of Literary Devices & Comprehension, etc.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "text": {
+                            "type": "string",
+                            "title": "Text",
+                            "description": "Insert the source text to generate text-dependent questions from.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "number_of_questions", "question_types", "text"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TextDependentQuestionsOutput",
+                    "required": ["questions_output"],
+                    "properties": {
+                        "questions_output": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Final text-dependent questions output in markdown.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate rigorous text-dependent questions from the provided text.",
+                    "context": "Output must match output_schema exactly with one field: questions_output. Use markdown with a title line that includes topic and grade level, then a numbered list of questions. Questions must require evidence from the text. End with an 'Answer Key:' heading. If a true answer key cannot be confidently generated, write 'Answer key not provided for text-dependent questions.'",
+                    "exemplar_input": {
+                        "grade_level": "10th grade",
+                        "number_of_questions": "10",
+                        "question_types": "comprehension",
+                        "text": "Cellular respiration is the process by which cells convert glucose into ATP energy. It includes glycolysis, the Krebs cycle, and the electron transport chain. Aerobic respiration uses oxygen and produces more ATP, while anaerobic respiration occurs without oxygen and produces less ATP.",
+                    },
+                    "exemplar_output": {
+                        "questions_output": "# Text Dependent Questions on Cellular Respiration:\n\n1. What is cellular respiration, and what is its primary function?\n2. Explain the difference between aerobic and anaerobic respiration using evidence from the text.\n3. Which three stages of cellular respiration are listed in the passage?\n4. What does the passage say about oxygen's role in aerobic respiration?\n5. According to the text, why does anaerobic respiration produce less ATP?\n6. Identify the sentence that explains how glucose is used in this process.\n7. Which stage is named first, and what does that ordering suggest about sequence?\n8. What key product is formed by cellular respiration, and where is it mentioned?\n9. How does the passage contrast energy yield between aerobic and anaerobic pathways?\n10. Which words in the text signal a compare/contrast structure between respiration types?\n\n## Answer Key:\n\nAnswer key not provided for text-dependent questions.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 39: Text Leveler
+            "template": {
+                "slug": "text-leveler",
+                "name": "Text Leveler",
+                "description": "Level any text to adapt it to fit a student's reading level and skills.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Target grade level for the releveled text.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "original_text": {
+                            "type": "string",
+                            "title": "Original Text",
+                            "description": "Paste the original text to relevel.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "original_text"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TextLevelerOutput",
+                    "required": ["releveled_text"],
+                    "properties": {
+                        "releveled_text": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Final text rewritten for the target grade level.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Rewrite the source text for the selected grade level while preserving original meaning, sequence, and important details.",
+                    "context": "Output must match output_schema exactly with one field: releveled_text. Start with a title in this style: 'The Great Gatsby — Releveled for 8th Grade' (adapt text and grade dynamically). Then provide polished paragraph prose only. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "8th grade",
+                        "original_text": "The Great Gatsby - Full Text\n\nChapter 1\n\nMy family have been prominent, well-to-do people in this middle-western city for three generations. The Carraways are something of a clan and we have a tradition that we're descended from the Dukes of Buccleuch, but the actual founder of my line was my grandfather's brother who came here in fifty-one, sent a substitute to the Civil War and started the wholesale hardware business that my father carries on today.",
+                    },
+                    "exemplar_output": {
+                        "releveled_text": "## The Great Gatsby — Rewritten for 8th Grade\n\nMy family has been well-known and fairly rich in this Midwestern city for three generations. The Carraways are like a close family group, and we even say we are descended from the Dukes of Buccleuch. But the person who began my grandfather's branch came to America in 1851, paid someone else to fight in the Civil War for him, and started the wholesale hardware business my father now runs.\n\nI never met that great-uncle, but people say I look like him, especially in an old portrait in my father's office. I graduated from Yale in 1915, and after serving in what people called the Great War, I came home restless. I liked the center of the country, but it felt like the edge of everything, so I decided to move East and learn the bond business.\n\nEveryone I knew seemed to work in that business. My aunts and uncles talked about it as if they were choosing a prep school for me, and my father agreed to support me for a year. After some delays, I moved East in the spring of 1922, thinking I would return once I had learned enough.\n\nAt first, I tried to find rooms in the city, but it was warm out and I wanted open space and trees. A man in an office suggested we rent a house in a nearby town and commute. He found me a weathered bungalow for eighty dollars a month. At the last minute his company sent him to Washington, so I ended up moving there alone with an old Dodge and a Finnish woman who cooked my meals.",
+                    },
+                },
+            },
+        },
     ]
 
 
