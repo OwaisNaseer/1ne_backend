@@ -1117,12 +1117,75 @@ class ExecutionService:
             }
         except Exception as e:
             logger.error(f"Streaming execution error for template {template.slug}: {e}", exc_info=True)
-            
-            # Emit error event
-            yield {
-                "type": "error",
-                "message": f"Error during template execution: {str(e)}",
-                "template_slug": template.slug,
-            }
+
+            pd: Dict[str, Any] = {}
+            raw_pd = getattr(template_version, "prompt_definition", None)
+            if isinstance(raw_pd, dict):
+                pd = raw_pd
+            elif isinstance(raw_pd, str):
+                try:
+                    pd = json.loads(raw_pd)
+                except Exception:
+                    pd = {}
+            exemplar_dict = pd.get("exemplar_output") if isinstance(pd, dict) else None
+            if not isinstance(exemplar_dict, dict):
+                exemplar_dict = {}
+
+            def _exemplar_has_content() -> bool:
+                for key in section_keys:
+                    val = exemplar_dict.get(key)
+                    if val is None:
+                        continue
+                    text = section_value_to_markdown_text(val)
+                    if isinstance(text, str) and text.strip():
+                        return True
+                return False
+
+            if _exemplar_has_content():
+                failure_msg = (
+                    "The AI provider could not complete this request. "
+                    "Below is the exemplar output from this template."
+                )
+                for section_key in section_keys:
+                    label = section_label_from_schema(section_key, output_schema)
+                    raw_val = exemplar_dict.get(section_key)
+                    section_text = (
+                        section_value_to_markdown_text(raw_val) if raw_val is not None else ""
+                    )
+                    if not (section_text and section_text.strip()):
+                        section_text = "*(No exemplar content for this section.)*"
+                    yield {
+                        "type": "section_start",
+                        "section": section_key,
+                        "label": label,
+                        "template_slug": template.slug,
+                    }
+                    words = section_text.strip().split(" ")
+                    for i, word in enumerate(words):
+                        chunk_to_send = _strip_section_markers(word if i == 0 else " " + word)
+                        if chunk_to_send:
+                            yield {
+                                "type": "section_content",
+                                "section": section_key,
+                                "chunk": chunk_to_send,
+                                "content": chunk_to_send,
+                                "template_slug": template.slug,
+                            }
+                            await asyncio.sleep(0)
+                    yield {"type": "section_end", "section": section_key, "template_slug": template.slug}
+                yield {
+                    "type": "done",
+                    "execution_id": None,
+                    "template_slug": template.slug,
+                    "provider_failed": True,
+                    "failure_message": failure_msg,
+                    "output_data": exemplar_dict,
+                }
+            else:
+                yield {
+                    "type": "error",
+                    "message": f"Error during template execution: {str(e)}",
+                    "template_slug": template.slug,
+                }
 
 
