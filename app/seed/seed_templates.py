@@ -4330,6 +4330,2658 @@ def get_template_data() -> list[Dict[str, Any]]:
                 }
             }
         },
+        {
+            # TEMPLATE 25: Tool Recommendations
+            "template": {
+                "slug": "tool_recommendations",
+                "name": "Tool Recommendations",
+                "description": "Discover the best MagicSchool tools to use based on your specific needs.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "educator_description": {
+                            "type": "string",
+                            "title": "Describe Yourself as an Educator and/or Your Needs:",
+                            "description": "Share your context and what support you need.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "attachment_file_name": {
+                            "type": "string",
+                            "title": "Attached file (optional)",
+                            "description": "Optional file name from Add File for context (no file parsing in this version).",
+                        },
+                    },
+                    "required": ["grade_level", "educator_description"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ToolRecommendationsOutput",
+                    "required": ["tool_recommendations"],
+                    "properties": {
+                        "tool_recommendations": {
+                            "type": "string",
+                            "title": "Tool Recommendations",
+                            "description": "Markdown response with educator tools, student tools, and a short follow-up prompt.",
+                        },
+                    },
+                },
+                "stub_config": {
+                    "tool_recommendations_template": (
+                        "## MagicSchool for Educators Tool Recommendations\n\n"
+                        "1. [Math Spiral Review](https://app.magicschool.ai/tools/math-spiral-review) - Generate targeted spiral review problem sets to reinforce algebra, geometry, and pre-calculus skills for {grade_level}; useful for bellringers, homework, or quick formative checks that align with secondary math pacing.\n"
+                        "2. [5E Model Lesson Plan](https://app.magicschool.ai/tools/5e-model-lesson-plan) - Create Engage/Explore/Explain/Elaborate/Evaluate lesson plans for high school science labs and units; great for designing inquiry-based biology, chemistry, or physics lessons that meet rigor for {grade_level}.\n"
+                        "3. [Science Labs](https://app.magicschool.ai/tools/science-labs) - Generate custom, standards-aware lab activities and materials (procedures, materials, safety notes) tailored to your topic and grade level.\n"
+                        "4. [Multiple Explanations](https://app.magicschool.ai/tools/multiple-explanations) - Produce alternate explanations and scaffolds for challenging math/science concepts so you can reteach using different representations.\n"
+                        "5. [Rubric Generator](https://app.magicschool.ai/tools/rubric-generator) - Build clear, standards-aligned rubrics for lab reports and projects to communicate expectations and speed up grading.\n\n"
+                        "## MagicSchool for Students (MagicStudent) Tool Recommendations\n\n"
+                        "1. [Math Review (Student)](https://app.magicschool.ai/magic-student/room/new?tool=math-review-s) - Student-facing practice and review questions for algebra and geometry topics.\n"
+                        "2. [AI Tutor (Student)](https://app.magicschool.ai/magic-student/room/new?tool=tutor-me-s) - On-demand tutoring assistant for homework support and worked examples.\n"
+                        "3. [Multiple Explanations (Student)](https://app.magicschool.ai/magic-student/room/new?tool=multiple-explanations-s) - Helps students who struggle with one explanation style by offering alternative concept explanations.\n"
+                        "4. [Text Proofreader (Student)](https://app.magicschool.ai/magic-student/room/new?tool=proofreader-s) - Lets students check lab reports and written responses for clarity and correctness before submission.\n"
+                        "5. [Quiz Me! (Student)](https://app.magicschool.ai/magic-student/room/new?tool=quiz-me-s) - Self-quizzing tool students can use to practice for tests or check mastery of standards.\n\n"
+                        "Review these recommendations and tell me if you want the suggested teacher tools organized into a weekly workflow, or if you'd like sample outputs (a spiral review set, a 5E lesson outline, or a ready-to-run lab) created for a specific topic."
+                    ),
+                },
+                "prompt_definition": {
+                    "description": (
+                        "Recommend the most relevant MagicSchool teacher and MagicStudent tools based on the educator's context."
+                    ),
+                    "context": (
+                        "Return exactly one markdown field: tool_recommendations. "
+                        "Structure it with a teacher tools section, a student tools section, numbered recommendations with links, and a concise follow-up offer."
+                    ),
+                    "exemplar_input": {
+                        "grade_level": "9th grade",
+                        "educator_description": (
+                            "I'm a special education teacher who co-teaches math and science in high school. "
+                            "What tools would be helpful for a frog dissection lab and teaching vocabulary?"
+                        ),
+                    },
+                    "exemplar_output": {
+                        "tool_recommendations": (
+                            "## MagicSchool for Educators Tool Recommendations\n\n"
+                            "1. [Math Spiral Review](https://app.magicschool.ai/tools/math-spiral-review) - Generate targeted spiral review problem sets to reinforce algebra, geometry, and pre-calculus skills for 9th grade.\n"
+                            "2. [5E Model Lesson Plan](https://app.magicschool.ai/tools/5e-model-lesson-plan) - Create inquiry-based lesson plans for science labs and units with clearer structure and pacing.\n"
+                            "3. [Science Labs](https://app.magicschool.ai/tools/science-labs) - Generate custom, standards-aware lab activities and materials (procedures, safety notes, and assessment checkpoints).\n"
+                            "4. [Multiple Explanations](https://app.magicschool.ai/tools/multiple-explanations) - Offer differentiated explanations for complex terms and concepts so students can access content in multiple ways.\n"
+                            "5. [Rubric Generator](https://app.magicschool.ai/tools/rubric-generator) - Build clear, standards-aligned rubrics for lab reports and projects.\n\n"
+                            "## MagicSchool for Students (MagicStudent) Tool Recommendations\n\n"
+                            "1. [Math Review (Student)](https://app.magicschool.ai/magic-student/room/new?tool=math-review-s) - Student-facing review and practice for algebra/geometry topics.\n"
+                            "2. [AI Tutor (Student)](https://app.magicschool.ai/magic-student/room/new?tool=tutor-me-s) - On-demand support for homework, concept checks, and worked examples.\n"
+                            "3. [Multiple Explanations (Student)](https://app.magicschool.ai/magic-student/room/new?tool=multiple-explanations-s) - Helps students revisit challenging ideas using alternative explanation styles.\n"
+                            "4. [Text Proofreader (Student)](https://app.magicschool.ai/magic-student/room/new?tool=proofreader-s) - Improves clarity and correctness in student lab write-ups before submission.\n"
+                            "5. [Quiz Me! (Student)](https://app.magicschool.ai/magic-student/room/new?tool=quiz-me-s) - Self-quizzing practice to build retention before tests.\n\n"
+                            "Review these recommendations and tell me if you'd like a weekly workflow plan or sample outputs for your next biology/science unit."
+                        ),
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 26: Feedback Writer
+            "template": {
+                "slug": "feedback_writer",
+                "name": "Feedback Writer",
+                "description": "Generate structured writing feedback with strengths, growth areas, and clear next steps.",
+                "category": "communication",
+                "subject_default": "english",
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "assignment_description": {
+                            "type": "string",
+                            "title": "Describe the assignment",
+                            "description": "Describe the writing task and success criteria.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "feedback_rubric": {
+                            "type": "string",
+                            "title": "Type of feedback or rubric",
+                            "description": "Paste rubric criteria, focus skills, or scoring guidance.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "additional_instructions": {
+                            "type": "string",
+                            "title": "Additional instructions for the feedback (optional)",
+                            "description": "Optional tone, focus, or grading constraints.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "student_writing": {
+                            "type": "string",
+                            "title": "Insert the writing you want feedback on",
+                            "description": "Paste student writing for targeted feedback.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "assignment_description",
+                        "feedback_rubric",
+                        "student_writing",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "FeedbackWriterOutput",
+                    "required": [
+                        "areas_of_strength",
+                        "areas_for_growth",
+                        "writing_mechanics_feedback",
+                        "next_steps",
+                        "encouraging_summary",
+                    ],
+                    "properties": {
+                        "areas_of_strength": {
+                            "type": "string",
+                            "title": "Areas of Strength",
+                            "description": "Specific strengths tied to evidence from the writing.",
+                        },
+                        "areas_for_growth": {
+                            "type": "string",
+                            "title": "Areas for Growth",
+                            "description": "Actionable improvement points with examples.",
+                        },
+                        "writing_mechanics_feedback": {
+                            "type": "string",
+                            "title": "General Feedback on Writing Mechanics",
+                            "description": "Mechanics notes such as grammar, punctuation, sentence flow, and clarity.",
+                        },
+                        "next_steps": {
+                            "type": "string",
+                            "title": "Suggested Revision Next Steps",
+                            "description": "2-4 concrete revision steps the student can do next.",
+                        },
+                        "encouraging_summary": {
+                            "type": "string",
+                            "title": "Encouraging Summary",
+                            "description": "A short supportive closing statement.",
+                        },
+                    },
+                },
+                "stub_config": {
+                    "areas_of_strength_template": (
+                        "- You clearly explain the core idea of the assignment and keep your response focused on the prompt.\n"
+                        "- You include relevant text evidence and connect examples back to your analysis.\n"
+                        "- Your writing shows strong effort and thoughtful interpretation for {grade_level} expectations."
+                    ),
+                    "areas_for_growth_template": (
+                        "- Go deeper in your analysis by explaining why each example matters, not only what happens.\n"
+                        "- Vary sentence openings to improve flow and reduce repeated phrasing.\n"
+                        "- Add one additional example from another part of the text to strengthen your argument."
+                    ),
+                    "writing_mechanics_feedback_template": (
+                        "- Improve formal tone in a few places by replacing conversational wording.\n"
+                        "- Check punctuation and comma usage in longer sentences.\n"
+                        "- Review transitions between paragraphs so each idea connects more smoothly."
+                    ),
+                    "next_steps_template": (
+                        "1. Revise one paragraph by adding deeper explanation after your evidence.\n"
+                        "2. Replace at least two informal phrases with academic wording.\n"
+                        "3. Add one more supporting quote and explain its significance.\n"
+                        "4. Re-read aloud once to catch clarity and punctuation issues."
+                    ),
+                    "encouraging_summary_template": (
+                        "You are on the right track. With a bit more depth and polish, this can become a strong final piece."
+                    ),
+                },
+                "prompt_definition": {
+                    "description": (
+                        "Generate clear, rubric-aligned writing feedback for student work."
+                    ),
+                    "context": (
+                        "Return exactly these sections: areas_of_strength, areas_for_growth, "
+                        "writing_mechanics_feedback, next_steps, encouraging_summary. "
+                        "Use direct, supportive language; cite concrete evidence from the student writing; "
+                        "keep feedback actionable and age-appropriate for the selected grade level."
+                    ),
+                    "exemplar_input": {
+                        "grade_level": "8th grade",
+                        "assignment_description": (
+                            "Analyze imagery in 'Of Mice and Men' and include at least three textual examples."
+                        ),
+                        "feedback_rubric": (
+                            "Accurate analysis of imagery, use of evidence, organization, and clear writing mechanics."
+                        ),
+                        "additional_instructions": (
+                            "Focus on conventions and use of evidence. Keep tone supportive and specific."
+                        ),
+                        "student_writing": (
+                            "In 'Of Mice and Men,' Steinbeck uses imagery to show the hard life during the Great Depression. "
+                            "One example is George describing the dream ranch with Lennie. Another is the rabbits Lennie wants "
+                            "to care for. These images help us feel the characters' hopes and struggles."
+                        ),
+                    },
+                    "exemplar_output": {
+                        "areas_of_strength": (
+                            "- You identify multiple examples of imagery and connect them to the novel's themes.\n"
+                            "- Your references to George's dream ranch and Lennie's rabbits show clear textual awareness.\n"
+                            "- Your response stays focused on the prompt and presents a clear central idea."
+                        ),
+                        "areas_for_growth": (
+                            "- Push your analysis further by explaining why each image is significant to character development.\n"
+                            "- Add one additional example from a different scene to show range.\n"
+                            "- Expand commentary after each example so your reasoning is more detailed."
+                        ),
+                        "writing_mechanics_feedback": (
+                            "- Use more formal wording in place of conversational phrases.\n"
+                            "- Combine short sentences where appropriate to improve flow.\n"
+                            "- Check punctuation in compound sentences for clarity."
+                        ),
+                        "next_steps": (
+                            "1. Add one new quotation with analysis.\n"
+                            "2. Revise at least one paragraph to include deeper commentary.\n"
+                            "3. Replace informal wording with academic language.\n"
+                            "4. Proofread for punctuation and sentence variety."
+                        ),
+                        "encouraging_summary": (
+                            "Great start. Your ideas are clear, and with deeper explanation your analysis will become much stronger."
+                        ),
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 27: Text Rewriter
+            "template": {
+                "slug": "text_rewriter",
+                "name": "Text Rewriter",
+                "description": "Take any text and rewrite it with custom criteria.",
+                "category": "communication",
+                "subject_default": "english",
+                "grade_bands_supported": ["6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "original_text": {
+                            "type": "string",
+                            "title": "Original Text",
+                            "description": "Paste the original text you want rewritten.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "rewrite_instruction": {
+                            "type": "string",
+                            "title": "Rewrite so that",
+                            "description": "Explain how the text should be rewritten (length, tone, style, clarity, or audience).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["original_text", "rewrite_instruction"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TextRewriterOutput",
+                    "required": ["rewritten_text"],
+                    "properties": {
+                        "rewritten_text": {
+                            "type": "string",
+                            "title": "Rewritten Text",
+                            "description": "The rewritten version of the original text that follows the instruction.",
+                        }
+                    },
+                },
+                "stub_config": {
+                    "rewritten_text_template": (
+                        "Choose a work of fiction with a rebel character who disrupts societal, familial, or political affairs. "
+                        "In a focused essay, analyze how the rebel's complex motivation shapes your interpretation of the work as a whole."
+                    ),
+                },
+                "prompt_definition": {
+                    "description": (
+                        "Rewrite the provided text using the exact user instruction while preserving the original meaning unless instructed otherwise."
+                    ),
+                    "context": (
+                        "Return exactly one field: rewritten_text. "
+                        "Provide only the rewritten passage, ready to use. "
+                        "Do not include explanations, labels, or extra commentary."
+                    ),
+                    "exemplar_input": {
+                        "original_text": (
+                            "Many works of literature feature a rebel character who changes or disrupts the existing state of societal, "
+                            "familial, or political affairs in the text. They may break social norms, challenge long-held values, "
+                            "subvert expectations, or participate in other forms of resistance. The character's motivation for this "
+                            "rebellious behavior is often complex. Either from your own reading or from the list below, choose a work "
+                            "of fiction in which a character changes or disrupts the existing state of societal, familial, or political "
+                            "affairs. Then, in a well-written essay, analyze how the complex motivation of the rebel contributes to an "
+                            "interpretation of the work as a whole."
+                        ),
+                        "rewrite_instruction": "it is half as long",
+                    },
+                    "exemplar_output": {
+                        "rewritten_text": (
+                            "Choose a work of fiction with a rebel character who disrupts societal, familial, or political affairs. "
+                            "In a well-written essay, analyze how the rebel's complex motivation contributes to your interpretation "
+                            "of the work as a whole."
+                        ),
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 28: Multiple Choice Quiz / Assessment
+            "template": {
+                "slug": "mc_assessment",
+                "name": "Multiple Choice Quiz / Assessment",
+                "description": "Generate a multiple choice assessment, quiz, or test based on any topic, standard(s), or criteria.",
+                "category": "assessment",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "number_of_questions": {
+                            "type": "integer",
+                            "title": "Number of Questions",
+                            "description": "How many multiple choice questions to generate.",
+                            "minimum": 3,
+                            "maximum": 25,
+                            "default": 5,
+                        },
+                        "options_per_question": {
+                            "type": "integer",
+                            "title": "Number of Options per Question",
+                            "description": "How many answer options each question should have.",
+                            "minimum": 3,
+                            "maximum": 6,
+                            "default": 4,
+                        },
+                        "topic_standard_text": {
+                            "type": "string",
+                            "title": "Topic, Standard, Text, or Description of the Assessment (be specific)",
+                            "description": "Main topic and scope of the quiz/assessment.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "standards_to_align": {
+                            "type": "string",
+                            "title": "Standards Set to Align to",
+                            "description": "Optional standard set(s), e.g., CCSS, TEKS, NGSS, state standards.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "attachment_file_name": {
+                            "type": "string",
+                            "title": "Attached file (optional)",
+                            "description": "Optional Add File metadata only (no file parsing in this version).",
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "number_of_questions",
+                        "options_per_question",
+                        "topic_standard_text",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "MultipleChoiceAssessmentOutput",
+                    "required": ["title", "questions", "answer_key_note", "answer_key"],
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "title": "Assessment title",
+                        },
+                        "questions": {
+                            "type": "array",
+                            "title": "Questions",
+                            "items": {
+                                "type": "object",
+                                "required": ["number", "question", "options"],
+                                "properties": {
+                                    "number": {"type": "integer", "title": "Question number"},
+                                    "question": {"type": "string", "title": "Question stem"},
+                                    "options": {
+                                        "type": "array",
+                                        "title": "Options",
+                                        "items": {"type": "string"},
+                                    },
+                                },
+                            },
+                        },
+                        "answer_key_note": {
+                            "type": "string",
+                            "title": "Answer key note",
+                        },
+                        "answer_key": {
+                            "type": "array",
+                            "title": "Answer key",
+                            "items": {"type": "string"},
+                        },
+                        "standards_alignment": {
+                            "type": "array",
+                            "title": "Standards alignment",
+                            "items": {"type": "string"},
+                        },
+                        "review_note": {
+                            "type": "string",
+                            "title": "Review note",
+                        },
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a multiple choice quiz/assessment aligned to the requested grade level, topic, and standards. Return clear question stems with labeled options, answer key, and optional standards alignment.",
+                    "context": "Output must match output_schema exactly with title, questions, answer_key_note, answer_key, optional standards_alignment, and optional review_note.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "number_of_questions": 5,
+                        "options_per_question": 4,
+                        "topic_standard_text": "Diagnostic assessment on the process of mitosis",
+                        "standards_to_align": "Any standards worldwide (CCSS, TEKS, Ontario, Florida)",
+                    },
+                    "exemplar_output": {
+                        "title": "Diagnostic Assessment on the Process of Mitosis",
+                        "questions": [
+                            {
+                                "number": 1,
+                                "question": "Which of the following best describes the process of mitosis?",
+                                "options": [
+                                    "a. The division of DNA into two identical daughter cells",
+                                    "b. The exchange of genetic material between homologous chromosomes",
+                                    "c. The joining of a sperm and egg cell to form a zygote",
+                                    "d. The duplication of chromosomes followed by their separation into two identical nuclei",
+                                ],
+                            },
+                            {
+                                "number": 2,
+                                "question": "What is the purpose of mitosis in the cell cycle?",
+                                "options": [
+                                    "a. To repair damaged DNA",
+                                    "b. To produce gametes for sexual reproduction",
+                                    "c. To create genetic diversity",
+                                    "d. To generate two identical daughter cells",
+                                ],
+                            },
+                            {
+                                "number": 3,
+                                "question": "During which phase of mitosis do the chromosomes line up at the equator of the cell?",
+                                "options": [
+                                    "a. Prophase",
+                                    "b. Metaphase",
+                                    "c. Anaphase",
+                                    "d. Telophase",
+                                ],
+                            },
+                            {
+                                "number": 4,
+                                "question": "What happens to the nuclear membrane during mitosis?",
+                                "options": [
+                                    "a. It disappears during prophase and reappears during telophase",
+                                    "b. It remains intact throughout the entire process",
+                                    "c. It dissolves during metaphase and reforms during anaphase",
+                                    "d. It separates into two halves during telophase",
+                                ],
+                            },
+                            {
+                                "number": 5,
+                                "question": "Which of the following is NOT a stage of mitosis?",
+                                "options": [
+                                    "a. Interphase",
+                                    "b. Prophase",
+                                    "c. Metaphase",
+                                    "d. Telophase",
+                                ],
+                            },
+                        ],
+                        "answer_key_note": "Answer Key (Always review AI generated answers for accuracy - Math is more likely to be inaccurate):",
+                        "answer_key": ["1. d", "2. d", "3. b", "4. a", "5. a"],
+                        "standards_alignment": [
+                            "MS-LS1-3: Use argument supported by evidence for how the body is a system of interacting subsystems composed of groups of cells.",
+                            "MS-LS3-1: Develop and use a model to describe why structural changes to genes (mutations) located on chromosomes may affect proteins and may result in harmful, beneficial, or neutral effects to the structure and function of the organism.",
+                        ],
+                        "review_note": "Review this closely for accuracy, especially in math, as AI may have limitations.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 29: Academic Content Generator
+            "template": {
+                "slug": "academic_content_generator",
+                "name": "Academic Content",
+                "description": "Generate custom academic content based on the criteria of your choice.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "topic_standard_objective": {
+                            "type": "string",
+                            "title": "Topic, standard, objective (be as specific as possible)",
+                            "description": "Main objective/topic for the generated content.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "text_length": {
+                            "type": "string",
+                            "title": "Text Length",
+                            "description": "Requested approximate output length (e.g., 1 page exactly).",
+                            "maxLength": 200,
+                        },
+                        "content_type": {
+                            "type": "string",
+                            "title": "Content Type",
+                            "description": "Type of academic content (e.g., textbook page, reading passage, explainer notes).",
+                            "maxLength": 200,
+                        },
+                        "additional_criteria": {
+                            "type": "string",
+                            "title": "Additional Criteria",
+                            "description": "Any additional requirements to include.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "attachment_file_name": {
+                            "type": "string",
+                            "title": "Attached file (optional)",
+                            "description": "Optional Add File metadata only (no file parsing in this version).",
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "topic_standard_objective",
+                        "text_length",
+                        "content_type",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "AcademicContentOutput",
+                    "required": ["academic_content"],
+                    "properties": {
+                        "academic_content": {
+                            "type": "string",
+                            "title": "Academic Content",
+                            "description": "Main generated academic content with headings, bold sections, and bullet points.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate academic content tailored to grade level, topic/objective, requested length, content type, and additional criteria. Keep the writing age-appropriate, factual, and instruction-ready.",
+                    "context": "Output must match output_schema exactly with a single field academic_content. Inside that field, provide well-structured markdown with heading(s), bolded subheads, and bullets where helpful.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "topic_standard_objective": "SWBAT explain the differences between ethnic and religious groups - they are studying southern Africa",
+                        "text_length": "1 Page exactly",
+                        "content_type": "Textbook page",
+                        "additional_criteria": "Make sure that it explicitly names several of the ethnic and religious groups in southern Africa",
+                    },
+                    "exemplar_output": {
+                        "academic_content": (
+                            "## Understanding Ethnic and Religious Diversity in Southern Africa\n\n"
+                            "In Southern Africa, there is a rich tapestry of ethnic and religious groups that contribute to the region's cultural diversity.\n\n"
+                            "One prominent ethnic group in Southern Africa is the Zulu people. Another significant ethnic group is the Xhosa people. The San people, also known as the Bushmen, are one of the oldest ethnic groups in the region.\n\n"
+                            "Religiously, Southern Africa is diverse as well. Christianity is the dominant religion with denominations such as Catholicism, Anglicanism, and various independent churches. Islam is also practiced by a significant minority. Additionally, traditional African religions, such as ancestral worship and animism, continue to be practiced.\n\n"
+                            "**What students will be able to do (SWBAT):** Explain the differences between ethnic groups and religious groups and identify several ethnic and religious groups found in southern Africa.\n\n"
+                            "**What is an ethnic group?**\n"
+                            "An ethnic group is a group of people who share a common cultural background, including language, ancestry, and traditions.\n\n"
+                            "**What is a religious group?**\n"
+                            "A religious group is a community of people who share beliefs about spirituality, rituals, sacred texts, and worship practices.\n\n"
+                            "**Key differences (easy to remember):**\n"
+                            "- Ethnicity is about culture, ancestry, and language.\n"
+                            "- Religion is about beliefs, worship, and spiritual practices.\n"
+                            "- A person can belong to one ethnic group and follow any religion (or no religion).\n"
+                            "- Ethnic identity is usually inherited; religious identity can be chosen or changed.\n\n"
+                            "**Examples in southern Africa - Ethnic groups (named):**\n"
+                            "- Zulu\n"
+                            "- Xhosa\n"
+                            "- Shona\n"
+                            "- Ndebele\n"
+                            "- Tswana\n"
+                            "- Venda\n\n"
+                            "**Examples in southern Africa - Religious groups (named):**\n"
+                            "- Christianity\n"
+                            "- African Traditional Religions\n"
+                            "- Islam\n"
+                            "- Hinduism\n"
+                            "- No religious affiliation / secular\n\n"
+                            "**How ethnicity and religion interact in southern Africa:**\n"
+                            "- Many ethnic groups practice Christianity alongside African Traditional Religions.\n"
+                            "- Ethnic traditions often remain strong even when religious beliefs change.\n"
+                            "- Historical migration and colonialism brought new religions and mixed cultures.\n\n"
+                            "**Short classroom activity (1-2 minutes):**\n"
+                            "Ask students to pick one ethnic group and one religious group named above and explain how these identities might shape a person's life.\n\n"
+                            "**Summary:**\n"
+                            "Ethnic groups are tied to shared culture and ancestry. Religious groups are tied to shared beliefs and worship."
+                        )
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 30: Text Proofreader
+            "template": {
+                "slug": "text_proofreader",
+                "name": "Text Proofreader",
+                "description": "Proofread any text - correcting grammar, spelling, punctuation, and adding clarity.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "original_text": {
+                            "type": "string",
+                            "title": "Original Text",
+                            "description": "Paste the source text you want to proofread.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "attachment_file_name": {
+                            "type": "string",
+                            "title": "Attached file (optional)",
+                            "description": "Optional file name from Add File for context (no file parsing in this version).",
+                        },
+                    },
+                    "required": ["original_text"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TextProofreaderOutput",
+                    "required": ["title", "rewritten_text", "applied_criteria"],
+                    "properties": {
+                        "title": { "type": "string", "title": "Response title" },
+                        "rewritten_text": {
+                            "type": "string",
+                            "title": "Proofread text",
+                            "description": "Primary proofread version of the original text.",
+                        },
+                        "applied_criteria": {
+                            "type": "array",
+                            "title": "Applied criteria",
+                            "description": "Short bullets summarizing how proofreading improvements were applied.",
+                            "items": {"type": "string"},
+                        },
+                        "optional_alternatives": {
+                            "type": "array",
+                            "title": "Optional alternatives",
+                            "description": "Optional alternate proofreading versions.",
+                            "items": {"type": "string"},
+                        },
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Proofread user-provided text, correcting grammar, spelling, punctuation, and adding clarity while preserving the original meaning.",
+                    "context": "Output must match output_schema exactly with title, rewritten_text, applied_criteria, and optional optional_alternatives. If attachment_file_name is provided, treat it as context metadata only.",
+                    "exemplar_input": {
+                        "original_text": "In 'Of Mice and Men,' John Steinbeck uses lots of vivid descriptions to depict the hardships of life during the Great Depression. These descriptions help readers empathize with the characters and enhance the book's appeal. One prominent example is when George describes the dream ranch he envisions with Lennie.\n\nIn the book, George says, 'O.K. Someday—we're gonna get the jack together and we're gonna have a little house and a couple of acres an' a cow and some pigs...' This imagery creates a tranquil setting where they can live happily. The house, the acres, and the animals give us a good feeling. It's like a movie in our mind, and we can see it clearly.\n\nAnother image is when George talks about the rabbits Lennie wants to take care for. George says, 'We'll have a big vegetable patch and a rabbit hutch and chickens. And when it rains in the winter, we'll just say the hell with 'go' to work, and we'll build up a fire in the stove and set around it an' listen to the rain comin' down on the roof.' This description conjures an inviting space for relaxation. The rain, the fire, and the rabbits evoke a sense of warmth, creating a delightful mental image.",
+                    },
+                    "exemplar_output": {
+                        "title": "Text Proofreader Result",
+                        "rewritten_text": "In 'Of Mice and Men,' John Steinbeck uses lots of vivid descriptions to depict the hardships of life during the Great Depression. These descriptions help readers empathize with the characters and enhance the book's appeal. One prominent example is when George describes the dream ranch he envisions with Lennie.\n\nIn the book, George says, 'O.K. Someday—we're gonna get the jack together and we're gonna have a little house and a couple of acres an' a cow and some pigs...' This imagery creates a tranquil setting where they can live happily. The house, the acres, and the animals give readers a good feeling. It's like a movie in our minds—we can see it clearly.\n\nAnother image is when George talks about the rabbits Lennie wants to take care of. George says, 'We'll have a big vegetable patch and a rabbit hutch and chickens. And when it rains in the winter, we'll just say the hell with 'go' to work, and we'll build up a fire in the stove and set around it, an' listen to the rain comin' down on the roof.' This description conjures an inviting space for relaxation. The rain, the fire, and the rabbits evoke a sense of warmth, creating a delightful mental image.",
+                        "applied_criteria": [
+                            "Corrected grammar and word choice (for example, 'take care for' -> 'take care of' and improved phrasing for clarity).",
+                            "Cleaned up punctuation and sentence boundaries, especially around the quoted dialogue and commas.",
+                            "Improved readability by tightening a few transitions while preserving the original meaning and examples.",
+                            "Maintained the structure of the explanation and ensured each paragraph connects back to the effect on readers.",
+                        ],
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 31: Professional Email
+            "template": {
+                "slug": "professional_email",
+                "name": "Professional Email",
+                "description": "Generate a professional email communication.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "author_name": {
+                            "type": "string",
+                            "title": "Author Name",
+                            "description": "Name to sign at the end of the email.",
+                            "maxLength": 200,
+                        },
+                        "email_content": {
+                            "type": "string",
+                            "title": "Content to include in the email",
+                            "description": "Paste the message details you want included in the email.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["author_name", "email_content"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ProfessionalEmailOutput",
+                    "required": ["subject:"],
+                    "properties": {
+                        "subject:": {
+                            "type": "string",
+                            "title": "Subject:",
+                            "description": "Subject value followed by the email body content."
+                        },
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Write a professional, ready-to-send email. Use the provided email_content to create a clear subject and a polished message body. Keep the tone respectful and appropriate for educational stakeholders. Add a brief thank-you line and close with 'Best regards,' followed by the author_name as the signature.",
+                    "context": "The output must be split into the section key: subject:. Write HUMAN-READABLE content only; no JSON inside the section. Put the subject value first, then a blank line, then the email body paragraphs, and end with the signature.",
+                    "exemplar_input": {
+                        "author_name": "Mrs. Smith",
+                        "email_content": "Please see my earlier email regarding the changes to that basketball schedule for this season. We need to make sure that we have one administrator at each home game. I will start a google form where we can all sign up to be present at one or two games.",
+                    },
+                    "exemplar_output": {
+                        "subject:": "Administrator Coverage for Home Basketball Games\n\nPlease see my earlier email about the changes to that basketball schedule for this season. We need to make sure that we have one administrator at each home game. I will start a Google Form where we can all sign up to be present at one or two games.\n\nThank you for your support — I appreciate your help in ensuring we have coverage.\n\nBest regards,\nMrs. Smith",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 32: IEP Generator
+            "template": {
+                "slug": "iep_generator",
+                "name": "IEP Generator",
+                "description": "Generate an Individualized Education Program (IEP) draft.",
+                "category": "behavior",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "student_name": {
+                            "type": "string",
+                            "title": "Student Name",
+                            "description": "Name of the student for the IEP.",
+                            "maxLength": 200,
+                        },
+                        "grade": {
+                            "type": "string",
+                            "title": "Grade",
+                            "description": "Select the grade level for the student.",
+                            "enum": [
+                                "K",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "abilities_needs_strengths": {
+                            "type": "string",
+                            "title": "Description of abilities, needs, and strengths",
+                            "description": "Describe the student's abilities, needs, and strengths for the IEP.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "sensory_strategies": {
+                            "type": "string",
+                            "title": "Description of sensory strategies, include the main needs",
+                            "description": "Describe the student's sensory strategies and sensory-related needs.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "sensory_balance_activities": {
+                            "type": "string",
+                            "title": "Can you suggest activities to help improve [Student Name]'s sensory balance?",
+                            "description": "Suggest sensory balance activities that could be implemented in the classroom.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                    },
+                    "required": [
+                        "student_name",
+                        "grade",
+                        "abilities_needs_strengths",
+                        "sensory_strategies",
+                        "sensory_balance_activities",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "IEPGeneratorOutput",
+                    "required": ["iep_draft"],
+                    "properties": {
+                        "iep_draft": {
+                            "type": "string",
+                            "title": "Student IEP Draft - Review closely before implementation",
+                            "description": "Markdown IEP draft with clear headings, bold measurable goals, and bullet lists.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a complete IEP draft for the student using the provided abilities/needs/strengths and sensory information.",
+                    "context": "Output must match output_schema exactly with a single field iep_draft. Write the IEP in HUMAN-READABLE markdown only. Include the following headings in order: Present Levels of Performance; Student Needs and Impact of Disability; Goals and Objectives; Accommodations and Modifications. Under Goals and Objectives, include multiple bold Measurable Goals and supporting Objectives as bullet lists. Under Accommodations and Modifications, include a bullet list of supports.",
+                    "exemplar_input": {
+                        "student_name": "Student Name",
+                        "grade": "4th grade",
+                        "abilities_needs_strengths": "Student Name is a 4th-grade learner with strong curiosity and a clear willingness to participate when routines are predictable. They benefit from structured transitions and visual supports. Sensory processing differences impact attention, engagement, and comfort during unstructured moments.",
+                        "sensory_strategies": "Student Name benefits from predictable sensory supports including scheduled breaks, access to a sensory tool box, and calming input when overwhelmed (e.g., quiet space, reduced noise, movement opportunities). They may show sensory sensitivities during loud environments, crowded spaces, or when unexpected changes occur.",
+                        "sensory_balance_activities": "Suggest classroom and movement activities that support sensory regulation. Examples include guided movement breaks, sensory-friendly work stations, structured sensory circuits, and planned opportunities for proprioceptive and vestibular input. Provide activities that can be implemented during transitions and short breaks."
+                    },
+                    "exemplar_output": {
+                        "iep_draft": "## Present Levels of Performance\n\nStudent Name is a 4th-grade learner who demonstrates strengths in curiosity, participation, and effort when expectations are clear. Student Name may require additional support to manage sensory input and maintain attention during transitions and high-stimulation activities.\n\nStudent Name’s sensory processing needs affect how they experience classroom environments. Loud or unpredictable situations can reduce engagement and increase the likelihood of off-task behavior, withdrawal, or avoidance. With consistent routines and sensory supports, Student Name can participate more successfully and demonstrate improved readiness for learning.\n\n## Student Needs and Impact of Disability\n\n- Student Name needs structured routines and clear expectations to support self-regulation.\n- Student Name needs sensory strategies to manage overwhelm and support continued participation.\n- Student Name needs opportunities for movement and sensory input in predictable ways to improve focus and reduce stress.\n\n## Goals and Objectives\n\n**Measurable Goal: Enhancing Social Communication Skills**\n\n- **Objective:** During structured classroom discussions, Student Name will participate in a turn-taking routine (e.g., initiate and respond using a sentence starter) in 4 out of 5 opportunities across 3 consecutive sessions.\n- **Objective:** Student Name will use an appropriate communication strategy (request help, ask for a break, or express a need) when support is needed in 4 out of 5 observed opportunities.\n\n**Measurable Goal: Managing Sensory Sensitivities**\n\n- **Objective:** When exposed to a predictable classroom trigger (e.g., noisy transition), Student Name will use a taught regulation strategy (break card, quiet corner routine, or sensory tool) within 5 minutes in 4 out of 5 opportunities.\n- **Objective:** Student Name will remain engaged in assigned task activities for at least 10 minutes with no more than 2 redirections in 4 out of 5 opportunities.\n\n**Measurable Goal: Building Flexibility with Routines**\n\n- **Objective:** Student Name will transition using a visual schedule and transition script with successful completion in 4 out of 5 opportunities across 3 consecutive weeks.\n- **Objective:** Student Name will demonstrate coping behavior (breathing routine, coping statement, or request for support) after unexpected changes in 4 out of 5 opportunities.\n\n## Accommodations and Modifications\n\n- Provide a predictable daily schedule with visual cues and explicit transition warnings.\n- Offer scheduled sensory breaks (planned and signaled) and access to a sensory tool box.\n- Implement a quiet/calming area for regulation when Student Name becomes overwhelmed.\n- Allow movement breaks and sensory-friendly work options (e.g., alternative seating or short activity circuit).\n- Use sentence starters and communication supports to encourage appropriate social interaction and help-seeking.\n- Provide positive reinforcement for use of regulation and communication strategies.\n\n",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 33: Report Card Comments
+            "template": {
+                "slug": "report_card_comments",
+                "name": "Report Card Comments",
+                "description": "Generate report card comments with a student's strengths and areas for growth.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the student's grade level.",
+                            "enum": [
+                                "K",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "student_pronouns": {
+                            "type": "string",
+                            "title": "Student Pronouns",
+                            "description": "e.g., he/she/they.",
+                            "maxLength": 100,
+                        },
+                        "areas_of_strength": {
+                            "type": "string",
+                            "title": "Areas of Strength",
+                            "description": "Areas to celebrate.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "areas_for_growth": {
+                            "type": "string",
+                            "title": "Areas for Growth",
+                            "description": "Areas to improve.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "student_pronouns",
+                        "areas_of_strength",
+                        "areas_for_growth",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ReportCardCommentsOutput",
+                    "required": ["comments"],
+                    "properties": {
+                        "comments": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Final report card comments with strengths and opportunities for growth.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate concise, professional report card comments using the student's strengths and growth areas.",
+                    "context": "Output must match output_schema exactly with one field: comments. Write markdown-ready prose using this exact format: **Areas of Strength:** <paragraph> followed by a blank line then **Opportunities for Growth:** <paragraph>. Keep tone supportive, specific, and actionable for families.",
+                    "exemplar_input": {
+                        "grade_level": "8th grade",
+                        "student_pronouns": "he",
+                        "areas_of_strength": "Homework completion, good friend, punctual",
+                        "areas_for_growth": "Distracted easily, struggles with independent work",
+                    },
+                    "exemplar_output": {
+                        "comments": "**Areas of Strength:** The student consistently demonstrates his strength in completing homework assignments on time. He is a reliable and responsible student in this aspect. Additionally, he is known for being a good friend to his classmates, showing kindness and empathy towards others. Lastly, he is punctual and arrives to class promptly, demonstrating excellent time management skills.\n\n**Opportunities for Growth:** While the student possesses many strengths, he sometimes gets easily distracted during independent work. Encouraging him to stay focused and providing strategies to help him stay on task will support his growth in this area. While he may struggle with independent work, with guidance and practice, he can develop the skills necessary to work more independently and become a more self-sufficient learner.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 34: Informational Texts
+            "template": {
+                "slug": "informational_text_generator",
+                "name": "Informational Texts",
+                "description": "Generate original informational texts customized to the topic of your choice.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "text_length": {
+                            "type": "string",
+                            "title": "Text Length",
+                            "description": "Choose the target length for the informational text.",
+                            "enum": ["1 paragraph", "1 page", "2 pages"],
+                        },
+                        "informational_text_type": {
+                            "type": "string",
+                            "title": "Informational Text Type",
+                            "description": "Select the style of informational writing.",
+                            "enum": [
+                                "Expository",
+                                "Literary Nonfiction",
+                                "How-To / Procedural",
+                                "Cause and Effect",
+                                "Compare and Contrast",
+                                "Problem and Solution",
+                            ],
+                        },
+                        "topic": {
+                            "type": "string",
+                            "title": "Topic (be as specific as possible)",
+                            "description": "Provide the topic and any specific angle or focus to include.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "text_length",
+                        "informational_text_type",
+                        "topic",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "InformationalTextsOutput",
+                    "required": ["informational_text"],
+                    "properties": {
+                        "informational_text": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Final informational text in clean markdown format.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Write an original informational text appropriate for the selected grade level, length, and text type.",
+                    "context": "Output must match output_schema exactly with one field: informational_text. The informational_text should be markdown-ready prose with a clear title and organized paragraphs/subheadings when appropriate. Keep tone academic and age-appropriate.",
+                    "exemplar_input": {
+                        "grade_level": "9th grade",
+                        "text_length": "1 page",
+                        "informational_text_type": "Expository",
+                        "topic": "Impacts of social media use on adolescents",
+                    },
+                    "exemplar_output": {
+                        "informational_text": "# The Impacts of Social Media Use on Adolescents\n\nSocial media has become an integral part of daily life for many adolescents. Platforms such as Instagram, TikTok, Snapchat, and YouTube provide opportunities for connection, creativity, and learning. At the same time, heavy use can affect mental health, attention, and decision-making. Understanding both the benefits and the risks helps students make healthier choices online.\n\n## Mental Health and Self-Esteem\n\nOne major impact of social media is its influence on mental health and self-image. Positive online spaces can help teens feel included and supported. However, constant comparison to curated posts can lead to insecurity, anxiety, and low self-esteem. When teens measure themselves against unrealistic online standards, they may feel pressure to look or act a certain way.\n\n## Attention, Sleep, and Academic Performance\n\nFrequent notifications and endless scrolling can disrupt focus and reduce productivity. Many adolescents report spending more time online than intended, which can interfere with homework and studying. Late-night device use is also linked to poor sleep quality, and less sleep can negatively affect memory, mood, and classroom performance.\n\n## Relationships and Communication\n\nSocial media can strengthen friendships by helping teens stay connected outside of school. It can also create conflict when messages are misunderstood or when cyberbullying occurs. Because online communication lacks facial expressions and tone, small disagreements can quickly escalate. Learning respectful digital communication is essential.\n\n## Positive Uses of Social Media\n\nDespite the challenges, social media can be used in meaningful ways. Teens can follow educational creators, join academic communities, explore career interests, and share creative projects. Advocacy campaigns and peer support groups can also promote awareness of important social issues.\n\n## Strategies for Healthier Use\n\n- Set daily time limits and take regular screen breaks.\n- Turn off non-essential notifications during study time.\n- Follow accounts that inspire learning and well-being.\n- Avoid comparing your real life to curated online posts.\n- Prioritize sleep by avoiding screens before bedtime.\n- Talk to a trusted adult if online experiences feel harmful.\n\nIn conclusion, social media can be both helpful and harmful for adolescents. Its impact depends on how it is used. With thoughtful habits and digital awareness, teens can benefit from online opportunities while protecting their mental health, academic success, and relationships.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 35: Text Summarizer
+            "template": {
+                "slug": "summarizer",
+                "name": "Text Summarizer",
+                "description": "Summarize any text in whatever length you choose.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "length_of_summary": {
+                            "type": "string",
+                            "title": "Length of summary",
+                            "description": "Select the target summary length.",
+                            "enum": ["1 paragraph", "2 paragraphs", "3 paragraphs", "1 page"],
+                        },
+                        "original_text": {
+                            "type": "string",
+                            "title": "Original Text",
+                            "description": "Paste the original text you want summarized.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["length_of_summary", "original_text"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TextSummarizerOutput",
+                    "required": ["summary"],
+                    "properties": {
+                        "summary": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Final summarized text in clear, readable markdown.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Summarize the provided text according to the selected summary length.",
+                    "context": "Output must match output_schema exactly with one field: summary. Write polished, human-readable prose. Preserve key ideas and sequence. Use a clear title when helpful and optional subheadings for readability.",
+                    "exemplar_input": {
+                        "length_of_summary": "3 paragraphs",
+                        "original_text": "The Water Cycle: A Natural Marvel\n\nThe water cycle, also known as the hydrological cycle, is a continuous and vital process that governs the movement of water on Earth. This intricate system comprises several stages, ensuring a dynamic exchange of water between the atmosphere, land, and oceans.\n\n1. Evaporation:\nThe water cycle begins with evaporation, where the sun's radiant energy transforms liquid water from oceans, rivers, lakes, and even plants into water vapor. This invisible water vapor rises into the atmosphere, forming clouds.\n\n2. Condensation:\nAs warm, moist air rises, it encounters cooler temperatures at higher altitudes. This leads to condensation, during which the water vapor changes back into tiny water droplets that cluster together to form clouds.\n\n3. Precipitation:\nWhen the concentration of water droplets in clouds becomes too heavy, gravity takes over, and precipitation occurs. This can take various forms, including rain, snow, sleet, or hail.\n\n4. Infiltration and Runoff:\nAfter precipitation, water either infiltrates into the ground, replenishing groundwater and supporting plant life, or flows over the surface as runoff, eventually reaching rivers, lakes, and oceans.\n\n5. Transpiration:\nTranspiration is a lesser-known but equally significant component of the water cycle. In this stage, plants release water vapor through tiny pores in their leaves.\n\nIn conclusion, the water cycle is a fundamental natural process that sustains life on Earth.",
+                    },
+                    "exemplar_output": {
+                        "summary": "# The Water Cycle: A Natural Marvel\n\nThe water cycle, also known as the hydrological cycle, is a continuous and vital process that governs the movement of water on Earth. This intricate system comprises several stages, ensuring a dynamic exchange of water between the atmosphere, land, and oceans.\n\nEvaporation begins the cycle as the sun's energy transforms liquid water from oceans, rivers, and lakes into water vapor that rises into the atmosphere. As this warm, moist air cools, condensation occurs, forming clouds from tiny droplets. When clouds become saturated, precipitation returns water to Earth's surface as rain, snow, sleet, or hail.\n\nAfter precipitation, water either infiltrates the ground to recharge groundwater or moves as runoff to streams, rivers, and oceans. Plants also contribute through transpiration, releasing water vapor back into the air. Together, these interconnected stages maintain Earth's water distribution and support ecosystems, weather systems, and life.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 36: Text Translator
+            "template": {
+                "slug": "translator",
+                "name": "Text Translator",
+                "description": "Translate any text or uploaded document into any language.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "language_to_translate_to": {
+                            "type": "string",
+                            "title": "Language to translate to",
+                            "description": "Target language for translation.",
+                            "enum": [
+                                "Spanish",
+                                "French",
+                                "German",
+                                "Italian",
+                                "Portuguese",
+                                "Arabic",
+                                "Hindi",
+                                "Chinese (Simplified)",
+                                "Japanese",
+                                "Korean",
+                            ],
+                        },
+                        "original_text": {
+                            "type": "string",
+                            "title": "Original Text",
+                            "description": "Paste the source text that should be translated.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["language_to_translate_to", "original_text"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TextTranslatorOutput",
+                    "required": ["translation"],
+                    "properties": {
+                        "translation": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Final translated text in the requested language.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Translate the provided text accurately into the requested target language while preserving meaning, tone, and structure.",
+                    "context": "Output must match output_schema exactly with one field: translation. Return translated text only in readable prose/markdown. Keep names/placeholders (like [Parent's Name]) preserved and translated naturally where appropriate.",
+                    "exemplar_input": {
+                        "language_to_translate_to": "Spanish",
+                        "original_text": "Dear [Parent's Name],\n\nI trust this email finds you well. I am writing to share some encouraging news regarding your child's performance in my math class.\n\nOver the past few weeks, I have had the opportunity to observe a significant improvement in your student's understanding and application of mathematical concepts. Their dedication to academic growth and consistent effort have truly stood out, and I wanted to take a moment to express my appreciation for their hard work.\n\nNot only has your child demonstrated a commendable grasp of challenging mathematical principles, but they have also shown a willingness to engage actively in class discussions and seek clarification when needed. Their enthusiasm for learning is both admirable and infectious, contributing positively to the overall classroom environment.\n\nI believe it is crucial to acknowledge and celebrate the achievements of our students, and your child's progress in math is certainly worthy of recognition. It is evident that they have been investing time and effort into their studies, and as a result, they are reaping the rewards of their commitment.\n\nI encourage you to continue providing support and encouragement to your child in their academic journey. Your involvement plays a vital role in fostering a positive attitude toward learning and contributes to their overall success. If you have any questions or would like to discuss your child's progress further, please feel free to reach out. I am more than happy to schedule a meeting or provide additional information as needed.\n\nThank you for your ongoing support, and I look forward to witnessing your child's continued growth and success in my math class.\n\nBest regards,",
+                    },
+                    "exemplar_output": {
+                        "translation": "Ciertamente! Aquí está la traducción del texto al español:\n\nEstimado/a [Nombre del Padre/Madre],\n\nEspero que este correo electrónico le encuentre bien. Le escribo para compartir algunas noticias alentadoras sobre el desempeño de su hijo/a en mi clase de matemáticas.\n\nEn las últimas semanas, he tenido la oportunidad de observar una mejora significativa en la comprensión y aplicación de conceptos matemáticos por parte de su estudiante. Su dedicación al crecimiento académico y su esfuerzo constante realmente se han destacado, y quería tomar un momento para expresar mi agradecimiento por su arduo trabajo.\n\nNo solo su hijo/a ha demostrado un entendimiento encomiable de principios matemáticos desafiantes, sino que también ha mostrado disposición para participar activamente en las discusiones de clase y buscar aclaraciones cuando es necesario. Su entusiasmo por el aprendizaje es tanto admirable como contagioso, contribuyendo positivamente al ambiente general de la clase.\n\nCreo que es crucial reconocer y celebrar los logros de nuestros estudiantes, y el progreso de su hijo/a en matemáticas ciertamente merece reconocimiento. Es evidente que han estado invirtiendo tiempo y esfuerzo en sus estudios, y como resultado, están cosechando los frutos de su compromiso.\n\nLe animo a seguir brindando apoyo y estímulo a su hijo/a en su trayectoria académica. Su participación desempeña un papel vital en fomentar una actitud positiva hacia el aprendizaje y contribuye a su éxito general. Si tiene alguna pregunta o le gustaría discutir el progreso de su hijo/a en mayor detalle, no dude en ponerse en contacto. Estoy más que encantado de programar una reunión o proporcionar información adicional según sea necesario.\n\nGracias por su continuo apoyo, y espero con interés presenciar el crecimiento continuo y el éxito de su hijo/a en mi clase de matemáticas.\n\nSaludos cordiales,",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 37: Email Responder
+            "template": {
+                "slug": "email-responder",
+                "name": "Email Responder",
+                "description": "Generate a custom professional email response to an email that you received.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "author_name": {
+                            "type": "string",
+                            "title": "Author Name",
+                            "description": "Name to sign at the end of the response.",
+                            "maxLength": 200,
+                        },
+                        "email_you_are_responding_to": {
+                            "type": "string",
+                            "title": "Email you're responding to",
+                            "description": "Paste the email message you are replying to.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "what_you_want_to_communicate_in_response": {
+                            "type": "string",
+                            "title": "What you want to communicate in response",
+                            "description": "Key points you want included in your response email.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                    },
+                    "required": [
+                        "email_you_are_responding_to",
+                        "what_you_want_to_communicate_in_response",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "EmailResponderOutput",
+                    "required": ["email_response"],
+                    "properties": {
+                        "email_response": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Final professional email response text.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Write a professional email response based on the incoming email and the user's intended message.",
+                    "context": "Output must match output_schema exactly with one field: email_response. Start with 'Email Response:' followed by the full response draft. Keep tone professional, concise, and friendly. Use the provided author_name as sign-off when available.",
+                    "exemplar_input": {
+                        "author_name": "Jane Smith",
+                        "email_you_are_responding_to": "Hello Jane,\n\nI hope you are doing well. I am reaching out to see if your school would be open to partnering with us on a feasibility study for using MagicSchool AI in dissertation-level research. I would love to discuss this with you and explore possibilities.\n\nBest regards,\nAlex",
+                        "what_you_want_to_communicate_in_response": "That sounds great lets set up time",
+                    },
+                    "exemplar_output": {
+                        "email_response": "Email Response: Hi there,\n\nThank you for reaching out to us! We are thrilled at the prospect of partnering with you for your feasibility study using MagicSchool AI for your dissertation. Let's schedule a time to discuss this further and explore the possibilities. Please let me know your availability, and we can set up a meeting to delve into the details.\n\nLooking forward to connecting with you soon!\n\nBest regards,\n[Your Name]",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 38: Text Dependent Questions
+            "template": {
+                "slug": "text-dependent-questions",
+                "name": "Text Dependent Questions",
+                "description": "Generate text-dependent questions based on any text.",
+                "category": "assessment",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "number_of_questions": {
+                            "type": "string",
+                            "title": "Number of Questions",
+                            "description": "Choose how many questions to generate.",
+                            "enum": ["3", "5", "7", "10"],
+                        },
+                        "question_types": {
+                            "type": "string",
+                            "title": "Question Types",
+                            "description": "Comprehension, Literary Devices, Theme, Mix of Literary Devices & Comprehension, etc.",
+                            "format": "textarea",
+                            "maxLength": 12000,
+                        },
+                        "text": {
+                            "type": "string",
+                            "title": "Text",
+                            "description": "Insert the source text to generate text-dependent questions from.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "number_of_questions", "question_types", "text"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TextDependentQuestionsOutput",
+                    "required": ["questions_output"],
+                    "properties": {
+                        "questions_output": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Final text-dependent questions output in markdown.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate rigorous text-dependent questions from the provided text.",
+                    "context": "Output must match output_schema exactly with one field: questions_output. Use markdown with a title line that includes topic and grade level, then a numbered list of questions. Questions must require evidence from the text. End with an 'Answer Key:' heading. If a true answer key cannot be confidently generated, write 'Answer key not provided for text-dependent questions.'",
+                    "exemplar_input": {
+                        "grade_level": "10th grade",
+                        "number_of_questions": "10",
+                        "question_types": "comprehension",
+                        "text": "Cellular respiration is the process by which cells convert glucose into ATP energy. It includes glycolysis, the Krebs cycle, and the electron transport chain. Aerobic respiration uses oxygen and produces more ATP, while anaerobic respiration occurs without oxygen and produces less ATP.",
+                    },
+                    "exemplar_output": {
+                        "questions_output": "# Text Dependent Questions on Cellular Respiration:\n\n1. What is cellular respiration, and what is its primary function?\n2. Explain the difference between aerobic and anaerobic respiration using evidence from the text.\n3. Which three stages of cellular respiration are listed in the passage?\n4. What does the passage say about oxygen's role in aerobic respiration?\n5. According to the text, why does anaerobic respiration produce less ATP?\n6. Identify the sentence that explains how glucose is used in this process.\n7. Which stage is named first, and what does that ordering suggest about sequence?\n8. What key product is formed by cellular respiration, and where is it mentioned?\n9. How does the passage contrast energy yield between aerobic and anaerobic pathways?\n10. Which words in the text signal a compare/contrast structure between respiration types?\n\n## Answer Key:\n\nAnswer key not provided for text-dependent questions.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 39: Text Leveler
+            "template": {
+                "slug": "text-leveler",
+                "name": "Text Leveler",
+                "description": "Level any text to adapt it to fit a student's reading level and skills.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Target grade level for the releveled text.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "original_text": {
+                            "type": "string",
+                            "title": "Original Text",
+                            "description": "Paste the original text to relevel.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "original_text"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TextLevelerOutput",
+                    "required": ["releveled_text"],
+                    "properties": {
+                        "releveled_text": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Final text rewritten for the target grade level.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Rewrite the source text for the selected grade level while preserving original meaning, sequence, and important details.",
+                    "context": "Output must match output_schema exactly with one field: releveled_text. Start with a title in this style: 'The Great Gatsby — Releveled for 8th Grade' (adapt text and grade dynamically). Then provide polished paragraph prose only. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "8th grade",
+                        "original_text": "The Great Gatsby - Full Text\n\nChapter 1\n\nMy family have been prominent, well-to-do people in this middle-western city for three generations. The Carraways are something of a clan and we have a tradition that we're descended from the Dukes of Buccleuch, but the actual founder of my line was my grandfather's brother who came here in fifty-one, sent a substitute to the Civil War and started the wholesale hardware business that my father carries on today.",
+                    },
+                    "exemplar_output": {
+                        "releveled_text": "## The Great Gatsby — Rewritten for 8th Grade\n\nMy family has been well-known and fairly rich in this Midwestern city for three generations. The Carraways are like a close family group, and we even say we are descended from the Dukes of Buccleuch. But the person who began my grandfather's branch came to America in 1851, paid someone else to fight in the Civil War for him, and started the wholesale hardware business my father now runs.\n\nI never met that great-uncle, but people say I look like him, especially in an old portrait in my father's office. I graduated from Yale in 1915, and after serving in what people called the Great War, I came home restless. I liked the center of the country, but it felt like the edge of everything, so I decided to move East and learn the bond business.\n\nEveryone I knew seemed to work in that business. My aunts and uncles talked about it as if they were choosing a prep school for me, and my father agreed to support me for a year. After some delays, I moved East in the spring of 1922, thinking I would return once I had learned enough.\n\nAt first, I tried to find rooms in the city, but it was warm out and I wanted open space and trees. A man in an office suggested we rent a house in a nearby town and commute. He found me a weathered bungalow for eighty dollars a month. At the last minute his company sent him to Washington, so I ended up moving there alone with an old Dodge and a Finnish woman who cooked my meals.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 40: Unit Plan Generator
+            "template": {
+                "slug": "unit-plan-generator",
+                "name": "Unit Plan Generator",
+                "description": "Generate a unit plan based on any topic and academic standards, with day-by-day lessons and assessments.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for this unit.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "length_of_unit": {
+                            "type": "string",
+                            "title": "Length of Unit",
+                            "description": "How many school days this unit should span.",
+                            "enum": [
+                                "5 school days",
+                                "10 school days",
+                                "15 school days",
+                                "20 school days",
+                                "25 school days",
+                                "30 school days",
+                            ],
+                        },
+                        "unit_title_or_topics": {
+                            "type": "string",
+                            "title": "Unit Plan Title / Topic(s)",
+                            "description": "The unit title and/or main topic(s) to cover.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "context": {
+                            "type": "string",
+                            "title": "Context (Optional)",
+                            "description": "Optional: audience, course, constraints, or instructional goals.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "standards": {
+                            "type": "string",
+                            "title": "Standards Set to Align to (Optional)",
+                            "description": "Optional: paste or describe standards (CCSS, TEKS, Ontario, Florida, IB, etc.).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "length_of_unit", "unit_title_or_topics"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "UnitPlanGeneratorOutput",
+                    "required": ["unit_plan"],
+                    "properties": {
+                        "unit_plan": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Full unit plan in markdown: overview, numbered lessons (objectives, assessments, key points, standards), culminating ideas, and standards summary.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Create a practical, classroom-ready unit plan for the given grade, duration, and topic. Pace lessons across the stated number of school days.",
+                    "context": "Output must match output_schema exactly with one field: unit_plan. Use markdown. Include: a clear unit title; a brief overview; numbered lessons that fit the unit length (group or split days logically); for each lesson: Objectives, Assessments, Key Points, and Standards (cite user-provided standards when supplied, otherwise infer plausible placeholders and label them clearly). Add Culminating Activities Suggestions and a Standards Addressed list. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "8th grade",
+                        "length_of_unit": "15 school days",
+                        "unit_title_or_topics": "Overview of classical Japanese history.",
+                        "context": "I am a world history teacher and I need to develop an introductory unit that explores classical Japanese history.",
+                        "standards": "",
+                    },
+                    "exemplar_output": {
+                        "unit_plan": "## Unit Title: Overview of Classical Japanese History\n\n### Overview\nThis fifteen-day introductory unit situates classical Japan (roughly late Yamato through early feudal transitions) for eighth-grade world history students. Students map geography and periodization, trace political and religious change, and analyze primary and secondary sources on court culture and society.\n\n---\n\n### Lesson 1 — Geography, Chronology, and Vocabulary\n\n**Objectives:** Students locate Japan’s major islands and neighboring regions; build a working timeline of classical periods; define key terms (e.g., *kami*, *Shotoku*, *Heian*).\n\n**Assessments:** Quick map check; exit ticket with three terms and one inference.\n\n**Key Points:** Physical geography and isolation; why period labels matter; how historians divide classical eras.\n\n**Standards:** *Placeholders — align to your framework:* cite specific reading, writing, and speaking standards for historical sources and geographic reasoning.\n\n---\n\n### Lesson 2 — Early State and Borrowing from China\n\n**Objectives:** Explain how early Japanese rulers consolidated power; describe Taika-style reforms and Chinese influence.\n\n**Assessments:** Short comparison chart (Japan vs. Chinese models); one-paragraph explanation.\n\n**Key Points:** Yamato legitimacy; missions to China; selective adaptation vs. copying.\n\n**Standards:** *Placeholders:* argument from evidence; comparing societies.\n\n---\n\n### Lesson 3 — Prince Shōtoku and Buddhist Foundations\n\n**Objectives:** Interpret the Seventeen-Article Constitution as a historical source; connect Buddhism to governance and culture.\n\n**Assessments:** Guided source questions; discussion participation rubric.\n\n**Key Points:** Ethics of rule; religion as political glue; limits of the text as “law.”\n\n**Standards:** *Placeholders:* analyzing point of view in foundational documents.\n\n---\n\n### Lesson 4 — Nara Period Institutions\n\n**Objectives:** Describe Nara capital planning and state Buddhism; evaluate benefits and tensions of centralized temple power.\n\n**Assessments:** Mini-debate prompt; brief written reflection.\n\n**Key Points:** *Heijō-kyō*; Great Buddha at Tōdai-ji; economic and labor demands of major projects.\n\n**Standards:** *Placeholders:* cause and effect; evaluating costs of centralization.\n\n---\n\n### Lesson 5 — Court Culture in the Heian Period\n\n**Objectives:** Characterize aristocratic life; connect literature and art to court values; identify cultural achievements of the Heian era.\n\n**Assessments:** Image analysis worksheet; two-level text-dependent questions on an excerpt from *The Tale of Genji* (abridged).\n\n**Key Points:** Fujiwara influence; aesthetics and gendered roles; poetry as political communication.\n\n**Standards:** *Placeholders:* integrating visual and literary evidence.\n\n---\n\n### Culminating Activities Suggestions\n- **Museum box:** Students curate 5 artifacts (images or descriptions) with captions explaining classical Japan’s politics, belief, and daily life.\n- **Document-based question:** Respond to a prompt comparing Nara state Buddhism with Heian court culture using two classroom sources.\n- **Presentation:** Small groups teach one subtopic (geography, reform, religion, court culture) with a guiding question and one primary-source quote.\n\n### Standards Addressed\n- *Reading/Writing:* evidence-based claims, summarizing sources, integrating visual information.\n- *Speaking/Listening:* structured discussion, collaborative presentation.\n- *Social Studies:* geographic reasoning, historical causation, comparison across societies, analysis of primary sources.\n\n*Replace placeholder standard lines with your district’s codes when you paste standards into the generator.*",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 41: Letter of Recommendation
+            "template": {
+                "slug": "letter-of-recommendation",
+                "name": "Letter of Recommendation",
+                "description": "Generate a customized letter of recommendation to an institution for a student.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "institution": {
+                            "type": "string",
+                            "title": "Institution",
+                            "description": "The college, university, program, or organization the letter is addressed to.",
+                            "maxLength": 500,
+                        },
+                        "student_pronouns": {
+                            "type": "string",
+                            "title": "Student Pronouns",
+                            "description": "Pronouns to use for the student (e.g., he/him, she/her, they/them).",
+                            "maxLength": 120,
+                        },
+                        "relationship_to_student": {
+                            "type": "string",
+                            "title": "Relationship to Student",
+                            "description": "Your role relative to the student (e.g., teacher, counselor, mentor).",
+                            "maxLength": 300,
+                        },
+                        "important_information": {
+                            "type": "string",
+                            "title": "Important information to include",
+                            "description": "Details about the student’s strengths, achievements, character, and why you recommend them.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": [
+                        "institution",
+                        "student_pronouns",
+                        "relationship_to_student",
+                        "important_information",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "LetterOfRecommendationOutput",
+                    "required": ["letter"],
+                    "properties": {
+                        "letter": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Full letter of recommendation in markdown.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Write a polished, formal letter of recommendation suitable for admissions or selection committees. Address the specified institution. Use the given pronouns consistently. Reflect the writer’s relationship to the student. Weave in all important information naturally.",
+                    "context": "Output must match output_schema exactly with one field: letter. Use markdown. Begin with a subject line such as **Letter of Recommendation:** followed by a blank line, then a professional salutation directed at the institution (e.g., “To the Admissions Committee at …”). Use placeholders where the user did not supply specifics: [Date], [Student Name], [Your Name], [Your Title], [School Name], [Contact Information]. Do not output JSON.",
+                    "exemplar_input": {
+                        "institution": "University of Denver",
+                        "student_pronouns": "He",
+                        "relationship_to_student": "Teacher",
+                        "important_information": "Excellent student, top 5 in his class, two sport athlete (baseball and basketball), NGSS member and student body president",
+                    },
+                    "exemplar_output": {
+                        "letter": "**Letter of Recommendation:**\n\n[Date]\n\nTo the Admissions Committee at the University of Denver:\n\nI am pleased to recommend [Student Name] for admission to the University of Denver. As his **Teacher**, I have had the opportunity to observe [Student Name] in the classroom and in school leadership settings, and I can say with confidence that he is an **excellent student** who will contribute both academically and to your campus community.\n\nAcademically, [Student Name] ranks in the **top five** of his class. He approaches assignments with care, asks insightful questions, and supports classmates in group work without overshadowing them. His work is consistently thorough, and he balances a demanding course load with maturity and organization.\n\nBeyond the classroom, [Student Name] is a **two-sport athlete**, competing in **baseball** and **basketball**. He practices with discipline, supports teammates, and models good sportsmanship. His ability to manage athletics alongside strong academics speaks to his time management and resilience.\n\n[Student Name] is also deeply engaged in school life. He is an active **NGSS** member and serves as **student body president**, where he has helped coordinate events and represent student voices thoughtfully. In these roles he listens well, communicates clearly, and follows through on commitments—qualities that will serve him well in college.\n\nI recommend [Student Name] to you without reservation. If you would like additional context, please contact me at the information below.\n\nSincerely,\n\n[Your Name]  \n[Your Title]  \n[School Name]  \n[Contact Information]",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 42: 5E Model Lesson Plan
+            "template": {
+                "slug": "5e-model-lesson-plan",
+                "name": "5E Model Lesson Plan",
+                "description": "Generate a 5E model lesson plan - Engage, Explore, Explain, Elaborate, Evaluate.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for this lesson.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "topic_standard_or_objective": {
+                            "type": "string",
+                            "title": "Topic, Standard, or Objective",
+                            "description": "Topic, standard code, or learning objective (any framework worldwide).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "additional_customization": {
+                            "type": "string",
+                            "title": "Additional Customization (Optional)",
+                            "description": "Optional: pacing, hands-on emphasis, grouping, language supports, etc.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "standards": {
+                            "type": "string",
+                            "title": "Standards Set to Align to (Optional)",
+                            "description": "Optional: paste or describe standards (CCSS, TEKS, Ontario, NGSS, etc.).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "topic_standard_or_objective"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "FiveEModelLessonOutput",
+                    "required": ["lesson_plan"],
+                    "properties": {
+                        "lesson_plan": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Full 5E lesson plan in markdown.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Design one or more class sessions using the 5E model (Engage, Explore, Explain, Elaborate, Evaluate) for the stated grade and topic. Honor optional customization and align to user-provided standards when supplied.",
+                    "context": "Output must match output_schema exactly with one field: lesson_plan. Use markdown. Start with a compelling unit/lesson title, then **Engage**, **Explore**, **Explain**, **Elaborate**, **Evaluate** as main headings. Within each phase include concrete timing, materials, student tasks, and teacher moves. For Engage: brief phenomenon/hook, think-pair-share, purpose. For Explore: hands-on stations (name each), safety, and a clear data-collection step. For Explain: student synthesis, teacher moves with sample guiding questions, and a short formal mini-lesson with key vocabulary. For Elaborate: an application activity (e.g., poster or skit) plus an extension/challenge (e.g., case study). For Evaluate: formative checks, summative options (item types such as diagram labeling and scenario questions), a self-assessment rubric, and a brief teacher note. End with **Aligned Standards** tied to user standards when provided. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "8th grade",
+                        "topic_standard_or_objective": "What role do muscles, tendons, ligaments and bones play in allowing a human to walk?",
+                        "additional_customization": "We are exploring the musculoskeletal system and its functions. The guiding question for our lesson is how do bones, muscles, tendons and ligaments work together to allow humans to walk around their environment?",
+                        "standards": "NGSS",
+                    },
+                    "exemplar_output": {
+                        "lesson_plan": "## Walking Wonders: How Bones, Muscles, Tendons & Ligaments Work Together\n\n**Grade:** 8th grade · **Standards focus:** NGSS (user indicated NGSS; align codes to your district bundle).\n\n---\n\n## Engage (10–12 minutes)\n\n**Brief phenomenon:** Short video or live demo of walking—compare a normal stride with walking while wearing a soft ankle brace or tape that limits side-to-side motion at the ankle.\n\n**Think–pair–share prompt:** “Which body structures must cooperate for each step—and what job does each one do?” Pairs draft a one-sentence claim; share out to build a common list.\n\n**Purpose:** Activate prior knowledge and frame the investigative question: *How do bones, muscles, tendons, and ligaments work together to allow humans to walk safely and efficiently?*\n\n---\n\n## Explore (35–40 minutes) — Hands-on stations\n\nStudents rotate in small groups (~8–10 minutes per station). Post clear station cards and a **data collection** handout where students record observations and a short “So what?” inference for each station.\n\n1. **Bone & joint station** — Use arm/leg models or simple cardboard “bones” and brass fasteners as joints. Label lever, fulcrum (joint), and load; sketch one movement at the knee or ankle.\n2. **Muscle and tendon station** — Elastic bands represent muscle contraction; string “tendons” transfer force to a rigid “bone.” Demonstrate how shortening on one side changes joint angle.\n3. **Ligament & stability station** — Tape a hinge “joint” tightly vs. loosely; relate to limiting excessive motion and preventing dislocation. Connect to ankle/knee stability during walking.\n4. **Gait observation station** — Watch a slow-motion clip of walking; sketch heel strike → stance → toe-off and note which structures must stabilize vs. propel.\n\n**Safety:** Appropriate use of scissors/elastic; no sharp probes; maintain spacing during movement demos.\n\n---\n\n## Explain (20–25 minutes)\n\n**Student synthesis:** Groups transfer station notes into a four-column organizer (**Bone / Muscle / Tendon / Ligament**) and add one real-world example for each (e.g., Achilles tendon, ACL as a ligament example at high level).\n\n**Teacher moves (guiding questions):** “Where is the force generated?” “What transfers the force?” “What prevents the joint from moving the wrong way?” “When you step, which tissues are actively contracting vs. passively stabilizing?”\n\n**Formal mini-lesson (7–10 minutes):** Define *agonist/antagonist* pairs; *tendon* as force transmitter; *ligament* as passive stabilizer; *bone* as rigid lever. Clarify **sprain vs. strain** in student-friendly language.\n\n**Formative check:** Exit ticket—label a simple leg diagram and explain one injury scenario using the terms *tendon* and *ligament* correctly.\n\n---\n\n## Elaborate (20–25 minutes)\n\n**Application activity (student choice):**\n- **Option A — Safety poster:** Create a poster for a school hallway or gym explaining how warm-ups and proper footwear protect tendons and ligaments during sports that involve cutting and jumping.\n- **Option B — Public service skit:** 3–4 students act out a coach-led warm-up scene that names at least three structures and why they matter for walking/running.\n\n**Extension / challenge (advanced learners):** **Sprained ankle mini–case study** — Read a short scenario about an inversion ankle injury. Students annotate which structures are most likely stressed and propose two evidence-based prevention habits.\n\n**Supports:** Sentence frames for multilingual learners; optional sentence starters for the case study; challenge: add a labeled free-body style sketch for forces at the ankle during push-off.\n\n---\n\n## Evaluate\n\n**Formative checks:** Station worksheets, teacher observation checklist for vocabulary in context, peer feedback on posters/skits using a simple two-stars-and-a-wish protocol.\n\n**Summative assessment (homework or next class):** Mixed formats—(1) **label a diagram** of the lower leg showing bone, muscle belly, tendon, and ligament; (2) **scenario questions** (e.g., “Which tissue is primarily injured in an overstretched ligament?”); (3) short written explanation of how muscle contraction leads to movement at a joint.\n\n**Self-assessment rubric (student-facing):** I can name the roles of bone, muscle, tendon, and ligament (1–4); I can explain walking as a coordinated process (1–4); I use scientific vocabulary accurately (1–4); my diagram is labeled clearly (1–4).\n\n**Teacher note:** Emphasize that this lesson is a conceptual introduction—clinical diagnosis belongs to health professionals; keep examples school-appropriate and inclusive of diverse athletic backgrounds.\n\n---\n\n## Aligned Standards\n\n- **NGSS MS-LS1-3** — Use argument supported by evidence for how the body is a system of interacting subsystems composed of groups of cells (adapt wording to your state’s adopted version).\n- **NGSS MS-LS1-8** — Gather and synthesize information that sensory receptors respond to stimuli (e.g., stretch/pressure) and send messages to the brain that can result in behaviors like adjusting gait (adapt to your adopted MS bundle).\n\n*Cross-cutting concepts:* systems and system models; structure and function. *SEP:* developing and using models; engaging in argument from evidence.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 43: Math Story Word Problems
+            "template": {
+                "slug": "math-story-word-problems",
+                "name": "Math Story Word Problems",
+                "description": "Write custom math word problems based on what you're teaching and any story topic.",
+                "category": "assessment",
+                "subject_default": "math",
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for reading level and difficulty.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "number_of_questions": {
+                            "type": "string",
+                            "title": "Number of Questions",
+                            "description": "How many word problems to generate.",
+                            "enum": ["3", "5", "7", "10"],
+                        },
+                        "math_standard_objective_topic": {
+                            "type": "string",
+                            "title": "Math Standard / Objective / Topic",
+                            "description": "The math skill, standard, or topic (e.g., volume of a cone, multiplying fractions).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "story_topic": {
+                            "type": "string",
+                            "title": "Story Topic",
+                            "description": "The story setting or theme to weave into each problem (e.g., a concert, stock market game, sports).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "number_of_questions",
+                        "math_standard_objective_topic",
+                        "story_topic",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "MathStoryWordProblemsOutput",
+                    "required": ["word_problems"],
+                    "properties": {
+                        "word_problems": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Numbered math story word problems in markdown.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate engaging story-based math word problems that match the grade level, integrate the story topic naturally, and assess the stated math topic or standard.",
+                    "context": "Output must match output_schema exactly with one field: word_problems. Use markdown: start with a short title line (## ...) that reflects the math topic and story theme, then a numbered list (1., 2., ...) with exactly as many problems as the user requested. Each problem should be a single coherent paragraph or two short sentences; include any necessary numbers and units; avoid duplicate setups. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "number_of_questions": "3",
+                        "math_standard_objective_topic": "Volume of a Cone",
+                        "story_topic": "Beyonce concert",
+                    },
+                    "exemplar_output": {
+                        "word_problems": "## Volume at the Venue: Beyoncé Concert Cone Problems\n\n1. At the merch stand, limited-edition commemorative cones are sold as drink holders. Each holder is shaped like a right circular cone with a radius of 4 cm and a height of 15 cm. What is the volume of one holder? Use **V = (1/3)πr²h** and leave your answer in terms of **π**.\n\n2. During sound check, a stage prop is a solid foam cone used as a pedestal for a microphone. The cone has a radius of **0.5 m** and a height of **1.2 m**. The crew wants to know how much space the foam occupies so they can store it in a road case. Find the volume of the cone in cubic meters. Round to **two** decimal places and use **π ≈ 3.14**.\n\n3. Two fans compare souvenir snow-cone cups from different sections. **Fan A’s** cup is a cone with radius **3 in.** and height **8 in.** **Fan B’s** cup is a cone with radius **4 in.** and height **6 in.** Which cup holds more? Justify by finding both volumes (in terms of **π** or using **π ≈ 3.14**) and stating which is greater.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 44: Support Goals Creator
+            "template": {
+                "slug": "support-goals-creator",
+                "name": "Support Goals Creator",
+                "description": "Create a SMART goals tracker for students aligned to their needs. (Tier 2/3, MTSS, IEPs, etc.)",
+                "category": "behavior",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the student's grade level for age-appropriate goal language.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "number_of_goals": {
+                            "type": "string",
+                            "title": "Number of Goals",
+                            "description": "How many SMART goals to include in the tracker.",
+                            "enum": ["3", "4", "5", "6", "7", "10"],
+                        },
+                        "goals_accommodations_behaviors": {
+                            "type": "string",
+                            "title": "IEP / 504 Goals, Accommodations, or Behaviors to Track",
+                            "description": "List goals, accommodations, or behaviors to turn into measurable SMART goals (e.g., self regulation, social interaction, homework completion).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "number_of_goals", "goals_accommodations_behaviors"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SupportGoalsCreatorOutput",
+                    "required": ["progress_tracker"],
+                    "properties": {
+                        "progress_tracker": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown: Progress Monitoring Tracker table with Goal, Frequency of Monitoring, Observation/Data, Progress, Notes.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Create a progress-monitoring tracker with SMART goals tailored to the grade level and the IEP/504/MTSS focus areas the teacher listed.",
+                    "context": "Output must match output_schema exactly with one field: progress_tracker. Use markdown. Start with ## Progress Monitoring Tracker, then a short intro line (grade level, context: Tier 2/3, MTSS, IEP as appropriate). Then output a GitHub-flavored markdown **table** with exactly these five columns in order: **Goal** | **Frequency of Monitoring** | **Observation/Data** | **Progress** | **Notes**. Include exactly the number of goal rows the user requested. Each Goal cell must be a full SMART-style sentence (specific, measurable criterion, time frame, measurement method when possible). Leave Observation/Data, Progress, and Notes cells empty or with a single em dash for manual entry. Use realistic monitoring frequencies (e.g., Daily, Weekly, Bi-weekly, Twice weekly). Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "9th grade",
+                        "number_of_goals": "5",
+                        "goals_accommodations_behaviors": "Self regulation when upset, positive social interaction, homework completion, classwork completion.",
+                    },
+                    "exemplar_output": {
+                        "progress_tracker": "## Progress Monitoring Tracker\n\n**Context:** Grade 9 · Tier 2/3 or IEP-aligned support · Use this table for ongoing progress monitoring; record data in school-approved systems.\n\n| Goal | Frequency of Monitoring | Observation/Data | Progress | Notes |\n| --- | --- | --- | --- | --- |\n| By the end of the next 12 weeks, when feeling upset in class the student will use at least two taught self-regulation strategies (deep breathing, 5-4-3-2-1 grounding, or requesting a break) independently in 4 out of 5 opportunities as measured by teacher or para observation and a self-report checklist. | Twice weekly | — | — | — |\n| Within 10 weeks, the student will initiate or respond positively to peers in social situations (for example greeting, joining group work, offering help) in at least 3 out of 5 observed opportunities, as measured by teacher observation and a peer or social skills rubric. | Once weekly | — | — | — |\n| Over the next 9 weeks, the student will complete and turn in assigned homework on time for at least 80% of assignments each week, as measured by the teacher assignment log and student planner checks. | Weekly | — | — | — |\n| Within 9 weeks, the student will complete at least 85% of in-class assigned tasks during independent work periods across a week on average, as measured by teacher observation and classwork records. | Three times weekly | — | — | — |\n| By the end of the semester (approximately 16 weeks), the student will reduce escalation incidents requiring teacher intervention from the current baseline by 50% through use of self-monitoring and teacher-supported interventions, as measured by behavior incident log and self-monitoring data. | Ongoing; incident-based review weekly | — | — | — |",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 45: DOK Questions
+            "template": {
+                "slug": "dok-questions",
+                "name": "DOK Questions",
+                "description": "Generate questions based on topic or standard for each of the 4 Depth of Knowledge (DOK) levels.",
+                "category": "assessment",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for question complexity and vocabulary.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "topic_standard_or_objective": {
+                            "type": "string",
+                            "title": "Topic, Standard, or Objective",
+                            "description": "The topic, standard code, or learning objective (e.g., mitosis, forces and motion, literary devices).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "standards": {
+                            "type": "string",
+                            "title": "Standards Set to Align to",
+                            "description": "Optional: frameworks or codes (CCSS, TEKS, Ontario, NGSS, Florida, etc.).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "topic_standard_or_objective"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "DokQuestionsOutput",
+                    "required": ["dok_questions"],
+                    "properties": {
+                        "dok_questions": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown: DOK Level 1–4 sections with leveled questions.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate classroom-ready questions at all four Depth of Knowledge (DOK) levels for the given topic and grade.",
+                    "context": "Output must match output_schema exactly with one field: dok_questions. Use markdown. Begin with a one-line intro naming grade and topic. Then four sections in order: ### DOK Level 1 - Recall (measure, recall, calculate, define, list, identify), ### DOK Level 2 - Skill/Concept (graph, classify, compare, estimate, summarize), ### DOK Level 3 - Strategic Thinking (assess, investigate, formulate, draw conclusions, construct), ### DOK Level 4 - Extended Thinking (analyze, critique, create, design, apply concepts). Under each heading provide a short bullet list of distinct questions (aim for 4–6 per level). Align wording to user-supplied standards when provided. Questions must map clearly to the topic. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "topic_standard_or_objective": "Forces and motion",
+                        "standards": "NGSS MS-PS2 Motion and Stability: Forces and Interactions",
+                    },
+                    "exemplar_output": {
+                        "dok_questions": "## DOK-leveled questions: Forces and motion (Grade 7)\n\n*Aligned to user-indicated NGSS MS-PS2-style performance expectations; adapt codes to your adopted standards.*\n\n### DOK Level 1 - Recall (measure, recall, calculate, define, list, identify)\n\n- Define **force** in your own words and give the SI unit used to measure it.\n- List three common types of forces students might observe in everyday life (for example gravity, friction, normal force).\n- Identify whether a given scenario describes a **balanced** or **unbalanced** net force on an object at rest.\n- What is **Newton's First Law** of motion, stated in student-friendly language?\n- Name the two measurements you would read from a force diagram if the scale shows newtons.\n\n### DOK Level 2 - Skill/Concept (graph, classify, compare, estimate, summarize)\n\n- Compare how a **heavier** object and a **lighter** object respond when the same push is applied on a smooth surface; reference friction and inertia in your comparison.\n- Classify examples as **contact** forces versus **non-contact** forces and justify each choice.\n- Interpret a simple distance–time or speed–time graph: summarize what constant speed versus acceleration looks like on the graph.\n- Estimate the net force direction when two opposing forces of different magnitudes act on the same object.\n- Summarize the relationship between **mass**, **acceleration**, and **net force** using a sentence and one numerical example.\n\n### DOK Level 3 - Strategic Thinking (assess, investigate, formulate, draw conclusions, construct)\n\n- Design an **investigation** to test how the mass of a cart affects the distance it travels when released from the same ramp height; identify variables, controls, and what you will measure.\n- A student claims heavier objects always fall faster. **Formulate** an argument using evidence from a classroom drop-tower or simulation to support or refute the claim.\n- **Construct** a free-body diagram for a book resting on a desk and explain how the forces balance.\n- Plan how you would **assess** whether a peer's experimental conclusion is supported by the data table they collected.\n- Draw conclusions from a provided data set (mass vs. acceleration): what pattern supports Newton's Second Law in qualitative terms?\n\n### DOK Level 4 - Extended Thinking (analyze, critique, create, design, apply concepts)\n\n- **Analyze** a complex scenario (for example a car braking on a wet road) by identifying multiple forces acting and predicting how reduced friction changes stopping distance.\n- **Design** a safety feature or rule for a school sports context (helmets, cleats, playground equipment) that reduces injury risk, and explain the physics reasoning.\n- **Critique** a flawed explanation of motion (such as \"objects stop because motion runs out\") and rewrite it using accurate force concepts.\n- **Create** a short public-service explanation for younger students about seat belts and inertia in a crash; use accurate vocabulary and avoid misconceptions.\n- **Apply** force and motion concepts to propose how engineers might test a new backpack design for comfort and stability while walking.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 46: Song Generator
+            "template": {
+                "slug": "song-generator",
+                "name": "Song Generator",
+                "description": "Write a custom song about any topic to the tune of the song of your choice!",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "song_topic": {
+                            "type": "string",
+                            "title": "Song Topic",
+                            "description": "Who or what the song is about (e.g., a teacher, a class, a school event).",
+                            "maxLength": 2000,
+                        },
+                        "details_to_include": {
+                            "type": "string",
+                            "title": "Details to Include in the Song",
+                            "description": "Facts, traits, hobbies, inside jokes, or occasion to weave into the lyrics.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "artist_and_song_title": {
+                            "type": "string",
+                            "title": "Artist Name & Song Title",
+                            "description": "The tune to match in mood, rhythm, and section structure (e.g., Artist - Song Title).",
+                            "maxLength": 500,
+                        },
+                    },
+                    "required": ["song_topic", "details_to_include", "artist_and_song_title"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SongGeneratorOutput",
+                    "required": ["song_lyrics"],
+                    "properties": {
+                        "song_lyrics": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Original school-appropriate song lyrics in markdown.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Write original, school-appropriate song lyrics about the given topic, incorporating every detail the user listed. Match the named reference track in overall mood, energy, and typical song structure (verses, chorus, optional bridge and outro)—without copying copyrighted lyrics line-for-line.",
+                    "context": "Output must match output_schema exactly with one field: song_lyrics. Use markdown. Start with ## and a creative title for the new song (not the original song title alone). Then labeled sections such as **Verse 1**, **Pre-Chorus** (if fitting), **Chorus**, **Verse 2**, **Bridge**, **Chorus** (repeat if appropriate), **Outro**. Keep language positive and inclusive; avoid slurs, profanity, and identifiable student privacy details. Credit line: mention the tune is *inspired by* the user-supplied artist and song for rhythm and structure only. Do not output JSON.",
+                    "exemplar_input": {
+                        "song_topic": "6th grade math teacher, Ms. Lynn",
+                        "details_to_include": "She sponsors the math club, loves rock climbing on weekends, is vegetarian, and we are celebrating her birthday at school with a surprise party in the cafeteria.",
+                        "artist_and_song_title": "Taylor Swift - Cruel Summer",
+                    },
+                    "exemplar_output": {
+                        "song_lyrics": "## Number Crunchin' Queen\n\n*Original lyrics for a school celebration. Inspired by the energy and verse–chorus structure of the reference track you named; not a reproduction of any copyrighted song.*\n\n**Verse 1**  \nSixth grade hallway, bells are ringing loud,  \nMs. Lynn is walking in, we're a proud crowd.  \nWhiteboard markers, problems on the screen—  \nShe makes fractions feel like a winning team.\n\n**Pre-Chorus**  \nShe climbs on weekends, chalk dust on her hands,  \nVegetarian lunch, still the coolest in the land.\n\n**Chorus**  \nNumber crunchin' queen, we're singing happy birthday—  \nMath club after school, you show us the way!  \nNumber crunchin' queen, cafeteria lights up today—  \nSurprise in every smile, Ms. Lynn, hip hip hooray!\n\n**Verse 2**  \nGraph paper mountains, rise and run with pride,  \nYou spot our mistakes, then you stand by our side.  \nRock wall courage when the numbers get tough—  \nYou teach us *try again*; that's more than enough.\n\n**Chorus**  \nNumber crunchin' queen, we're singing happy birthday—  \nMath club after school, you show us the way!  \nNumber crunchin' queen, cafeteria lights up today—  \nSurprise in every smile, Ms. Lynn, hip hip hooray!\n\n**Bridge**  \nNo meat on your plate, but you've got all the heart—  \nWe plotted this party like it's function graph art.  \nStreamers, cupcakes, and a card we all signed:  \n*Thanks for the problems—thanks for sharpening our minds.*\n\n**Chorus**  \nNumber crunchin' queen, we're singing happy birthday—  \nMath club after school, you show us the way!  \nNumber crunchin' queen, cafeteria lights up today—  \nSurprise in every smile, Ms. Lynn, hip hip hooray!\n\n**Outro**  \nMs. Lynn—enjoy your day. One, two, three… **surprise!**",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 47: Social Stories
+            "template": {
+                "slug": "social-stories",
+                "name": "Social Stories",
+                "description": "Generate a social story about a particular event to help a student understand what to expect in that situation.",
+                "category": "behavior",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the student's grade for age-appropriate language and examples.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "social_situation": {
+                            "type": "string",
+                            "title": "Social situation, event, or activity",
+                            "description": "Describe the situation (e.g., getting ready for school, group work, gym class, dentist visit).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "social_situation"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SocialStoriesOutput",
+                    "required": ["social_story"],
+                    "properties": {
+                        "social_story": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "First-person social story in markdown with a clear title and supportive tone.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Write a social story that prepares the student for the described situation using clear, reassuring, concrete language.",
+                    "context": "Output must match output_schema exactly with one field: social_story. Use markdown. Start with ## and a short, positive title. Use first person (I/me) or a named student (one simple name) consistent with the grade level. Explain what will happen, what others might do, what the student can do, and that different feelings are okay. Include optional short bullet lists such as **Before…**, **During…**, **After…** when they help clarity. Avoid shaming, medical claims, or identifying real students. Keep length appropriate for the grade. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "4th grade",
+                        "social_situation": "Engaging in an activity in your gym class where students sometimes have very different experience levels with the activity",
+                    },
+                    "exemplar_output": {
+                        "social_story": "## Learning Together in Gym Class\n\nMy name is Jordan. I am in fourth grade. Sometimes our gym class has an activity where some kids have done it a lot before and some kids are trying it for the first time. That is okay. Everyone learns at their own speed.\n\nWhen I walk into the gym, I will hear the teacher explain the activity. The teacher wants everyone to be safe and to try their best. My job is to listen, follow directions, and ask for help if I need it.\n\nSometimes I might feel nervous if other students seem really good at something. I can remind myself: *I am still learning.* Other times I might feel proud because I already know a skill. I can remind myself: *I can be kind and patient with classmates who are learning too.*\n\nIf I do not understand the rules, I can raise my hand or ask the teacher to show me again. If I need a break, I can use the signal my teacher taught us. If someone else needs extra time or a simpler version of the task, that does not mean I did anything wrong—it means we are all different people with different practice.\n\n**Before gym starts, I can:**\n- Take a slow breath and think one calm thought.\n- Tie my shoes and check that I am wearing the right shoes for the activity.\n- Tell a trusted adult if something hurts or feels unsafe.\n\n**During the activity, I will:**\n- Stay in my space and use equipment the way the teacher taught.\n- Cheer for myself for trying, even if I am not the fastest or strongest yet.\n- Use respectful words if I work with a partner or a team.\n\n**After the activity, I will:**\n- Put equipment away where the teacher says.\n- Notice one thing I tried that felt brave, even if it was small.\n- Remember that gym class is for learning skills, not for being perfect on the first day.\n\nWhen gym is over, I will line up with my class. I did my part by being safe, respectful, and willing to learn. That is what good teammates do.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 48: Choice Board (UDL)
+            "template": {
+                "slug": "choice-board-udl",
+                "name": "Choice Board (UDL)",
+                "description": "Create a choice board for a student assignment based on the principles of UDL.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for task complexity and vocabulary.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "learning_goal_standard_objective_topic": {
+                            "type": "string",
+                            "title": "Learning Goal, Standard, Objective, or Topic",
+                            "description": "What students should demonstrate (topic, standard code, or objective).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "additional_detail": {
+                            "type": "string",
+                            "title": "Additional detail for the choice board",
+                            "description": "Optional: modalities to include, time limits, materials, grouping, or accessibility needs.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "learning_goal_standard_objective_topic"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ChoiceBoardUdlOutput",
+                    "required": ["choice_board"],
+                    "properties": {
+                        "choice_board": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown choice board: title plus UDL-aligned options table.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Design a Universal Design for Learning (UDL) choice board so students can engage with the same learning goal through multiple means of representation, action and expression, and engagement.",
+                    "context": "Output must match output_schema exactly with one field: choice_board. Use markdown. Start with ## and a short title that names the topic plus \"Choice Board\". Add one line naming the grade level. Then a markdown table with columns: **Option** | **Assignment Title** | **Assignment Description (≤1 sentence)**. Provide **9** numbered options (1–9) when possible, each a distinct modality (e.g., visual, kinesthetic, verbal, musical, technology, writing, discussion, game, quiz). Each description must be one sentence or shorter. Honor optional additional detail when provided. Keep tasks school-safe and feasible in a typical classroom. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "learning_goal_standard_objective_topic": "The phases of mitosis",
+                        "additional_detail": "Include a lot of diverse activities across modalities (e.g., art, song, movement, writing, tech).",
+                    },
+                    "exemplar_output": {
+                        "choice_board": "## Phases of Mitosis Choice Board\n\n**Grade:** 7th grade · **UDL focus:** multiple means of engagement, representation, and action & expression.\n\n| Option | Assignment Title | Assignment Description (≤1 sentence) |\n| --- | --- | --- |\n| 1 | Comic-Strip Mitosis | Draw a 6-panel comic showing each phase of mitosis with one short caption per panel. |\n| 2 | Stop-Motion Video | Create a 60–90 second stop-motion video using clay or paper models to show the phases of mitosis. |\n| 3 | Foldable Diagram | Make a 3-fold paper diagram that labels and briefly describes each phase of mitosis. |\n| 4 | Match-and-Explain Game | Build 8 cards (4 phase names, 4 pictures) and write one-sentence explanations linking each picture to its phase. |\n| 5 | Phases Song or Rap | Write and perform a 30–60 second song or rap that names and orders the phases of mitosis. |\n| 6 | Venn Comparison Chart | Create a two-column Venn chart comparing mitosis and meiosis with three key differences and one similarity. |\n| 7 | Microscope Sketchbook | View prepared cell-division images (or provided photos) and sketch one example of a phase, labeling two key features. |\n| 8 | Real-World Analogy Poster | Design a poster that uses a clear everyday analogy (e.g., copying a recipe) to explain the purpose and steps of mitosis. |\n| 9 | Quick Quiz & Reflection | Write 5 multiple-choice questions about the phases of mitosis and include one short paragraph explaining why mitosis is important. |",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 49: Vocabulary List Generator
+            "template": {
+                "slug": "vocabulary-list-generator",
+                "name": "Vocabulary List Generator",
+                "description": "Generate a list of vocabulary words based on a subject, topic, or text.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for definition complexity and reading level.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "vocabulary_words_to_define": {
+                            "type": "string",
+                            "title": "Vocabulary Words to Define",
+                            "description": "How many terms to include in the list.",
+                            "enum": ["5", "8", "10", "12", "15", "20"],
+                        },
+                        "topic_or_text": {
+                            "type": "string",
+                            "title": "Topic or text",
+                            "description": "A short topic (e.g., mitosis, forces and motion) or longer passage from which to extract or derive vocabulary.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "vocabulary_words_to_define", "topic_or_text"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "VocabularyListGeneratorOutput",
+                    "required": ["vocabulary_list"],
+                    "properties": {
+                        "vocabulary_list": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown vocabulary list with bold terms and clear definitions.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Produce a teaching-ready vocabulary list for the given grade, topic, or source text.",
+                    "context": "Output must match output_schema exactly with one field: vocabulary_list. Use markdown. Start with ## and a title such as \"Vocabulary for [topic]\". Add one line noting the grade level. Then for each term use **Bold term** followed by a definition in plain language (one or two sentences). Include exactly the number of terms requested. If the user pasted a long passage, prioritize high-value academic or domain-specific words from that passage; if the input is a short topic, generate the most important terms for that topic. Definitions must be accurate and classroom-appropriate. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "11th grade",
+                        "vocabulary_words_to_define": "10",
+                        "topic_or_text": "Stages of cellular respiration.",
+                    },
+                    "exemplar_output": {
+                        "vocabulary_list": "## Vocabulary for Stages of Cellular Respiration\n\n**Grade:** 11th grade · *Cellular respiration* is the overall process these terms help explain.\n\n**Glycolysis** — A series of reactions in the cytoplasm that splits glucose into pyruvate and yields a small net gain of ATP and reduced electron carriers.\n\n**Pyruvate oxidation** — The step that converts pyruvate into acetyl groups attached to coenzyme A, releasing carbon dioxide and generating NADH for later stages.\n\n**Acetyl-CoA** — A two-carbon carrier molecule that delivers acetyl units into the citric acid cycle after pyruvate processing.\n\n**Citric acid cycle** — A cyclic pathway in the mitochondrial matrix that oxidizes acetyl groups, releases CO₂, and transfers electrons to NADH and FADH₂.\n\n**Electron transport chain** — A series of membrane proteins that pass electrons from donors to oxygen, pumping protons to build an electrochemical gradient.\n\n**Oxidative phosphorylation** — ATP production driven by the proton gradient across the inner mitochondrial membrane, coupled to electron transport.\n\n**ATP synthase** — The enzyme complex that uses the proton gradient to phosphorylate ADP, forming ATP.\n\n**NADH and FADH₂** — Reduced coenzymes that carry high-energy electrons from glycolysis and the citric acid cycle to the electron transport chain.\n\n**Proton gradient** — An unequal distribution of hydrogen ions across a membrane that stores potential energy used by ATP synthase.\n\n**Substrate-level phosphorylation** — Direct transfer of a phosphate group to ADP from a phosphorylated substrate, producing ATP without using the proton gradient.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 50: Project Based Learning (PBL)
+            "template": {
+                "slug": "project-based-learning-pbl",
+                "name": "Project Based Learning (PBL)",
+                "description": "Generate a lesson plan based on the principles of Project Based Learning (PBL).",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for cognitive demand and independence.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "topic_or_project_description": {
+                            "type": "string",
+                            "title": "Topic or Title / Description of Project",
+                            "description": "Project title, driving idea, or full description students will investigate.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "additional_detail_considerations": {
+                            "type": "string",
+                            "title": "Additional detail / considerations (Optional)",
+                            "description": "Optional: community partners, field sites, materials, grouping, pacing, or constraints.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "standards": {
+                            "type": "string",
+                            "title": "Standards Set to Align to (Optional)",
+                            "description": "Optional: frameworks or codes (CCSS, TEKS, NGSS, Ontario, etc.).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "topic_or_project_description"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ProjectBasedLearningOutput",
+                    "required": ["pbl_lesson_plan"],
+                    "properties": {
+                        "pbl_lesson_plan": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Full PBL unit outline in markdown with Gold Standard PBL-style sections.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Design a project-based learning experience with a sustained inquiry, authentic context, student voice and choice, critique and revision, and a public product.",
+                    "context": "Output must match output_schema exactly with one field: pbl_lesson_plan. Use markdown. Include these section headings in order (use ### for each): **Driving Question or Challenge**, **Real-world Context**, **In-depth Inquiry**, **Student Voice and Choice**, **Reflection**, **Critique and Revision**, **Public Product**, **Collaboration**, **Teacher Facilitation**, **Interdisciplinary Connection** (bulleted list across subjects), **Assessment** (subheadings Formative and Summative), **Aligned Standards**. Start with ## project title. Name the grade level once near the top. Ground every section in the user's topic and optional details. When standards are provided, cite them explicitly; otherwise suggest plausible placeholder standards labeled as examples. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "11th grade",
+                        "topic_or_project_description": "Explore the impacts of urban development on the heat island effect that certain areas in Denver experience during our hottest days of the year.",
+                        "additional_detail_considerations": "There are various open spaces in and around Denver where students can monitor air temperatures. There are also urban spaces where students can go to monitor air temperatures.",
+                        "standards": "NGSS",
+                    },
+                    "exemplar_output": {
+                        "pbl_lesson_plan": "## Explore Denver's Urban Heat Islands\n\n**Grade:** 11th grade · **Project type:** interdisciplinary field investigation with a public product.\n\n### Driving Question or Challenge\nHow does urban development in Denver influence local temperature patterns during the hottest days of the year, and what evidence-based design or policy recommendations could reduce harmful heat effects in affected neighborhoods?\n\n### Real-world Context\nUrban heat islands occur when built surfaces absorb and re-radiate heat, raising temperatures where people live, learn, and play. Students connect daily weather experiences to equity questions about who is most exposed to extreme heat and why it matters for health and learning.\n\n### In-depth Inquiry\nTeams develop investigable sub-questions (for example comparing park, parking lot, and tree-shaded sites), plan repeated temperature and surface observations using school-safe protocols, log metadata (time of day, cloud cover), and analyze patterns with graphs and maps. Students justify claims with evidence and consider uncertainty and sampling limitations.\n\n### Student Voice and Choice\nStudents choose monitoring locations from an approved list, decide roles (field lead, data manager, communications), select visualization formats, and pick the public product format (policy brief, community infographic series, recorded podcast, or city council-style presentation).\n\n### Reflection\nWeekly reflection prompts connect findings to personal experience and to science practices: *What surprised us? What would we measure differently next time? How does our evidence support our recommendation?*\n\n### Critique and Revision\nStructured peer review using a rubric aligned to claim-evidence-reasoning; one revision cycle after feedback from peers and a teacher conference; optional review from a community partner if available.\n\n### Public Product\nA concise heat-mitigation recommendation for a chosen Denver neighborhood, supported by data visuals and at least three feasible actions (for example tree canopy, cool surfaces, shade planning, or transit-oriented cooling strategies).\n\n### Collaboration\nHeterogeneous teams of 3–4 with rotating roles; norms for respectful disagreement; shared digital lab notebook; whole-class gallery walk to compare conclusions across sites.\n\n### Teacher Facilitation\nLaunch with a phenomenon anchor; model data ethics and field safety; provide checkpoints for data quality; coach argumentation without taking over student conclusions; coordinate permissions for off-campus or partner sites per district policy.\n\n### Interdisciplinary Connection\n- **Science / Earth systems:** heat transfer, weather variables, human impacts on Earth systems.  \n- **Mathematics:** descriptive statistics, graphing, rates of change, error and variability.  \n- **Social studies / Civics:** land use, environmental justice, local policy levers.  \n- **English / ELA:** informational writing, audience analysis, oral presentation.  \n- **Art / Design:** visual communication for public audiences.\n\n### Assessment\n**Formative:** field logs, peer critique sheets, checkpoint quizzes on vocabulary and graph reading, teacher conferencing notes.  \n**Summative:** public product rubric (accuracy of science content, use of evidence, feasibility of recommendations, collaboration, and communication).\n\n### Aligned Standards\n*Examples when aligning to NGSS-style high school performance expectations (adapt codes to your state adoption):* **HS-ESS3-4** — Evaluate or refine a technological solution that reduces impacts of human activities on Earth systems. **HS-ESS2-4** — Use a model to describe how variations in the flow of energy into and out of Earth’s systems result in changes in climate. Add SEP emphasis on **Analyzing and interpreting data** and **Engaging in argument from evidence**.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 51: Standards Unpacker
+            "template": {
+                "slug": "standards-unpacker",
+                "name": "Standards Unpacker",
+                "description": "Unpack any standard into component parts to understand what students need to learn.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "The grade band the standard is intended for (select the closest match).",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "standard_to_unpack": {
+                            "type": "string",
+                            "title": "Standard to Unpack",
+                            "description": "Paste the full standard text, code, and strand (any framework worldwide).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "standard_to_unpack"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "StandardsUnpackerOutput",
+                    "required": ["unpacked_standard"],
+                    "properties": {
+                        "unpacked_standard": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown unpack: components, expectations, targets, strategies, assessments, summary.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Unpack the provided standard for the selected grade into teachable parts: knowledge, skills, concepts, expectations, measurable targets, instruction, and assessment.",
+                    "context": "Output must match output_schema exactly with one field: unpacked_standard. Use markdown. Begin with one line quoting or naming the standard and the grade. Then use ### headings in this order: **Break Down Standard — key components** (sub-bullets for Skills, Knowledge, and Concepts), **Define Expectations — what students should learn**, **Learning Targets — specific, measurable** (use clear \"I can …\" statements), **Instruction strategies**, **Assessment ideas**, **Summary** (short paragraph). Keep content accurate to the standard text the user supplied. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "6th grade",
+                        "standard_to_unpack": "CCSS.Math.Content.6.EE.B.5 — Understand solving an equation or inequality as a process of answering a question: which values from a specified set, if any, make the equation or inequality true? Use substitution to determine whether a given number in a specified set makes an equation or inequality true.",
+                    },
+                    "exemplar_output": {
+                        "unpacked_standard": "**Standard:** CCSS.Math.Content.6.EE.B.5 · **Grade focus:** 6th grade\n\n### Break Down Standard — key components\n\n- **Skills:** Substitute values into equations and inequalities; test truth values; compare solution sets; represent reasoning in words and symbols.\n- **Knowledge:** Meaning of *solution* and *solution set* for an equation or inequality in one variable; role of a specified replacement set; use of equality and inequality symbols.\n- **Concepts:** Equations and inequalities as questions about unknown values; substitution as an efficient check; relationship between arithmetic structure and truth (e.g., when adding the same amount to both sides preserves truth for equations—preview only if your unit sequence includes it).\n\n### Define Expectations — what students should learn\n\n- Students understand that solving starts with clarifying which values are allowed to be tested (the specified set).\n- Students can explain *why* a value does or does not work using substitution, not only *whether* it works.\n- Students distinguish between **one**, **several**, **all**, or **no** values in the set that satisfy the equation or inequality.\n\n### Learning Targets — specific, measurable\n\n- I can substitute a value from a given set into an equation or inequality and compute each side correctly.\n- I can decide if the value makes the statement true and justify my decision with arithmetic evidence.\n- I can list all solutions from a finite specified set or explain that none work.\n- I can translate a short word problem into an equation or inequality and test candidate values from a set.\n\n### Instruction strategies\n\n- **Concrete–representational–abstract:** use balances, tables, or number lines before symbolic-only work.\n- **Think-aloud modeling** for substitution with careful annotation of each side.\n- **Partner checks** with a “claim–evidence” sentence frame: *I claim x = … works because when I substitute…*\n- **Error analysis** tasks with common mistakes (sign errors, order of operations).\n\n### Assessment ideas\n\n- **Quick check:** Which of {2, 5, 8} makes \\(2x + 1 = 11\\) true? Show substitution work.\n- **Exit ticket:** Write one value that does **not** solve \\(y - 4 \\leq 10\\) from {10, 14, 16} and explain.\n- **Short performance:** Given a specified set, sort cards into “solution / not a solution” with a one-sentence rationale.\n\n### Summary\nThis standard centers **reasoning about equality and inequality** through substitution within a bounded set—ideal for building procedural fluency *with* conceptual understanding before formal solution techniques. Instruction should keep the “question the equation is asking” visible so students connect symbols to meaning.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 52: Group Work Generator
+            "template": {
+                "slug": "group-work-generator",
+                "name": "Group Work Generator",
+                "description": "Generate group work activity for students based on a topic, standard, or objective.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for task complexity and independence.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "time_for_group_work": {
+                            "type": "string",
+                            "title": "Time for Group Work",
+                            "description": "How long the collaborative task should run.",
+                            "enum": [
+                                "5 minutes",
+                                "10 minutes",
+                                "15 minutes",
+                                "20 minutes",
+                                "25 minutes",
+                                "30 minutes",
+                                "40 minutes",
+                                "45 minutes",
+                            ],
+                        },
+                        "topic_objective_or_standard": {
+                            "type": "string",
+                            "title": "Topic, objective, or standard",
+                            "description": "Paste a standard with description, a unit objective, or a short topic prompt.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "number_of_students_participating": {
+                            "type": "string",
+                            "title": "Number of Students Participating",
+                            "description": "Typical group size for this activity (per group).",
+                            "enum": ["2", "3", "4", "5", "6"],
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "time_for_group_work",
+                        "topic_objective_or_standard",
+                        "number_of_students_participating",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "GroupWorkGeneratorOutput",
+                    "required": ["group_work_plan"],
+                    "properties": {
+                        "group_work_plan": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown group-work task with roles, procedure, and teacher notes.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Design a focused group task that fits the time limit, group size, and standard or topic, with clear roles and accountability.",
+                    "context": "Output must match output_schema exactly with one field: group_work_plan. Use markdown. Start with ## and a short engaging task title. Include a metadata line (**Grade**, **Duration**, **Group size**, **Topic / Standard**). Then sections: ### Learning objective, ### Materials (per group), ### Role structure (bullets), ### Procedure (timed steps that fit the chosen duration), ### Guiding prompts, ### Facilitator notes, ### Reflection questions, ### Assessment / success criteria, ### Differentiation (Support and Challenge). Keep language inclusive and school-safe. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "5th grade",
+                        "time_for_group_work": "20 minutes",
+                        "topic_objective_or_standard": "Human-Environment Interaction: Place, Regions, and Culture. SS.G.1.5: Investigate how the cultural and environmental characteristics of places within the United States change over time.",
+                        "number_of_students_participating": "2",
+                    },
+                    "exemplar_output": {
+                        "group_work_plan": "## Group Work Task: Then & Now — How People and Places Change\n\n**Grade:** 5 · **Duration:** 20 minutes · **Group size:** 2 students · **Topic / Standard:** Human-Environment Interaction: Place, Regions, and Culture · **SS.G.1.5** — Investigate how the cultural and environmental characteristics of places within the United States change over time.\n\n### Learning objective\nStudents will **compare** how a U.S. place has changed over time and **explain** at least one cultural or environmental reason using evidence from provided sources.\n\n### Materials (per pair)\n- Two teacher-vetted source cards (one labeled **Then**, one **Now**) or short approved excerpts\n- One **planning worksheet** with prompts: What was the place like before? What is it like now? What changed? Who was affected?\n- Pencil; optional colored pencils; classroom timer\n\n### Role structure\n- **Researcher:** reads closely, pulls evidence, writes first draft of notes on the worksheet\n- **Communicator:** checks that both agree on claims, keeps time for each step, shares out if the teacher calls on the pair\n\n### Procedure (20 minutes)\n- **0:00–1:00** — Read the objective together; confirm roles; skim both cards for headings and visuals.\n- **1:00–8:00** — Annotate **Then** (Researcher leads) and **Now** (Communicator leads); switch halfway so both touch each source.\n- **8:00–14:00** — Complete the worksheet: at least **two** evidence notes for *change* and **one** inference about *effect on people*.\n- **14:00–18:00** — Co-write a **two-sentence headline** that states their main claim about change.\n- **18:00–20:00** — Rehearse a 20-second summary; quick self-check against the success criteria.\n\n### Guiding prompts\n- What stayed the same and what changed—physically, culturally, or economically?\n- Who might benefit from the change, and who might face challenges?\n- What is one responsible action people took—or could take—in response?\n\n### Facilitator notes\n- With **pairs**, use **timed turns** so participation stays balanced; signal a 30-second “switch speaker” halfway through discussions.\n- Circulate with a simple checklist: both names on the worksheet, evidence cited, headline matches evidence.\n- If pairs finish early, ask them to add a **respectful** “So what?” sentence for their community.\n\n### Reflection questions (pairs turn in)\n- What is one concrete way our place changed?\n- Which detail from the sources best supports our headline—and why?\n- What is one question we would ask a local historian or elder?\n\n### Assessment / success criteria\n- Worksheet shows **then**, **now**, **change**, and **effect** with source-based notes.\n- Headline matches the evidence (no contradictions).\n- Each student can paraphrase the pair’s claim without reading the paper word-for-word.\n\n### Differentiation\n- **Support:** sentence frames (“One change we noticed is ___ because the source says ___”).\n- **Challenge:** add a third lens (for example **transportation** or **economy**) with one extra evidence bullet.\n\n### Answer-key exemplar (teacher-only)\n- **Then:** small river town with mills and local river trade.\n- **Now:** same town adds recreation trails and small businesses serving visitors.\n- **Change:** economy shifts toward services and tourism alongside older industries.\n- **Effect on people:** new opportunities for some workers; possible concerns about housing or traffic—keep student language respectful and evidence-based.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 53: Math Spiral Review
+            "template": {
+                "slug": "math-spiral-review",
+                "name": "Math Spiral Review",
+                "description": "Generate a spiral review problem set for any math standard(s) or topic(s).",
+                "category": "assessment",
+                "subject_default": "math",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for problem difficulty and context.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "number_of_problems": {
+                            "type": "string",
+                            "title": "Number of Problems",
+                            "description": "How many spiral-review items to include in the set.",
+                            "enum": ["3", "5", "7", "10"],
+                        },
+                        "math_content": {
+                            "type": "string",
+                            "title": "Math Content",
+                            "description": "Standard(s), topic(s), or skill focus for the review (e.g., dividing two- and three-digit numbers).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "additional_criteria": {
+                            "type": "string",
+                            "title": "Additional Criteria (Optional)",
+                            "description": "Optional: format (e.g., word problems only), difficulty mix, context, or constraints.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "standards_set_to_align_to": {
+                            "type": "string",
+                            "title": "Standards Set to Align to",
+                            "description": "Optional: any standards worldwide (CCSS, TEKS, Ontario, Florida, etc.).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "number_of_problems",
+                        "math_content",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "MathSpiralReviewOutput",
+                    "required": ["spiral_review"],
+                    "properties": {
+                        "spiral_review": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown spiral review set with problems and answer key.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Create a cohesive spiral review problem set for the stated grade and math focus, honoring optional criteria and alignment notes.",
+                    "context": "Output must match output_schema exactly with one field: spiral_review. Use markdown. Start with ## and a short engaging title that reflects the math topic and grade. On the next line, include **Grade:** and a one-line note if standards_to_align were provided. Then a numbered list (1., 2., …) with exactly as many problems as number_of_problems—each item clear, school-appropriate, and distinct. If additional_criteria ask for word problems, use real-world contexts and complete sentences. After the problems, add a horizontal rule (---) then ### Answer Key with a short italic disclaimer: math answers may be incorrect—teachers must verify before use. Under Answer Key, give concise worked solutions or final answers matching each numbered problem. End with a brief **Reminder:** line telling teachers to double-check calculations. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "6th grade",
+                        "number_of_problems": "5",
+                        "math_content": "Dividing two and three digit numbers",
+                        "additional_criteria": "Make them word problems",
+                        "standards_set_to_align_to": "",
+                    },
+                    "exemplar_output": {
+                        "spiral_review": "## Dividing with Confidence: Real-World Word Problems for 6th Grade\n\n**Grade:** 6th grade · **Focus:** division with two- and three-digit dividends and divisors (whole-number quotients where appropriate for spiral review)\n\n1. A school bus holds **54** students. If **486** students need rides to a field trip, how many **full** buses are needed? Explain whether there is a remainder and what it means for an extra bus.\n\n2. A bakery packs **144** muffins into boxes of **12**. How many boxes are filled? If the bakery also has **37** muffins left over from another batch, how many **additional** full boxes of **12** can they make from those leftovers, and how many muffins remain?\n\n3. A charity raised **\\$2,340** in equal donations from **45** families. How much did each family donate?\n\n4. A rope is **215** inches long. The art teacher cuts **full** segments that are each **8** inches long for name tags. How many **full** 8-inch segments can be cut, and how many inches of rope are **left over**?\n\n5. A factory produces **6,048** bolts in **36** hours of steady work. Assuming the same rate, how many bolts are produced **per hour**?\n\n---\n\n### Answer Key\n\n*Math answers may be incorrect — always review for accuracy before use.*\n\n1. **\\(486 \\div 54 = 9\\)** with **no** remainder → **9** full buses.\n2. **\\(144 \\div 12 = 12\\)** boxes. From **37** muffins: **\\(37 \\div 12 = 3\\)** R **1** → **3** more full boxes, **1** muffin left over.\n3. **\\(2,340 \\div 45 = 52\\)** → **\\$52** per family.\n4. **\\(215 = 8 \\times 26 + 7\\)** → **26** full 8-inch segments, **7** inches left over.\n5. **\\(6,048 \\div 36 = 168\\)** bolts per hour.\n\n**Reminder:** Always double-check answer key calculations for accuracy before assigning.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 54: Teacher Observations
+            "template": {
+                "slug": "teacher-observations",
+                "name": "Teacher Observations",
+                "description": "Generate custom feedback for a teacher based on a classroom observation.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "teachers_observed_areas_of_strength": {
+                            "type": "string",
+                            "title": "Teacher's Observed Areas of Strength",
+                            "description": "What went well—student rapport, clarity of directions, checks for understanding, pacing, classroom culture, etc.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "teachers_observed_opportunities_for_growth": {
+                            "type": "string",
+                            "title": "Teacher's Observed Opportunities for Growth",
+                            "description": "Neutral, evidence-based notes on what could improve—student engagement, questioning, differentiation, transitions, or assessment use.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "observation_context": {
+                            "type": "string",
+                            "title": "Observation Context",
+                            "description": "Grade level, subject, lesson segment observed, groupings, and any school or team priorities the feedback should honor.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": [
+                        "teachers_observed_areas_of_strength",
+                        "teachers_observed_opportunities_for_growth",
+                        "observation_context",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TeacherObservationsOutput",
+                    "required": ["observation_feedback"],
+                    "properties": {
+                        "observation_feedback": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown coaching feedback: strengths, growth, next steps, disclaimer.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Turn raw observation notes into supportive, specific written feedback a teacher can use after a classroom visit.",
+                    "context": "Output must match output_schema exactly with one field: observation_feedback. Use markdown. Open with a short ## title (professional, warm). Mirror the observer's facts—do not invent classroom events not implied by the inputs. Use ### **Areas of strength (keep it up!)** with concise bullets grounded in the strengths text. Use ### **Opportunities for growth / next steps** with bullets; where helpful add nested sub-bullets labeled **Bite-sized next step:** with one concrete action each (timing, sentence stems, a single protocol tweak). Optional ### **Suggested follow-up conversation** with 2–3 neutral coaching prompts. Close with a one-line italic disclaimer that the draft should be reviewed for accuracy and local policy, and that AI has limitations. Tone: respectful, growth-oriented, non-judgmental; avoid evaluative scores or legal claims. Do not output JSON.",
+                    "exemplar_input": {
+                        "teachers_observed_areas_of_strength": "Warm and personable with students; greets each student at the door by name. Clear learning target posted and referenced twice during the lesson. Strong use of think-pair-share before whole-group discussion.",
+                        "teachers_observed_opportunities_for_growth": "Wait time after questions was often under two seconds before the teacher moved on or answered. Small group work had uneven participation—two students dominated while others were quiet. Exit ticket was collected but not previewed with students so success criteria were fuzzy at the end.",
+                        "observation_context": "7th grade ELA, 45-minute period, first class after lunch. Focus of visit: academic discourse and formative checks. School priority this semester is increasing student talk time and using data from exit tickets within 48 hours.",
+                    },
+                    "exemplar_output": {
+                        "observation_feedback": "## Post-observation feedback — 7th grade ELA (after lunch)\n\n### **Areas of strength (keep it up!)**\n\n- **Relationships and tone:** Your warm greetings and use of student names set a positive entry routine—especially valuable right after lunch.\n- **Clarity of purpose:** Posting and revisiting the learning target helped students orient to the \"why\" of the lesson.\n- **Discourse structure:** Think–pair–share before whole-group discussion is a strong lever for voice and rehearsal—keep this as a signature move.\n\n### **Opportunities for growth / next steps**\n\n- **Wait time & thinking space**\n  - **Bite-sized next step:** After you ask a question, silently count **4–5** (or tap a sticky note five times) before taking a response. Invite \"turn and talk\" as the default when a question is heavy.\n- **Equitable participation in groups**\n  - **Bite-sized next step:** Assign rotating roles (**Recorder**, **Speaker**, **Timekeeper**) for 6–8 minutes and use a visible participation checklist you scan once mid-task.\n- **Exit ticket alignment**\n  - **Bite-sized next step:** Show the exit prompt **3 minutes** early and read success criteria aloud: *I will look for …* Then collect—aim to sort responses within **48 hours** to match your school priority.\n\n### **Suggested follow-up conversation**\n\n- Which question in today's lesson do you want students to wrestle with longer next time?\n- What is one small data point from the exit ticket that would change your warm-up tomorrow?\n\n---\n\n*Review this closely for accuracy and fit with your school's observation rubric and labor agreements—AI-generated drafts have limitations and should be edited by a human before sharing formally.*",
+                    },
+                },
+            },
+        },
     ]
 
 
