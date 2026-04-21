@@ -53,3 +53,6 @@ from app.domains.chatbots.models import (  # noqa: F401, E402
     ChatbotModelUsage,
     UserCapabilityProgress,
 )
+
+# Import pixgen models
+from app.domains.pixgen.models import PixGenGeneration  # noqa: F401, E402

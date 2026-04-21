@@ -39,6 +39,7 @@ class LLMSettings(BaseSettings):
     # Default model configuration
     DEFAULT_MODEL_PROVIDER: str = "openai"
     DEFAULT_MODEL: str = "gpt-4o-mini"
+    OPENAI_IMAGE_MODEL: str = "gpt-image-1"
     DEFAULT_TEMPERATURE: float = 0.7
     DEFAULT_MAX_TOKENS: int = 4000  # Increased from 2000 to 4000 to match Activity's approach (they use 3000, we use 4000 for safety)
 
