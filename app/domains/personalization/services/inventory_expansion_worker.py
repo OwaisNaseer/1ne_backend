@@ -18,6 +18,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.domains.content_factory.enums import ContentGenerationStrategy, JobStatus
@@ -544,6 +545,17 @@ class InventoryExpansionWorker:
         """
         Fire-and-forget background expansion run with isolated DB session.
         """
+        if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
+            logger.info(
+                "personalization.inventory_expansion_skipped",
+                extra={
+                    "user_id": str(user_id),
+                    "trigger": trigger,
+                    "reason": "LEARNING_HUB_AUTO_LLM_ENABLED=false",
+                },
+            )
+            return
+
         def _runner() -> None:
             db = SessionLocal()
             try:

@@ -10,6 +10,7 @@ from pgvector.sqlalchemy import Vector
 
 from app.core.logging import get_logger
 from app.domains.content_ingestion.providers.base import VectorStore, Chunk, VectorHit
+from app.domains.content_ingestion.text_db import sanitize_pg_text
 from app.db.session import SessionLocal
 
 logger = get_logger(__name__)
@@ -86,6 +87,7 @@ class PgVectorStore(VectorStore):
             stored_count = 0
             for chunk, vector in zip(chunks, vectors):
                 try:
+                    chunk.text = sanitize_pg_text(chunk.text)
                     chunk_hash = hashlib.sha256(chunk.text.encode()).hexdigest()
                     # Pad vector to PGVECTOR_DIM for storage (embedding_v column is vector(1536))
                     vec_padded = list(vector) + [0.0] * (PGVECTOR_DIM - len(vector)) if len(vector) < PGVECTOR_DIM else list(vector)[:PGVECTOR_DIM]

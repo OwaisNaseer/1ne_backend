@@ -69,15 +69,18 @@ class ContentPackResponse(BaseModel):
 
 
 class ContentPackListItem(BaseModel):
-    """Content pack list item."""
+    """Content pack list item — includes all fields needed for admin CRUD and quiz injection."""
     id: UUID
     name: str
     description: Optional[str] = None
     subject: Optional[str] = None
     grade: Optional[str] = None
+    curriculum: Optional[str] = None
     is_active: bool
+    document_count: Optional[int] = None
     created_at: datetime
-    
+    updated_at: datetime
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -142,6 +145,8 @@ class DocumentStatusResponse(BaseModel):
     error_code: Optional[str] = None
     error_message: Optional[str] = None
     remediation_hint: Optional[str] = None
+    total_pages: Optional[int] = None
+    pages_processed: Optional[int] = None
 
 
 class ProcessingProgress(BaseModel):
@@ -151,6 +156,8 @@ class ProcessingProgress(BaseModel):
     total: int
     percentage: int
     estimated_time_remaining: Optional[str] = None
+    pages_processed: Optional[int] = None
+    total_pages: Optional[int] = None
 
 
 # QA Validation Schemas

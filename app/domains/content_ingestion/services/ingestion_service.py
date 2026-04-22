@@ -5,7 +5,7 @@ Provider-driven; checkpoints and observability; free mode supported.
 import os
 import hashlib
 import time
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from uuid import UUID
 from pathlib import Path
 
@@ -42,6 +42,8 @@ from app.domains.content_ingestion.providers.math_providers import (
     compute_math_density,
 )
 from app.domains.content_ingestion.providers.ocr_preflight import OcrPreflight, OcrPreflightError
+from app.domains.content_ingestion.text_db import sanitize_pg_text
+from app.domains.content_ingestion.topic_label_normalize import normalize_topic_label
 from app.domains.content_ingestion.services.role_tagger import (
     assign_chunk_roles,
     compute_role_distribution,
@@ -56,6 +58,19 @@ from app.domains.content_ingestion.ocr.decision import (
 
 logger = get_logger(__name__)
 MATH_DENSITY_THRESHOLD = 0.5  # per-page threshold for content_type_hint=math
+
+# Statuses where a pipeline job is already running — skip duplicate BackgroundTasks / races
+_INGESTION_ACTIVE_STATUSES = frozenset(
+    {
+        DocumentStatus.TEXT_EXTRACTING.value,
+        DocumentStatus.OCR_RUNNING.value,
+        DocumentStatus.NORMALIZING.value,
+        DocumentStatus.CHUNKING.value,
+        DocumentStatus.EMBEDDING.value,
+        DocumentStatus.INDEXING.value,
+        DocumentStatus.QA_VALIDATION.value,
+    }
+)
 
 
 class IngestionService:
@@ -104,7 +119,63 @@ class IngestionService:
             self.math_provider = BaselineMathExtractionProvider()
         else:
             self.math_provider = BaselineMathExtractionProvider()
-    
+
+    @staticmethod
+    def _ensure_chunk_topic_fallback_labels(
+        chunks: List[Any],
+        document: Document,
+        *,
+        page_count: int,
+    ) -> Tuple[str, str, int]:
+        """
+        Label chunks the chapter map did not cover using page windows.
+
+        Produces many quiz/catalog strands (e.g. "Physics 9 · pp. 1–10") instead of one
+        book-level chip, while real PDF outline / TOC entries stay authoritative when present.
+        """
+        raw_title = (document.title or "").strip()
+        stem, _ = os.path.splitext(document.filename or "")
+        stem = stem.strip()
+        base_raw = raw_title if len(raw_title) >= 2 else stem
+        base = normalize_topic_label(base_raw, max_len=200) or "Material"
+
+        tp_doc = document.total_pages
+        try:
+            tp_doc = int(tp_doc) if tp_doc is not None else page_count
+        except (TypeError, ValueError):
+            tp_doc = page_count
+        tp = max(1, int(page_count or 1), int(tp_doc or 1))
+
+        page_bin = max(4, int(getattr(settings, "TOPIC_FALLBACK_PAGE_BIN_PAGES", 10)))
+
+        filled = 0
+        for ch in chunks:
+            if (getattr(ch, "topic_title", None) or "").strip():
+                continue
+            ps = int(getattr(ch, "page_start", None) or 1)
+            pe = int(getattr(ch, "page_end", None) or ps)
+            mid = max(1, (ps + pe) // 2)
+            bin_id = max(0, (mid - 1) // page_bin)
+            p_lo = bin_id * page_bin + 1
+            p_hi = min((bin_id + 1) * page_bin, tp)
+            if p_hi < p_lo:
+                p_hi = p_lo
+            label = normalize_topic_label(f"{base} · pp. {p_lo}–{p_hi}", max_len=500)
+            ch.topic_title = label
+            ch.topic_id = f"scope:pages-{p_lo}-{p_hi}"
+            filled += 1
+
+        if document.chapter_map:
+            mode = "chapter_map_plus_page_bins" if filled else "chapter_map"
+        else:
+            meta = document.processing_metadata or {}
+            if meta.get("toc_source") == "pdf_outline_auto":
+                mode = "pdf_outline_plus_page_bins" if filled else "pdf_outline_only"
+            else:
+                mode = "page_bins_only"
+
+        return mode, base, filled
+
     async def ingest_document(self, document_id: UUID) -> Document:
         """
         Main ingestion pipeline for a document.
@@ -122,6 +193,21 @@ class IngestionService:
             raise ValueError(f"Document {document_id} not found")
         if not os.path.exists(document.file_path):
             raise FileNotFoundError(f"Document file not found: {document.file_path}")
+
+        # Duplicate job guard: second BackgroundTasks enqueue must not double-run pipeline
+        if document.status in _INGESTION_ACTIVE_STATUSES:
+            logger.warning(
+                "ingestion_skipped_already_active",
+                extra={"document_id": str(document_id), "status": document.status},
+            )
+            return document
+
+        if document.status == DocumentStatus.PUBLISHED.value:
+            logger.info(
+                "ingestion_skipped_already_published",
+                extra={"document_id": str(document_id)},
+            )
+            return document
 
         # File type / MIME detection at ingestion start
         detected_mime, detected_source_type, pdf_type_initial, extraction_strategy = detect_mime_and_source(
@@ -146,6 +232,49 @@ class IngestionService:
             },
         )
 
+        # Single-flight claim after MIME checks so we do not leave status=text_extracting if MIME fails
+        claimed = False
+        if document.status == DocumentStatus.UPLOADED.value:
+            rows = (
+                self.db.query(Document)
+                .filter(
+                    Document.id == document_id,
+                    Document.status == DocumentStatus.UPLOADED.value,
+                )
+                .update({"status": DocumentStatus.TEXT_EXTRACTING.value}, synchronize_session=False)
+            )
+            self.db.commit()
+            claimed = rows == 1
+        elif document.status == DocumentStatus.FAILED.value:
+            rows = (
+                self.db.query(Document)
+                .filter(
+                    Document.id == document_id,
+                    Document.status == DocumentStatus.FAILED.value,
+                )
+                .update({"status": DocumentStatus.TEXT_EXTRACTING.value}, synchronize_session=False)
+            )
+            self.db.commit()
+            claimed = rows == 1
+        else:
+            raise ValueError(
+                f"Cannot ingest document {document_id} from status '{document.status}' "
+                "(expected uploaded or failed)."
+            )
+
+        if not claimed:
+            document = self.db.query(Document).filter(Document.id == document_id).first()
+            logger.warning(
+                "ingestion_claim_lost_duplicate_job",
+                extra={
+                    "document_id": str(document_id),
+                    "current_status": getattr(document, "status", None),
+                },
+            )
+            return document
+
+        document = self.db.query(Document).filter(Document.id == document_id).first()
+
         logger.info(f"Starting ingestion pipeline for document {document_id}")
         
         # Create processing run
@@ -161,7 +290,7 @@ class IngestionService:
             # Step 1: Text Extraction
             t0 = time.perf_counter()
             await self._update_status(document_id, DocumentStatus.TEXT_EXTRACTING.value, processing_run)
-            pages = await self._extract_text(document)
+            pages = await self._extract_text(document, processing_run)
             duration_ms = int((time.perf_counter() - t0) * 1000)
             logger.info(
                 "step_complete",
@@ -184,11 +313,13 @@ class IngestionService:
             
             # Store initial page texts (may be updated by OCR)
             for page in pages:
+                safe_text = sanitize_pg_text(page.text)
+                safe_chars = len(safe_text.strip())
                 page_text = PageText(
                     document_id=document_id,
                     page_no=page.page_no,
-                    text=page.text,
-                    char_count=page.char_count,
+                    text=safe_text,
+                    char_count=safe_chars,
                     ocr_confidence=page.ocr_confidence,
                     ocr_engine=page.ocr_engine
                 )
@@ -325,8 +456,9 @@ class IngestionService:
                                     PageText.page_no == page.page_no
                                 ).first()
                                 if page_text:
-                                    page_text.text = page.text
-                                    page_text.char_count = page.char_count
+                                    st = sanitize_pg_text(page.text)
+                                    page_text.text = st
+                                    page_text.char_count = len(st.strip())
                                     page_text.ocr_confidence = getattr(page, "ocr_confidence", None)
                                     page_text.ocr_engine = getattr(page, "ocr_engine", None) or getattr(ocr_provider, "provider_name", None)
                             ocr_pages.extend(batch)
@@ -422,14 +554,46 @@ class IngestionService:
                         document_id=document_id,
                         page_no=mb.page_no,
                         block_type=mb.block_type,
-                        raw_text=mb.raw_text,
-                        normalized_text=mb.normalized_text,
+                        raw_text=sanitize_pg_text(mb.raw_text),
+                        normalized_text=sanitize_pg_text(mb.normalized_text),
                         bbox_json=mb.bbox_json,
                         confidence=float(mb.confidence) if mb.confidence is not None else None,
                         provider_name=mb.provider_name,
                     ))
                 self.db.commit()
                 normalized_pages = [BaselineMathExtractionProvider.inject_markers_into_text(p) for p in normalized_pages]
+
+            # Synthetic TOC from PDF bookmarks when upload omitted chapter_map (any board / publisher)
+            page_count_for_toc = len(normalized_pages)
+            if document.source_type == "pdf" and (not document.chapter_map or len(document.chapter_map) == 0):
+                from app.domains.content_ingestion.pdf_outline_chapter_map import (
+                    build_chapter_map_from_pdf_outline,
+                )
+
+                try:
+                    auto_map = build_chapter_map_from_pdf_outline(
+                        document.file_path,
+                        page_count_for_toc,
+                        max_entries=int(getattr(settings, "PDF_OUTLINE_TOC_MAX_ENTRIES", 150)),
+                        min_entries=int(getattr(settings, "PDF_OUTLINE_TOC_MIN_ENTRIES", 2)),
+                    )
+                except Exception as toc_exc:
+                    logger.warning(
+                        "pdf_outline_toc_skipped",
+                        extra={"document_id": str(document_id), "error": str(toc_exc)},
+                    )
+                    auto_map = None
+                if auto_map:
+                    document.chapter_map = auto_map
+                    meta_toc = dict(document.processing_metadata or {})
+                    meta_toc["toc_source"] = "pdf_outline_auto"
+                    meta_toc["toc_entry_count"] = len(auto_map)
+                    document.processing_metadata = meta_toc
+                    self.db.commit()
+                    logger.info(
+                        "pdf_outline_toc_applied",
+                        extra={"document_id": str(document_id), "entries": len(auto_map)},
+                    )
             
             # Step 4: Chunking (adaptive profiles for OCR vs digital)
             t0 = time.perf_counter()
@@ -495,6 +659,11 @@ class IngestionService:
                 raise ValueError(
                     f"Chunking checkpoint failed: chunks=0. pages={len(normalized_pages)}, non_empty_pages={non_empty}, sample_snippet={sample!r}"
                 )
+            topic_scope_mode, primary_topic_label, topic_fallback_fill_count = (
+                self._ensure_chunk_topic_fallback_labels(
+                    chunks, document, page_count=len(normalized_pages)
+                )
+            )
             # Role tagging: assign chunk.metadata from structure_map or auto-heuristics
             min_chars_q = getattr(settings, "ROLE_MIN_CHARS_FOR_QUESTION_BLOCK", 200)
             assign_chunk_roles(
@@ -509,6 +678,16 @@ class IngestionService:
             meta = dict(document.processing_metadata or {})
             meta["role_distribution"] = role_dist
             meta["role_tagging_metrics"] = role_metrics
+            meta["chunking_summary"] = {
+                "chunks_total": total_chunks,
+                "chunk_size_tokens": base_chunk_size,
+                "chunk_overlap_tokens": base_overlap,
+                "chunk_profile": chunk_profile,
+                "topic_scope_mode": topic_scope_mode,
+                "primary_topic_label": primary_topic_label,
+                "chunks_topic_fallback_filled": topic_fallback_fill_count,
+                "catalog_toc_source": meta.get("toc_source"),
+            }
             document.processing_metadata = meta
             logger.info(
                 "role_tagging",
@@ -533,7 +712,27 @@ class IngestionService:
             t0 = time.perf_counter()
             await self._update_status(document_id, DocumentStatus.EMBEDDING.value, processing_run)
             chunk_texts = [chunk.text for chunk in chunks]
-            embeddings = await self.embedding_provider.embed(chunk_texts)
+            try:
+                embeddings = await self.embedding_provider.embed(chunk_texts)
+            except RuntimeError as embed_err:
+                low = str(embed_err).lower()
+                if (
+                    "429" not in low
+                    and "quota" not in low
+                    and "insufficient_quota" not in low
+                    and "billing" not in low
+                ):
+                    raise
+                logger.warning(
+                    "embedding_provider_quota_fallback_fake",
+                    extra={"document_id": str(document_id), "error": str(embed_err)},
+                )
+                self.embedding_provider = FakeEmbeddingProvider()
+                meta_fb = dict(document.processing_metadata or {})
+                meta_fb["embedding_fallback"] = "fake_after_openai_quota"
+                document.processing_metadata = meta_fb
+                self.db.commit()
+                embeddings = await self.embedding_provider.embed(chunk_texts)
             duration_ms = int((time.perf_counter() - t0) * 1000)
             logger.info(
                 "step_complete",
@@ -693,6 +892,12 @@ class IngestionService:
             elif "vector" in error_str.lower() or "pgvector" in error_str.lower() or "database" in error_str.lower():
                 error_code = "VECTOR_STORE_ERROR"
                 remediation_hint = "Check database connection, ensure pgvector extension is enabled, and verify database permissions."
+            elif "timed out" in error_str.lower() and "extraction" in error_str.lower():
+                error_code = "EXTRACTION_TIMEOUT"
+                remediation_hint = (
+                    "Text extraction timed out. The PDF may be very large, corrupted, or password-protected. "
+                    "Try splitting the document, enabling force_ocr, or increasing EXTRACTION_TIMEOUT_SECONDS."
+                )
             elif "No text extracted" in error_str or "empty" in error_str.lower():
                 error_code = "TEXT_EXTRACTION_ERROR"
                 remediation_hint = "The document may be corrupted, password-protected, or in an unsupported format. Try a different document or enable OCR."
@@ -715,24 +920,175 @@ class IngestionService:
         document = self.db.query(Document).filter(Document.id == document_id).first()
         if not document:
             raise ValueError(f"Document {document_id} not found")
+        if document.status in _INGESTION_ACTIVE_STATUSES:
+            raise ValueError(
+                f"Cannot reprocess document {document_id} while ingestion is in progress ({document.status})"
+            )
         meta = dict(document.processing_metadata or {})
         meta["reprocess_from_step"] = start_step
         meta["reprocess_embedding_provider"] = getattr(self.embedding_provider, "provider_name", None)
         meta["reprocess_ocr_provider"] = getattr(self.ocr_provider, "provider_name", None)
         document.processing_metadata = meta
+        # Re-run from published requires moving out of terminal state (ingest skips published)
+        if document.status == DocumentStatus.PUBLISHED.value:
+            document.status = DocumentStatus.UPLOADED.value
+            document.error_code = None
+            document.error_message = None
+            if hasattr(document, "remediation_hint"):
+                document.remediation_hint = None
         self.db.commit()
         return await self.ingest_document(document_id)
-    
-    async def _extract_text(self, document: Document) -> List:
-        """Extract text from document based on source type."""
+
+    @staticmethod
+    def _quick_pdf_page_count(file_path: str) -> Optional[int]:
+        """
+        Cheap page-count using pypdf xref walk. Often much faster than pdfplumber.open
+        for huge textbooks, so SSE/UI can show total_pages before extraction starts.
+        """
+        try:
+            from pypdf import PdfReader
+
+            reader = PdfReader(file_path)
+            return len(reader.pages)
+        except Exception as e:
+            logger.warning(
+                "quick_pdf_page_count_failed",
+                extra={"file_path": file_path, "error": str(e)},
+            )
+            return None
+
+    async def _extract_text(
+        self,
+        document: Document,
+        processing_run: "DocumentProcessingRun",
+    ) -> List:
+        """
+        Extract text from document with live per-page progress reporting.
+
+        For PDFs, progress is committed to the DB every
+        EXTRACTION_PROGRESS_BATCH_SIZE pages so the SSE stream (and UI) can
+        display "page X of Y" rather than a frozen 10% for minutes.
+
+        document.total_pages is written as soon as the page count is known
+        (before any page is fully extracted) so the UI shows the denominator
+        early.
+        """
         file_path = document.file_path
-        
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Document file not found: {file_path}")
-        
+
         if document.source_type == "pdf":
-            return await self.pdf_extractor.extract_text(file_path)
+            batch = int(getattr(settings, "EXTRACTION_PROGRESS_BATCH_SIZE", 10))
+            timeout = float(getattr(settings, "EXTRACTION_TIMEOUT_SECONDS", 3600.0))
+            try:
+                size_bytes = os.path.getsize(file_path)
+            except OSError:
+                size_bytes = 0
+            large_mb = float(getattr(settings, "EXTRACTION_LARGE_FILE_MB", 12.0))
+            large_batch = int(getattr(settings, "EXTRACTION_PROGRESS_BATCH_SIZE_LARGE", 3))
+            if size_bytes >= int(large_mb * 1024 * 1024):
+                batch = min(batch, large_batch)
+                logger.info(
+                    "extraction_progress_batch_reduced",
+                    extra={
+                        "document_id": str(document.id),
+                        "file_bytes": size_bytes,
+                        "large_threshold_mb": large_mb,
+                        "effective_batch": batch,
+                    },
+                )
+
+            # Fast xref-based page count (pypdf) — pdfplumber.open can stall minutes on huge PDFs
+            # before the first queue event; committing total_pages early fixes empty UI / N/A pages.
+            quick_pages = self._quick_pdf_page_count(file_path)
+            if quick_pages is not None and quick_pages >= 0:
+                document.total_pages = quick_pages
+                processing_run.pages_processed = 0
+                processing_run.progress_percentage = 1
+                try:
+                    self.db.commit()
+                    logger.info(
+                        "extraction_quick_page_count",
+                        extra={
+                            "document_id": str(document.id),
+                            "total_pages_estimate": quick_pages,
+                        },
+                    )
+                except Exception as db_exc:
+                    logger.warning(f"Quick page count commit failed (non-fatal): {db_exc}")
+
+            async def _on_page_progress(current_page: int, total_pages: int) -> None:
+                """Called every `batch` pages from the extractor thread."""
+                if current_page == 0:
+                    # First event: total_pages is now known — write it immediately
+                    document.total_pages = total_pages
+                    processing_run.progress_percentage = 1
+                    logger.info(
+                        "extraction_total_pages_known",
+                        extra={
+                            "document_id": str(document.id),
+                            "total_pages": total_pages,
+                        },
+                    )
+                else:
+                    processing_run.pages_processed = current_page
+                    # Scale 1–10%: text_extracting owns the first 10 percentage points
+                    if total_pages > 0:
+                        pct = max(1, min(10, int(current_page / total_pages * 10)))
+                        processing_run.progress_percentage = pct
+                    logger.debug(
+                        "extraction_progress",
+                        extra={
+                            "document_id": str(document.id),
+                            "pages_processed": current_page,
+                            "total_pages": total_pages,
+                        },
+                    )
+                try:
+                    self.db.commit()
+                except Exception as db_exc:
+                    # Non-fatal: progress update failed, pipeline continues
+                    logger.warning(f"Progress DB commit failed (non-fatal): {db_exc}")
+
+            first_prog = float(
+                getattr(settings, "EXTRACTION_FIRST_PROGRESS_TIMEOUT_SECONDS", 300.0)
+            )
+            try:
+                return await self.pdf_extractor.extract_text(
+                    file_path,
+                    on_progress=_on_page_progress,
+                    timeout_seconds=timeout,
+                    progress_batch=batch,
+                    known_total_pages=quick_pages,
+                    first_progress_timeout_seconds=first_prog,
+                )
+            except RuntimeError as exc:
+                # Timeout or corrupt-file errors from the extractor are re-raised
+                # with a specific error_code so the failure handler maps them correctly
+                if "timed out" in str(exc).lower():
+                    raise RuntimeError(
+                        f"Text extraction failed: {exc}"
+                    ) from exc
+                raise
+
         elif document.source_type == "docx":
+            if not document.chapter_map or len(document.chapter_map) == 0:
+                from app.domains.content_ingestion.docx_structure import try_extract_docx_structured
+
+                structured = try_extract_docx_structured(file_path)
+                if structured:
+                    pages, auto_map = structured
+                    document.chapter_map = auto_map
+                    meta = dict(document.processing_metadata or {})
+                    meta["toc_source"] = "docx_headings_auto"
+                    meta["toc_entry_count"] = len(auto_map)
+                    document.processing_metadata = meta
+                    self.db.commit()
+                    logger.info(
+                        "docx_structured_applied",
+                        extra={"document_id": str(document.id), "sections": len(pages)},
+                    )
+                    return pages
             return await self.docx_extractor.extract_text(file_path)
         else:
             raise ValueError(f"Unsupported source type: {document.source_type}")
@@ -770,8 +1126,8 @@ class IngestionService:
         from app.domains.content_ingestion.providers.base import PageText as PageTextBase
         normalized = []
         for page in pages:
-            # Clean text
-            text = page.text
+            # Clean text (PostgreSQL rejects NUL in strings)
+            text = sanitize_pg_text(page.text)
             # Remove excessive whitespace
             lines = [line.strip() for line in text.split("\n") if line.strip()]
             normalized_text = "\n".join(lines)
@@ -816,9 +1172,10 @@ class IngestionService:
         if remediation_hint:
             processing_run.remediation_hint = remediation_hint
         
-        # Update progress percentage based on status
+        # Update progress percentage based on status (overall pipeline coarse milestones).
+        # Use a low value for text_extracting — granular 1–10% comes from per-page commits in _extract_text.
         status_progress = {
-            DocumentStatus.TEXT_EXTRACTING.value: 10,
+            DocumentStatus.TEXT_EXTRACTING.value: 1,
             DocumentStatus.OCR_RUNNING.value: 20,
             DocumentStatus.NORMALIZING.value: 30,
             DocumentStatus.CHUNKING.value: 40,

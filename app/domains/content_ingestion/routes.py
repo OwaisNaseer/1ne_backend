@@ -3,6 +3,7 @@ Content Ingestion API routes.
 """
 import asyncio
 import json
+import time
 from typing import List, Optional
 from uuid import UUID, uuid4
 from pathlib import Path
@@ -28,6 +29,9 @@ from app.domains.content_ingestion.services import (
 from app.domains.content_ingestion.jobs import run_ingestion_job_sync
 from app.domains.content_ingestion.models import Document, DocumentProcessingRun
 from app.domains.content_ingestion.enums import DocumentStatus
+from app.domains.content_ingestion.services.processing_progress_view import (
+    build_processing_progress,
+)
 from app.core.config import settings
 
 logger = get_logger(__name__)
@@ -292,9 +296,15 @@ async def upload_document_with_stream(
                 chapter_map=chapter_map_data,
                 document_hash=file_hash
             )
-            
+
+            meta_upload = dict(document.processing_metadata or {})
+            if chapter_map_data and isinstance(chapter_map_data, list):
+                meta_upload["toc_source"] = "client_json"
+                meta_upload["toc_entry_count"] = len(chapter_map_data)
             if force_ocr:
-                document.processing_metadata = {"force_ocr": True}
+                meta_upload["force_ocr"] = True
+            if meta_upload:
+                document.processing_metadata = meta_upload
                 db.commit()
             
             yield f"data: {json.dumps({'type': 'progress', 'step': 'uploaded', 'message': 'File uploaded successfully', 'document_id': str(document.id), 'percentage': 85})}\n\n"
@@ -427,10 +437,15 @@ async def upload_document(
         chapter_map=chapter_map_data,
         document_hash=file_hash
     )
-    
-    # Store force_ocr in processing_metadata
+
+    meta_upload = dict(document.processing_metadata or {})
+    if chapter_map_data and isinstance(chapter_map_data, list):
+        meta_upload["toc_source"] = "client_json"
+        meta_upload["toc_entry_count"] = len(chapter_map_data)
     if force_ocr:
-        document.processing_metadata = {"force_ocr": True}
+        meta_upload["force_ocr"] = True
+    if meta_upload:
+        document.processing_metadata = meta_upload
         db.commit()
     
     # Trigger background ingestion job
@@ -495,6 +510,60 @@ async def delete_document(
     return None
 
 
+def _sse_document_status_payload(
+    db: Session,
+    document: Document,
+    document_id: UUID,
+) -> tuple[dict, tuple]:
+    """Build one SSE JSON payload and a signature tuple for change detection."""
+    latest_run = (
+        db.query(DocumentProcessingRun)
+        .filter(DocumentProcessingRun.document_id == document_id)
+        .order_by(DocumentProcessingRun.started_at.desc())
+        .first()
+    )
+    current_status = document.status
+    progress = (
+        build_processing_progress(document, latest_run) if latest_run else None
+    )
+    pages_p = int(latest_run.pages_processed or 0) if latest_run else None
+    pct = int(latest_run.progress_percentage or 0) if latest_run else None
+    chunks_c = int(latest_run.chunks_created or 0) if latest_run else None
+    vecs_s = int(latest_run.vectors_stored or 0) if latest_run else None
+    doc_pages = document.total_pages
+    if doc_pages is not None:
+        try:
+            doc_pages = int(doc_pages)
+        except (TypeError, ValueError):
+            doc_pages = None
+
+    sig = (
+        current_status,
+        (progress or {}).get("completed") if progress else None,
+        (progress or {}).get("total") if progress else None,
+        pct,
+        pages_p,
+        doc_pages,
+        chunks_c,
+        vecs_s,
+    )
+    status_data = {
+        "document_id": str(document_id),
+        "status": current_status,
+        "progress": progress,
+        "steps_completed": latest_run.completed_steps or [] if latest_run else [],
+        "current_step": (
+            (latest_run.current_step or current_status) if latest_run else current_status
+        ),
+        "error_code": document.error_code,
+        "error_message": document.error_message,
+        "remediation_hint": document.remediation_hint,
+        "total_pages": doc_pages,
+        "pages_processed": pages_p,
+    }
+    return status_data, sig
+
+
 @router.get("/admin/documents/{document_id}/status/stream")
 async def stream_document_status(
     document_id: UUID,
@@ -516,55 +585,92 @@ async def stream_document_status(
     
     async def generate_status_stream():
         """Generate SSE events for document status updates."""
-        last_status = None
-        last_progress = None
-        
+        last_signal = None
+        last_byte_time = time.monotonic()
+        heartbeat_s = float(getattr(settings, "SSE_STATUS_HEARTBEAT_SECONDS", 15.0))
+
+        # Immediate first frame so the client leaves "connecting" fast — but refresh first
+        # so total_pages / progress match other sessions (ingestion commits on BackgroundTasks).
+        try:
+            try:
+                db.refresh(document)
+            except Exception:
+                logger.warning(
+                    "status_stream_first_refresh_skipped",
+                    extra={"document_id": str(document_id)},
+                    exc_info=True,
+                )
+            status_data, sig = _sse_document_status_payload(db, document, document_id)
+            event_json = json.dumps(status_data, default=str)
+            yield f"data: {event_json}\n\n"
+            last_byte_time = time.monotonic()
+            last_signal = sig
+            if status_data["status"] in [
+                DocumentStatus.PUBLISHED.value,
+                DocumentStatus.FAILED.value,
+            ]:
+                return
+        except Exception as e:
+            logger.exception(
+                "status_stream_initial_snapshot_failed",
+                extra={"document_id": str(document_id)},
+            )
+            err = {
+                "document_id": str(document_id),
+                "status": DocumentStatus.FAILED.value,
+                "progress": None,
+                "steps_completed": [],
+                "current_step": DocumentStatus.FAILED.value,
+                "error_code": "SSE_SNAPSHOT_ERROR",
+                "error_message": str(e),
+                "remediation_hint": "Retry opening the status stream or reload the document.",
+                "total_pages": None,
+                "pages_processed": None,
+            }
+            yield f"data: {json.dumps(err, default=str)}\n\n"
+            return
+
         while True:
-            # Refresh document from database
-            db.refresh(document)
-            
-            # Get latest processing run
-            latest_run = db.query(DocumentProcessingRun).filter(
-                DocumentProcessingRun.document_id == document_id
-            ).order_by(DocumentProcessingRun.started_at.desc()).first()
-            
-            # Build status response
-            current_status = document.status
-            progress = None
-            
-            if latest_run:
-                progress = {
-                    "step": latest_run.current_step or current_status,
-                    "completed": latest_run.chunks_created or 0,
-                    "total": latest_run.chunks_created or 0,  # Will be updated during processing
-                    "percentage": latest_run.progress_percentage or 0,
-                }
-            
-            # Only send update if status or progress changed
-            if current_status != last_status or progress != last_progress:
-                status_data = {
+            try:
+                db.refresh(document)
+                status_data, sig = _sse_document_status_payload(db, document, document_id)
+            except Exception as e:
+                logger.exception(
+                    "status_stream_poll_failed",
+                    extra={"document_id": str(document_id)},
+                )
+                err = {
                     "document_id": str(document_id),
-                    "status": current_status,
-                    "progress": progress,
-                    "steps_completed": latest_run.completed_steps or [],
-                    "current_step": latest_run.current_step or current_status,
-                    "error_code": document.error_code,
-                    "error_message": document.error_message,
-                    "remediation_hint": document.remediation_hint,
+                    "status": DocumentStatus.FAILED.value,
+                    "progress": None,
+                    "steps_completed": [],
+                    "current_step": DocumentStatus.FAILED.value,
+                    "error_code": "SSE_POLL_ERROR",
+                    "error_message": str(e),
+                    "remediation_hint": "Database error while streaming status; try again.",
+                    "total_pages": None,
+                    "pages_processed": None,
                 }
-                
-                event_json = json.dumps(status_data)
+                yield f"data: {json.dumps(err, default=str)}\n\n"
+                return
+
+            current_status = status_data["status"]
+
+            if sig != last_signal:
+                event_json = json.dumps(status_data, default=str)
                 yield f"data: {event_json}\n\n"
-                
-                last_status = current_status
-                last_progress = progress
-            
-            # If processing is complete or failed, break
+                last_byte_time = time.monotonic()
+                last_signal = sig
+
             if current_status in [DocumentStatus.PUBLISHED.value, DocumentStatus.FAILED.value]:
                 break
-            
-            # Wait before next check
-            await asyncio.sleep(1)  # Update every 1 second
+
+            now = time.monotonic()
+            if now - last_byte_time >= heartbeat_s:
+                yield ": ping\n\n"
+                last_byte_time = now
+
+            await asyncio.sleep(1)
     
     return StreamingResponse(
         generate_status_stream(),
@@ -584,7 +690,7 @@ async def retry_document_processing(
     current_user: User = Depends(require_any_role("org_admin", "school_admin", "super_admin")),
     db: Session = Depends(get_db),
 ):
-    """Retry failed document processing."""
+    """Retry document processing after failure or when stuck mid-pipeline (e.g. text_extracting)."""
     service = DocumentService(db)
     document = service.get_document(document_id, current_user.tenant_id)
     
@@ -593,27 +699,34 @@ async def retry_document_processing(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found"
         )
-    
-    if document.status not in [DocumentStatus.FAILED.value]:
+
+    retryable = {
+        DocumentStatus.FAILED.value,
+        DocumentStatus.TEXT_EXTRACTING.value,
+        DocumentStatus.OCR_RUNNING.value,
+        DocumentStatus.NORMALIZING.value,
+        DocumentStatus.CHUNKING.value,
+        DocumentStatus.EMBEDDING.value,
+        DocumentStatus.INDEXING.value,
+        DocumentStatus.QA_VALIDATION.value,
+    }
+    if document.status not in retryable:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot retry document with status: {document.status}"
+            detail=f"Cannot retry document with status: {document.status}",
         )
-    
-    # Reset status
-    service.update_document_status(
-        document_id=document_id,
-        status=DocumentStatus.UPLOADED.value,
-        error_code=None,
-        error_message=None,
-        remediation_hint=None
-    )
-    
-    # Trigger background ingestion job
+
+    refreshed = service.reset_for_reingestion(document_id, current_user.tenant_id)
+    if not refreshed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
     background_tasks.add_task(run_ingestion_job_sync, document_id)
-    
-    logger.info(f"Retrying document processing: {document_id}")
-    return document
+
+    logger.info("retry_document_processing", extra={"document_id": str(document_id)})
+    return refreshed
 
 
 @router.post("/admin/documents/{document_id}/qa/run", response_model=schemas.QAValidationResponse)

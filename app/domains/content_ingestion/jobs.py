@@ -74,23 +74,9 @@ async def ingest_document_job(document_id: UUID):
 
 def run_ingestion_job_sync(document_id: UUID):
     """
-    Synchronous wrapper for ingestion job (for FastAPI BackgroundTasks).
-    
-    FastAPI BackgroundTasks doesn't support async functions directly,
-    so we need a sync wrapper that runs the async function.
-    
-    Args:
-        document_id: Document UUID to process
+    Synchronous wrapper for ingestion job (FastAPI BackgroundTasks).
+
+    Tasks run in a worker thread without a running asyncio loop; use asyncio.run.
+    Avoid get_event_loop/create_task patterns — they caused duplicate or orphaned tasks.
     """
-    try:
-        # Try to get existing event loop
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If loop is running, create a task
-            asyncio.create_task(ingest_document_job(document_id))
-        else:
-            # If loop exists but not running, run it
-            loop.run_until_complete(ingest_document_job(document_id))
-    except RuntimeError:
-        # No event loop, create new one
-        asyncio.run(ingest_document_job(document_id))
+    asyncio.run(ingest_document_job(document_id))

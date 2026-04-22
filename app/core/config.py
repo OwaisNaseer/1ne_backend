@@ -97,6 +97,11 @@ class Settings(BaseSettings):
     OCR_MIN_CHUNKS_THRESHOLD_SMALL: int = 10
     # Rechunk size when below threshold (deterministic; no guesswork)
     OCR_RECHUNK_SIZE_TOKENS: int = 200
+    # PDF bookmarks → synthetic chapter_map when upload omits TOC JSON
+    PDF_OUTLINE_TOC_MAX_ENTRIES: int = 150
+    PDF_OUTLINE_TOC_MIN_ENTRIES: int = 2
+    # Page-window labels for chunks outside TOC / when no outline exists
+    TOPIC_FALLBACK_PAGE_BIN_PAGES: int = 10
     MAX_FILE_SIZE_MB: int = 50  # Max document file size
     DOCUMENTS_DIR: str = "uploads/documents"  # Document storage directory
 
@@ -112,6 +117,21 @@ class Settings(BaseSettings):
     # Free-mode embedding
     FAKE_EMBEDDING_DIM: int = 384
     LOCAL_EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
+
+    # Text extraction: timeout and progress granularity
+    # EXTRACTION_TIMEOUT_SECONDS: abort pdfplumber if it hangs longer than this (corrupt / huge PDFs)
+    # Large textbooks may need 30–60+ minutes; override via env if needed.
+    EXTRACTION_TIMEOUT_SECONDS: float = 3600.0
+    # Max wait for the first extraction progress signal (opening very large/corrupt PDFs can stall here).
+    # Generous default so large classroom PDFs do not trip "no progress" before pdfplumber opens.
+    EXTRACTION_FIRST_PROGRESS_TIMEOUT_SECONDS: float = 900.0
+    # Commit a DB progress update every N pages during text extraction (tune for throughput vs. UI freshness)
+    EXTRACTION_PROGRESS_BATCH_SIZE: int = 10
+    # Files at or above this size (MB) use EXTRACTION_PROGRESS_BATCH_SIZE_LARGE instead (fresher UI)
+    EXTRACTION_LARGE_FILE_MB: float = 12.0
+    EXTRACTION_PROGRESS_BATCH_SIZE_LARGE: int = 3
+    # SSE document status stream: send a comment line if no data event was sent for this long (proxy idle timeouts)
+    SSE_STATUS_HEARTBEAT_SECONDS: float = 15.0
 
     # Worksheet generation: hard cap so requests never hang (seconds); configurable via env
     WORKSHEET_GENERATION_TIMEOUT_SECONDS: float = 180.0
@@ -133,6 +153,9 @@ class Settings(BaseSettings):
     # Learning Hub / recommendations
     ENABLE_RECOMMENDATION_DEBUG: bool = False
     MIN_CONTENT_PER_LOCALE: int = 6
+    # Default off: no gap worker loop and no InventoryExpansionWorker background runs
+    # until you set LEARNING_HUB_AUTO_LLM_ENABLED=true (e.g. after OPENAI_API_KEY is set).
+    LEARNING_HUB_AUTO_LLM_ENABLED: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",

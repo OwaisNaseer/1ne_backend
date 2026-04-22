@@ -97,6 +97,18 @@ BUCKET_MIN_TARGET=4
 # File Storage
 DOCUMENTS_DIR=uploads/documents
 MAX_FILE_SIZE_MB=50
+
+# PDF text extraction (large textbooks)
+# Abort if pdfplumber + page loop exceeds this (seconds). Raise as EXTRACTION_TIMEOUT.
+EXTRACTION_TIMEOUT_SECONDS=3600
+# How often to commit DB progress during extraction (pages per batch).
+EXTRACTION_PROGRESS_BATCH_SIZE=10
+# Files >= this size (MB) use EXTRACTION_PROGRESS_BATCH_SIZE_LARGE for fresher progress on textbooks.
+EXTRACTION_LARGE_FILE_MB=12
+EXTRACTION_PROGRESS_BATCH_SIZE_LARGE=3
+
+# SSE: document status stream sends comment heartbeats if no data events (avoids proxy idle disconnect).
+SSE_STATUS_HEARTBEAT_SECONDS=15
 ```
 
 ## API Endpoints

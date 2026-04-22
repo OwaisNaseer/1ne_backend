@@ -113,7 +113,16 @@ def bootstrap_retry(
     Retry Learning Hub bootstrapping for the authenticated user.
     This is a production-safe recovery action (idempotent background expansion).
     """
+    from app.core.config import settings
     from app.domains.personalization.services.inventory_expansion_worker import InventoryExpansionWorker
+
+    if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
+        return {
+            "status": "disabled",
+            "message": "Learning Hub auto LLM is off. Set LEARNING_HUB_AUTO_LLM_ENABLED=true after your API key is configured.",
+            "user_id": str(current_user.id),
+            "trigger": "bootstrap_retry",
+        }
 
     InventoryExpansionWorker.run_in_background(current_user.id, trigger="bootstrap_retry")
     return {

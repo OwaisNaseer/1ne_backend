@@ -9,6 +9,9 @@ from sqlalchemy.orm import Session
 from app.core.logging import get_logger
 from app.domains.content_ingestion.models import Document
 from app.domains.content_ingestion.enums import DocumentStatus
+from app.domains.content_ingestion.services.processing_progress_view import (
+    build_processing_progress,
+)
 
 logger = get_logger(__name__)
 
@@ -141,18 +144,57 @@ class DocumentService:
         
         progress = None
         if latest_run:
-            progress = {
-                "step": latest_run.current_step or document.status,
-                "completed": latest_run.chunks_created or 0,
-                "total": latest_run.chunks_created or 0,  # Will be updated during processing
-                "percentage": latest_run.progress_percentage or 0,
-            }
+            progress = build_processing_progress(document, latest_run)
         
         return {
             "document": document,
             "progress": progress
         }
     
+    def reset_for_reingestion(self, document_id: UUID, tenant_id: UUID) -> Optional[Document]:
+        """
+        Remove partial pipeline rows and set document back to UPLOADED so ingestion can run cleanly.
+
+        Used when retrying from failed or stuck in-flight statuses (e.g. worker died during extraction).
+        """
+        document = self.get_document(document_id, tenant_id)
+        if not document:
+            return None
+
+        from app.domains.content_ingestion.models import (
+            Chunk,
+            DocumentProcessingRun,
+            MathBlock,
+            PageText,
+            QAValidation,
+        )
+
+        deleted: dict[str, int] = {}
+        for model, key in (
+            (Chunk, "chunks"),
+            (PageText, "page_texts"),
+            (MathBlock, "math_blocks"),
+            (QAValidation, "qa_validations"),
+            (DocumentProcessingRun, "processing_runs"),
+        ):
+            n = self.db.query(model).filter(model.document_id == document_id).delete(synchronize_session=False)
+            deleted[key] = n
+
+        document.status = DocumentStatus.UPLOADED.value
+        document.total_pages = None
+        document.error_code = None
+        document.error_message = None
+        document.remediation_hint = None
+        document.processed_at = None
+
+        self.db.commit()
+        self.db.refresh(document)
+        logger.info(
+            "document_reset_for_reingestion",
+            extra={"document_id": str(document_id), **deleted},
+        )
+        return document
+
     def delete_document(self, document_id: UUID, tenant_id: UUID) -> bool:
         """Delete a document and all its related data."""
         document = self.get_document(document_id, tenant_id)

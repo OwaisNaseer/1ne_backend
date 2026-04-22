@@ -101,6 +101,12 @@ app.add_middleware(
 # We run a conservative loop that processes at most one pending job at a time.
 @app.on_event("startup")
 async def _start_gap_generation_worker() -> None:
+    if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
+        logger.info(
+            "GapGenerationWorker not started (LEARNING_HUB_AUTO_LLM_ENABLED is false)"
+        )
+        return
+
     async def loop() -> None:
         while True:
             try:

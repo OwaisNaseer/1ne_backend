@@ -50,6 +50,7 @@ Pillow>=10.0.0
 
 # Content Ingestion - PDF/Document Processing
 pdfplumber>=0.10.0
+pypdf>=4.0.0
 python-docx>=1.1.0
 
 # Content Ingestion - Vector Database

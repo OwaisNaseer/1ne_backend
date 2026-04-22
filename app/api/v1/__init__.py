@@ -12,6 +12,7 @@ try:
     from app.domains.subscriptions import routes as subscription_routes
     from app.domains.chatbots import routes as chatbot_routes
     from app.domains.content_ingestion import routes as content_ingestion_routes
+    from app.domains.content_ingestion.quiz_catalog_routes import router as quiz_catalog_router
     from app.domains.external_context import routes as metadata_routes
     from app.domains.teacher_identity import routes as teacher_identity_routes
     from app.domains.teacher_intelligence import routes as teacher_intelligence_routes
@@ -70,6 +71,9 @@ try:
     except Exception as e:
         logger.error(f"Failed to register content ingestion routes: {e}", exc_info=True)
         raise
+
+    # Quiz Catalog routes
+    router.include_router(quiz_catalog_router)
     
     # Core template routes
     router.include_router(routes_templates.router)
