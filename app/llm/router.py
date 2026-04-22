@@ -341,8 +341,6 @@ class ModelRouter:
 
         # When USE_REAL_LLM is True, do not use FallbackProvider (fail clearly instead of stub content).
         if self.config.FALLBACK_ENABLED and not getattr(self.config, "USE_REAL_LLM", False):
-        # When USE_REAL_LLM is True, do not use FallbackProvider (fail clearly instead of stub content).
-        if self.config.FALLBACK_ENABLED and not getattr(self.config, "USE_REAL_LLM", False):
             providers_to_try.append({"provider": "fallback", "model": "fallback"})
 
         # Try each provider in sequence

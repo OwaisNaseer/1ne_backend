@@ -16,8 +16,8 @@ python -m venv venv
 # Install dependencies
 pip install -r requirements.txt
 
-# Start dev server (port 8001 to match frontend default)
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
+# Start dev server (port 8000 — matches 1ne-frontend VITE_API_BASE_URL when set to :8000; use `start_backend_now.ps1`)
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 # Or use the provided script
 .\start_backend_now.ps1
@@ -32,8 +32,8 @@ alembic revision --autogenerate -m "description"   # generate new migration
 pytest tests/
 
 # Check backend health
-curl http://127.0.0.1:8001/health
-curl http://127.0.0.1:8001/health/ready
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/health/ready
 ```
 
 ---
