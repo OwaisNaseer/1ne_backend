@@ -20,6 +20,14 @@ ASPECT_RATIO_TO_SIZE = {
     "2:3 Portrait": "1024x1536",
 }
 
+DALL_E_2_FALLBACK_SIZE = "1024x1024"
+DALL_E_3_SIZE_MAP = {
+    "1:1 Square": "1024x1024",
+    "3:2 Landscape": "1792x1024",
+    "9:16 Vertical": "1024x1792",
+    "2:3 Portrait": "1024x1792",
+}
+
 
 def _build_provider_prompt(prompt: str, style_preset: str, aspect_ratio: str) -> str:
     """Compose a model-friendly prompt for consistent style and framing."""
@@ -29,6 +37,18 @@ def _build_provider_prompt(prompt: str, style_preset: str, aspect_ratio: str) ->
         f"Aspect ratio target: {aspect_ratio}\n"
         "Output should be classroom-safe and suitable for educational use."
     )
+
+
+def _resolve_size_for_model(model_name: str, aspect_ratio: str) -> str:
+    """
+    Resolve an image size compatible with the selected OpenAI image model.
+    """
+    normalized = model_name.lower()
+    if "dall-e-2" in normalized:
+        return DALL_E_2_FALLBACK_SIZE
+    if "dall-e-3" in normalized:
+        return DALL_E_3_SIZE_MAP.get(aspect_ratio, "1024x1024")
+    return ASPECT_RATIO_TO_SIZE.get(aspect_ratio, "1024x1024")
 
 
 def generate_image_with_model(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -44,7 +64,7 @@ def generate_image_with_model(params: Dict[str, Any]) -> Dict[str, Any]:
     style_preset = params["stylePreset"]
     aspect_ratio = params["aspectRatio"]
     model_name = params.get("model") or llm_settings.OPENAI_IMAGE_MODEL
-    size = ASPECT_RATIO_TO_SIZE.get(aspect_ratio, "1024x1024")
+    size = _resolve_size_for_model(model_name=model_name, aspect_ratio=aspect_ratio)
 
     client = OpenAI(api_key=llm_settings.OPENAI_API_KEY, base_url=llm_settings.OPENAI_BASE_URL)
     provider_prompt = _build_provider_prompt(prompt=prompt, style_preset=style_preset, aspect_ratio=aspect_ratio)
