@@ -11,6 +11,7 @@ try:
     from app.domains.auth import routes as auth_routes
     from app.domains.subscriptions import routes as subscription_routes
     from app.domains.chatbots import routes as chatbot_routes
+    from app.domains.youtube_quiz import routes as youtube_quiz_routes
     from app.domains.content_ingestion import routes as content_ingestion_routes
     from app.domains.content_ingestion.quiz_catalog_routes import router as quiz_catalog_router
     from app.domains.external_context import routes as metadata_routes
@@ -80,6 +81,9 @@ try:
     
     # Demo routes
     router.include_router(routes_demo.router)
+
+    # YouTube quiz routes
+    router.include_router(youtube_quiz_routes.router)
     
     logger.info("All API v1 routes registered successfully")
 except Exception as e:

@@ -18,7 +18,7 @@ class RecommendationPerformanceSnapshotResponse(BaseModel):
     start_rate: Optional[float] = None
     completion_rate: Optional[float] = None
     dismissal_rate: Optional[float] = None
-    snapshot_date: date
+    snapshot_date: Date
 
     model_config = ConfigDict(from_attributes=True)
 
