@@ -41,3 +41,30 @@ slowapi>=0.1.9
 aiosmtplib>=3.0.0
 email-validator>=2.1.0
 
+<<<<<<< HEAD
+=======
+# Content Ingestion - OCR
+pytesseract>=0.3.10
+easyocr>=1.7.0
+ocrmypdf>=15.0.0
+pdf2image>=1.16.0
+Pillow>=10.0.0
+
+# Content Ingestion - PDF/Document Processing
+pdfplumber>=0.10.0
+pypdf>=4.0.0
+python-docx>=1.1.0
+
+# Content Ingestion - Vector Database
+pgvector>=0.2.3
+
+# Content Ingestion - Token Counting
+tiktoken>=0.5.0
+
+# Content Ingestion - Vector Operations
+numpy>=1.24.0,<2.0.0
+
+# Content Ingestion - Free/local embeddings (CPU)
+sentence-transformers>=2.7.0
+torch>=2.2.0
+>>>>>>> 1bbfddc0c16cafbd69938c796c15e577f3701719

@@ -91,6 +91,55 @@ app.add_middleware(
 
 # ========== Global Exception Handlers ==========
 
+<<<<<<< HEAD
+=======
+# Gap-detection background processor
+#
+# The learning hub personalization flow enqueues gap jobs, but the repository
+# includes a dedicated worker class that must be actively processed for jobs
+# to turn into published `content_registry` items.
+#
+# We run a conservative loop that processes at most one pending job at a time.
+@app.on_event("startup")
+async def _start_gap_generation_worker() -> None:
+    if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
+        logger.info(
+            "GapGenerationWorker not started (LEARNING_HUB_AUTO_LLM_ENABLED is false)"
+        )
+        return
+
+    async def loop() -> None:
+        while True:
+            try:
+                # Do not hold a pooled connection here: process_once uses its own
+                # short-lived sessions; an outer SessionLocal would sit checked out
+                # for the entire run_job duration and exhaust the pool under load.
+                worker = GapGenerationWorker()
+                await worker.process_once()
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.error(f"GapGenerationWorker loop error: {e}", exc_info=True)
+
+            # Keep polling aggressive enough for progressive UX:
+            # if only a few jobs are pending, users should not wait tens of seconds
+            # between each generation attempt.
+            await asyncio.sleep(2)
+
+    app.state.gap_worker_task = asyncio.create_task(loop())
+
+
+@app.on_event("shutdown")
+async def _stop_gap_generation_worker() -> None:
+    task = getattr(app.state, "gap_worker_task", None)
+    if task:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+>>>>>>> 1bbfddc0c16cafbd69938c796c15e577f3701719
 @app.exception_handler(AuthenticationError)
 async def authentication_error_handler(request: Request, exc: AuthenticationError):
     """Handle authentication errors."""
