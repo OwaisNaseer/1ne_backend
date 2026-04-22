@@ -25,6 +25,8 @@ from app.core.exceptions import (
     PasswordValidationError,
     InvalidCredentialsError,
 )
+from dotenv import load_dotenv
+load_dotenv()
 from app.api.v1 import router as v1_router
 from app.db.session import SessionLocal
 from app.domains.content_factory.services.gap_generation_worker import GapGenerationWorker
