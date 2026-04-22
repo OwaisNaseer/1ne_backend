@@ -6347,7 +6347,1824 @@ def get_template_data() -> list[Dict[str, Any]]:
             },
         },
         {
-            # TEMPLATE 47: Social Stories
+            # TEMPLATE 47: Multiple Explanations
+            "template": {
+                "slug": "multiple-explanations",
+                "name": "Multiple Explanations",
+                "description": "Generate additional explanations of topics that you're teaching.",
+                "category": "subject_specific",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level for explanation depth and vocabulary.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "concept_being_taught": {
+                            "type": "string",
+                            "title": "Concept Being Taught",
+                            "description": "Enter the concept or skill students are currently learning.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "concept_being_taught"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "MultipleExplanationsOutput",
+                    "required": ["multiple_explanations"],
+                    "properties": {
+                        "multiple_explanations": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown explanation with direct explanation, examples, and analogies.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate multiple ways to explain the requested concept at the chosen grade level so teachers can reteach using varied representations.",
+                    "context": "Output must match output_schema exactly with one field: multiple_explanations. Use markdown. Start with ## and a concept-based title. Then provide: (1) a concise core explanation paragraph, (2) **Example 1**, **Example 2**, **Example 3**, and (3) **Analogies** as a numbered list with at least 3 analogies. Keep language accurate, age-appropriate, and classroom-ready. Include enough detail to be useful in direct instruction while avoiding unnecessary jargon. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "11th grade",
+                        "concept_being_taught": "Making proteins from DNA"
+                    },
+                    "exemplar_output": {
+                        "multiple_explanations": "## Making Proteins from DNA\n\nIn the process of making proteins from DNA, the genetic information encoded in the DNA is first transcribed into messenger RNA (mRNA) in the nucleus of the cell. This mRNA then travels to the ribosomes in the cytoplasm, where the information is translated into a specific sequence of amino acids, forming a protein.\n\n**Example 1:**\n\nImagine a recipe book (DNA) in a kitchen. When you want to make a dish, you first write down the recipe on a piece of paper (mRNA) and take it to the chef (ribosome) in the kitchen. The chef then follows the recipe to prepare the dish (protein).\n\n**Example 2:**\n\nIn a factory (cell), there is a blueprint (DNA) for a product. The blueprint is copied onto a piece of paper (mRNA), which is then taken to the assembly line (ribosome). The assembly line workers (ribosome) read the instructions on the paper and assemble the product (protein) accordingly.\n\n**Example 3:**\n\nConsider a library (cell) with a collection of books (DNA). When someone needs information from a book, a librarian makes a copy of the relevant pages (mRNA) and gives it to a translator (ribosome) who reads the pages and translates the information into a different language, creating a new book (protein).\n\n**Analogies:**\n\n1. **Building Blocks:** Explain that making proteins from DNA is like using different types of building blocks (amino acids) to construct various structures (proteins), similar to how different combinations of LEGO bricks can create different models.\n2. **Musical Composition:** Compare the process to composing music, where the notes (amino acids) in a musical score (mRNA) are translated by musicians (ribosomes) into a piece of music (protein).\n3. **Factory Production:** Analogize the process to a manufacturing plant, where raw materials (amino acids) are assembled on an assembly line (ribosome) based on a blueprint (DNA) to produce different products (proteins)."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 48: Real World Connections
+            "template": {
+                "slug": "real-world-connections",
+                "name": "Real World Connections",
+                "description": "Generate real world examples to increase student investment.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level for age-appropriate examples and complexity.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "topic_standard_objective": {
+                            "type": "string",
+                            "title": "Topic, standard, objective (be as specific as possible)",
+                            "description": "Describe the concept, skill, or objective students are learning (e.g., the process of mitosis, two-step algebraic equations, fractions).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "topic_standard_objective"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "RealWorldConnectionsOutput",
+                    "required": ["real_world_connections"],
+                    "properties": {
+                        "real_world_connections": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown response with practical scenarios, resources, and class activities.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate practical, classroom-ready real-world connections for the selected grade level and topic so students can see authentic relevance.",
+                    "context": "Output must match output_schema exactly with one field: real_world_connections. Use markdown. Start with a short heading naming the topic and grade context. Then provide: (1) a clear paragraph introducing why the topic matters in real life, (2) at least 3 concrete real-world scenarios with short explanations, (3) a **Resources:** section with at least 3 bullets, and (4) an **Activities:** section with at least 3 numbered classroom activities tied to the scenarios. Keep tone teacher-friendly, age-appropriate, and specific. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "topic_standard_objective": "Solving for one variable in an equation by isolating the variable on one side of the equation"
+                    },
+                    "exemplar_output": {
+                        "real_world_connections": "## Real World Connections: Solving for one variable in an equation (7th grade)\n\nSolving for one variable in an equation is useful whenever students need to figure out an unknown amount from information they already have. In daily life, people constantly isolate an unknown value: how much each person owes, how many hours they need to work, or what score they must earn to reach a target. Showing these examples helps students connect algebra to choices they make outside school.\n\n**Real-World Scenarios:**\n\n1. **Splitting the Bill with Friends:** You and three friends order food and the total bill is $85. Each person owes the same amount, but you paid a tip of $5 dollars extra. Set up and solve an equation like `4x + t = B` to isolate `x` (the share each friend owes). This directly practices isolating a variable by subtracting from both sides and dividing by 4 to find each person's share.\n\n2. **Adjusting a Game Character's Stats:** In a game, your character's final attack power `A` is determined by base power `p` plus a weapon bonus `w` and a strength multiplier `s`, modeled by a simple equation like `p + w + s = A`. If you want to find the needed strength `s` to reach a target attack power, isolate `s = A - p - w`. Students who play video games can use this to plan upgrades and compare choices.\n\n3. **Planning a Part-Time Job Budget:** A student plans to buy headphones and has to cover transportation costs. If weekly earnings are `e` and fixed costs are `c`, an equation like `e - c = s` models savings. To find required earnings, isolate `e = s + c`. This shows why isolating variables matters when setting savings goals and making spending decisions.\n\n**Resources:**\n\n1. **Math in the Real World Worksheets:** Short scenario-based worksheets where students solve one-variable equations from authentic contexts (shopping, budgeting, gaming, travel).\n2. **News and Data Hooks:** Quick clips or short reads about wages, prices, and discounts that can be converted into equations for class warmups.\n3. **Online Simulations and Games:** Tools where students manipulate values and see how changing one variable affects the outcome in real time.\n\n**Activities:**\n\n1. **Budgeting Project:** Students create a mini monthly budget using a savings goal and isolate the needed weekly income variable.\n2. **Equation Stations:** Rotate through stations (shopping, gaming, transportation) and solve one equation per station; then compare strategies.\n3. **Travel-Time Challenge:** Use distance/rate/time situations and isolate different variables depending on what information is missing.\n\nThese examples make variable isolation concrete and useful: students practice algebra while solving decisions they actually face in middle school."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 49: Tongue Twisters
+            "template": {
+                "slug": "tongue-twisters",
+                "name": "Tongue Twisters",
+                "description": "Create challenging tongue twisters to say out loud.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level for language complexity and vocabulary.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "topic_for_tongue_twister": {
+                            "type": "string",
+                            "title": "Topic for Tongue Twister",
+                            "description": "Enter a topic or theme for the tongue twisters (e.g., jungle creatures, fairy tales, high school prom, field day, mitosis).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "topic_for_tongue_twister"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TongueTwistersOutput",
+                    "required": ["tongue_twisters"],
+                    "properties": {
+                        "tongue_twisters": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown output with a title and numbered tongue twisters.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate playful, age-appropriate tongue twisters based on the selected topic and grade level.",
+                    "context": "Output must match output_schema exactly with one field: tongue_twisters. Use markdown. Start with a short title line (no markdown heading required) and then provide a numbered list of tongue twisters. Return exactly 5 tongue twisters for elementary/middle school contexts unless the user explicitly asks for more. Make each line pronounceable but challenging, with alliteration and repeated sounds. Keep content school-safe and topic-relevant. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "3rd grade",
+                        "topic_for_tongue_twister": "mitosis"
+                    },
+                    "exemplar_output": {
+                        "tongue_twisters": "Marvelous Mitosis Tongue Twisters\n\n1. Many mice meet mitosis moments.\n2. Mini molecules make mitosis magic.\n3. Mighty mitosis makes many more mini cells.\n4. Mitch's mitosis makes many more mini Mitch cells.\n5. Miniature mitosis moments multiply more molecules."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 50: Quote of the Day
+            "template": {
+                "slug": "quote-of-the-day",
+                "name": "Quote of the Day",
+                "description": "Generate quote of the day suggestions based on any topic.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "quotes_about": {
+                            "type": "string",
+                            "title": "Quotes about...",
+                            "description": "Enter a theme or topic for quotes (e.g., getting through challenging times, hope, doing your best).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level for age-appropriate wording.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                    },
+                    "required": ["quotes_about", "grade_level"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "QuoteOfTheDayOutput",
+                    "required": ["quotes"],
+                    "properties": {
+                        "quotes": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Short list of quote-style lines in markdown.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate concise, uplifting quote suggestions related to the requested topic and suitable for the selected grade level.",
+                    "context": "Output must match output_schema exactly with one field: quotes. Use markdown. Provide a numbered list of exactly 3 quote-style lines, each in quotation marks. Keep each quote concise (roughly one sentence), school-safe, and motivational. Avoid copyrighted or attributed quotes from real authors; generate original quote-like lines only. Do not output JSON.",
+                    "exemplar_input": {
+                        "quotes_about": "Doing your best",
+                        "grade_level": "4th grade"
+                    },
+                    "exemplar_output": {
+                        "quotes": "1. \"Believe in yourself and do your best. The rest will fall into place.\"\n2. \"Do your best, and the results will speak for themselves.\"\n3. \"Always do your best. What you plant now, you will harvest later.\""
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 51: Classroom Management
+            "template": {
+                "slug": "classroom-management",
+                "name": "Classroom Management",
+                "description": "Generate suggested solutions for specific classroom management challenges.",
+                "category": "behavior",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level to tailor behavior strategies and tone.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "classroom_management_challenge": {
+                            "type": "string",
+                            "title": "What is the classroom management challenge?",
+                            "description": "Describe the classroom management challenge you're having.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "classroom_management_challenge"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ClassroomManagementOutput",
+                    "required": ["management_solutions"],
+                    "properties": {
+                        "management_solutions": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown behavior support plan with implementation steps, rationale, and cautions.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate practical, classroom-ready management strategies for the teacher's specific challenge at the selected grade level.",
+                    "context": "Output must match output_schema exactly with one field: management_solutions. Use markdown. Start with one concise title line naming the grade and challenge. Then provide at least two strategy sections; each section must include (1) a bold strategy name, (2) a **Rationale:** subsection with bullet points, (3) a **How to Implement:** numbered list with actionable steps, and (4) a **Potential Challenges / Considerations:** bullet list. End with **Additional Advice:** bullets and a short closing reminder to review for accuracy. Keep tone supportive, specific, and school-safe. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "9th grade",
+                        "classroom_management_challenge": "students who do not sit in their seats"
+                    },
+                    "exemplar_output": {
+                        "management_solutions": "Seat Commitment Plan for 9th Grade - \"Seats First, Learning Next\"\n\n**Proximity & Purpose Seating** - Use intentional seating with clear instructional purposes and consistent teacher proximity.\n\n**Rationale:**\n- Ninth graders test boundaries and respond strongly to adult presence and clear expectations. Purposeful seating arrangements (paired with brief, consistent proximity routines) reduce off-task movement by making seating feel routine and meaningful rather than arbitrary.\n- Proximity is one of the fastest, least invasive behavior tools: when the teacher is physically near, off-task behavior drops and students often self-correct.\n\n**How to Implement:**\n1. Establish the expectation explicitly on Day 1 (or next class): \"Students sit in assigned seats unless I give explicit permission to move.\" Post this rule visibly.\n2. Design seats with instructional purpose: label seats by role or activity (e.g., \"Discussion Lead,\" \"Research Partner,\" \"Independent Work Zone\"), rotate roles weekly to avoid permanence, and explain the rationale: \"We assign seats to help partners, reduce chaos, and get you support quickly.\"\n3. Use a simple seating chart and share it (projected or laminated). Change charts only for instructional reasons (group work) or to manage behavior - avoid frequent changes that cause instability.\n4. Implement a daily \"Seats First\" routine: the bell rings -> students enter -> everyone goes directly to their seat and begins a 2-3 minute Do Now (warm-up posted on the board). The Do Now must be accessible, quick, and low-stakes (e.g., journal prompt, review question).\n5. Use consistent proximity patterns during independent or group work: circulate every 2-4 minutes for small tasks; every 5-8 for longer work; stand near students who previously left seats, and praise students who follow transitions (\"Thank you, Jay, for starting right away\").\n6. Teach and practice transitions: role-play entering, finding seat, and beginning Do Now. Give a countdown for end of transitions (e.g., \"3-2-1, eyes up\").\n7. Track seat violations privately: use a quick tally (teacher clipboard or digital note) to record repeated leaving-seat incidents for follow-up conferences or parent contact.\n\n**Potential Challenges / Considerations:**\n- Students may resist assigned seats; expect pushback the first week. Stay calm and consistent; consistency beats negotiation.\n- Seating must be flexible for IEP/504 accommodations - coordinate with support staff.\n- Do Now must be meaningful but short; otherwise students will resist sitting down. Rotate prompts to keep it fresh.\n\n**Choice-within-Structure & Tiered Movement Privileges** - Offer controlled movement options and earned movement privileges tied to clear behavioral benchmarks.\n\n**Rationale:**\n- Adolescents value autonomy. If the only choices are sit or be reprimanded, they rebel. Offering limited, predictable movement options increases buy-in while keeping the class orderly.\n- Privileges contingent on behavior (tiered system) create explicit incentives for consistent seat behavior and make consequences transparent.\n\n**How to Implement:**\n1. Define and teach exact movement options (examples): bathroom passes, standing desk spot, partner consult area, quick hallway pass for materials. Limit the number of students who can be away at once (e.g., no more than 2).\n2. Create a simple, visible system for requesting movement: index cards on desk (green = quick ask, red = urgent need), a sign-out sheet, or a digital queue. Teach use and practice it.\n3. Introduce a tiered privilege system:\n   - Tier 1 (default): All students must remain seated; one quick movement allowed per class (documented).\n   - Tier 2 (earned weekly): Students who meet seat expectations 4 out of 5 days gain \"movement pass\" privileges (e.g., stand at back for 10 minutes, one additional partner consult).\n   - Tier 3 (restorative): Students who repeatedly leave seats without permission lose movement privileges and receive in-class conference; repeated incidents trigger parent contact.\n4. Make tracking objective and visible to students (private record shared weekly): use brief, precise check-ins to let students know how close they are to earning Tier 2 privileges.\n5. Pair privileges with responsibility: those who earn movement passes also help monitor transitions or distribute materials - give them status tied to good behavior.\n\n**Potential Challenges / Considerations:**\n- Managing fairness: ensure criteria are clear so avoid perceptions of favoritism. Use objective counts and documented expectations.\n- Administrative buy-in: some schools discourage frequent movement; align with school policy and communication plans to administrators.\n- Avoid over-rewarding movement to the point it becomes the focus - movement should be a privilege, not the learning objective.\n\n**Additional Advice:**\n- Use firm, calm language and short scripts from Teach Like a Champion (e.g., \"When I say 'Seats,' you sit. Ready?\") then follow through consistently.\n- Communicate with families early if a student repeatedly leaves their seat - describe behaviors, actions taken, and request home support; keep messages factual and solution-focused.\n- If leaving-seat behavior persists, run a quick functional assessment: is the student avoiding work, seeking attention, or meeting a sensory need? Tailor interventions (task chunking, brief sensory breaks, seating near support staff) accordingly.\n\nReview this closely for accuracy, especially in math, as AI may have limitations."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 52: Survey Creator
+            "template": {
+                "slug": "survey-creator",
+                "name": "Survey Creator",
+                "description": "Create a survey to collect information or solicit feedback.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level context for survey wording.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "number_of_questions": {
+                            "type": "string",
+                            "title": "Number of Questions",
+                            "description": "Choose how many survey questions to generate.",
+                            "enum": ["3", "5", "7", "10"],
+                        },
+                        "topic_of_survey": {
+                            "type": "string",
+                            "title": "Topic of Survey",
+                            "description": "Back to School Night Survey, Peer feedback survey, school climate survey for teachers, teacher feedback survey, family satisfaction survey, etc.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "number_of_questions", "topic_of_survey"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SurveyCreatorOutput",
+                    "required": ["survey_questions"],
+                    "properties": {
+                        "survey_questions": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown survey title and numbered questionnaire items.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate clear survey questions that match the selected topic, grade-level context, and requested number of questions.",
+                    "context": "Output must match output_schema exactly with one field: survey_questions. Use markdown with a survey title line followed by a numbered list containing exactly the requested number_of_questions. Each item should be a complete survey statement or question and include a simple Likert scale inline in this style: '5 - Strongly Agree 4 - Agree 3 - Neutral 2 - Disagree 1 - Strongly Disagree'. Keep wording professional, concise, and school-safe. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "9th grade",
+                        "number_of_questions": "5",
+                        "topic_of_survey": "Back to School Night Survey"
+                    },
+                    "exemplar_output": {
+                        "survey_questions": "Back to School Night Survey\n\n1. The information provided during Back to School Night was helpful and informative. 5 - Strongly Agree 4 - Agree 3 - Neutral 2 - Disagree 1 - Strongly Disagree\n2. I felt comfortable asking questions and interacting with the teachers during the event. 5 - Strongly Agree 4 - Agree 3 - Neutral 2 - Disagree 1 - Strongly Disagree\n3. The classroom presentations gave me a good understanding of what my child will be learning this year. 5 - Strongly Agree 4 - Agree 3 - Neutral 2 - Disagree 1 - Strongly Disagree\n4. The school facilities and resources showcased during the event seemed adequate for student learning. 5 - Strongly Agree 4 - Agree 3 - Neutral 2 - Disagree 1 - Strongly Disagree\n5. After attending Back to School Night, I feel more connected to my child's school community. 5 - Strongly Agree 4 - Agree 3 - Neutral 2 - Disagree 1 - Strongly Disagree"
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 53: Thank You Note
+            "template": {
+                "slug": "thank-you-note",
+                "name": "Thank You Note",
+                "description": "Generate a customized thank you note to show your appreciation!",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "recipient_appreciation_description": {
+                            "type": "string",
+                            "title": "Describe what you're thanking the recipient for:",
+                            "description": "Being an enthusiastic participant in class, helping other students with work when done, staying after to clean up, bringing a positive attitude, etc.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        }
+                    },
+                    "required": ["recipient_appreciation_description"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ThankYouNoteOutput",
+                    "required": ["thank_you_note"],
+                    "properties": {
+                        "thank_you_note": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Personalized appreciation note in concise paragraph form.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a warm, personalized thank you note based on what the user is appreciating.",
+                    "context": "Output must match output_schema exactly with one field: thank_you_note. Write one polished appreciation paragraph (about 2-4 sentences) in plain markdown text with no heading and no bullet points. Keep tone sincere, specific, and school-safe. Mention the appreciated qualities or actions and the positive impact they have. Do not output JSON.",
+                    "exemplar_input": {
+                        "recipient_appreciation_description": "Being an incredible teaching partner"
+                    },
+                    "exemplar_output": {
+                        "thank_you_note": "Thank you so much for being an incredible teaching partner. Your collaboration and support have made such a positive impact on our students and the classroom environment. I truly appreciate all that you do to contribute to our shared success."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 54: Make it Relevant!
+            "template": {
+                "slug": "make-it-relevant",
+                "name": "Make it Relevant!",
+                "description": "Generate ideas that make a topic relevant to your class based on their interests and background.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level for language and rigor.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "what_youre_teaching": {
+                            "type": "string",
+                            "title": "What You're Teaching",
+                            "description": "Topic, standard, or even longer text of what you're teaching.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "describe_your_students": {
+                            "type": "string",
+                            "title": "Describe Your Students",
+                            "description": "From Denver, love tiktok, enjoy humor",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "what_youre_teaching", "describe_your_students"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "MakeItRelevantOutput",
+                    "required": ["relevant_lesson_ideas"],
+                    "properties": {
+                        "relevant_lesson_ideas": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown lesson ideas that connect student interests to the learning objective.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate practical, culturally relevant lesson ideas that connect what is being taught to students' real interests and context.",
+                    "context": "Output must match output_schema exactly with one field: relevant_lesson_ideas. Use markdown and substantial detail. Start with a title naming the grade and context. Then provide at least 3 idea sections, each with a short title and a few bullets or short paragraphs explaining how the concept connects to student interests. After the ideas, add a short implementation section that explains how to integrate the ideas into curriculum. Keep tone teacher-friendly, concrete, and school-safe. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "what_youre_teaching": "I would like for students to understand the impacts that humans have on their environment, including how we effect the air we breath, the water we drink and the land we inhabit.",
+                        "describe_your_students": "Students are from Denver, love their sports teams and are very engaged in outdoor recreation."
+                    },
+                    "exemplar_output": {
+                        "relevant_lesson_ideas": "## Lesson Ideas for 7th-Grade Students in Denver\n\n1. **Denver Sports Teams and Environmental Impact**\n- Explore the environmental impact of the sports teams in Denver. Investigate the sustainability initiatives of the teams and their stadiums. Discuss how these initiatives contribute to reducing air and water pollution, as well as conserving land for outdoor recreation. Students can research and present their findings, and even write letters to the teams with suggestions for further environmental efforts.\n\n2. **Outdoor Recreation and Environmental Responsibility**\n- Connect the students' love for outdoor recreation to environmental responsibility. Discuss the impact of human activities such as hiking, camping, and skiing on the local environment. Explore ways to minimize negative impacts, such as packing out trash, staying on designated trails, and supporting conservation efforts. Students can create posters or videos to raise awareness about responsible outdoor recreation.\n\n3. **Denver's Air Quality and Our Health**\n- Investigate the air quality in Denver and how it affects our health. Discuss the sources of air pollution and its impact on respiratory health, particularly for athletes and outdoor enthusiasts. Students can conduct simple air quality tests around the school and propose solutions for improving air quality in their community. This can include writing letters to local officials or organizing a community clean-up event.\n\n### Integrating These Ideas Into Your Curriculum\n\nYou can use these ideas as mini-units, project-based learning options, or extension tasks tied to your science standards. Start each lesson with a local hook (a sports headline, weather alert, or trail condition report), then move into content analysis and evidence-based student products. This keeps learning rigorous while making it personal and relevant to Denver students' lives."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 55: Team Builder / Ice Breaker
+            "template": {
+                "slug": "team-builder-ice-breaker",
+                "name": "Team Builder / Ice Breaker",
+                "description": "Create a team builder / ice breaker for virtual or in-person settings",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for activity complexity and facilitation style.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "setting": {
+                            "type": "string",
+                            "title": "Setting",
+                            "description": "Choose where the activity will run.",
+                            "enum": ["in-person", "virtual", "hybrid"],
+                        },
+                        "number_of_participants": {
+                            "type": "string",
+                            "title": "Number of Participants",
+                            "description": "Enter the number of participants.",
+                            "maxLength": 100,
+                        },
+                        "materials_required": {
+                            "type": "string",
+                            "title": "Materials Required",
+                            "description": "Select whether materials are available.",
+                            "enum": ["No materials", "Have materials to use"],
+                        },
+                        "additional_context": {
+                            "type": "string",
+                            "title": "Additional Context",
+                            "description": "End of school year, final staff meeting, team kickoff",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "setting", "number_of_participants", "materials_required"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TeamBuilderIceBreakerOutput",
+                    "required": ["team_builder_plan"],
+                    "properties": {
+                        "team_builder_plan": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown team-building options with objectives, directions, and debrief guidance.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate practical team builder / ice breaker options tailored to grade, setting, group size, and materials availability.",
+                    "context": "Output must match output_schema exactly with one field: team_builder_plan. Use markdown. Provide at least 2 activity options. For each option include: title, **Objective**, **Materials**, **Directions** (numbered steps), and a short **Debrief** section. Activities should be clear, engaging, and feasible for the selected setting and participant count. If materials_required is 'No materials', avoid required supplies beyond common classroom basics. Keep content school-safe and concise but substantial. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "setting": "in-person",
+                        "number_of_participants": "25",
+                        "materials_required": "Have materials to use",
+                        "additional_context": "Beginning of the year staff meeting"
+                    },
+                    "exemplar_output": {
+                        "team_builder_plan": "Option 1: Human Bingo\n\n**Objective:** To encourage team members to interact and find commonalities with each other.\n\n**Materials:** Pen/pencil, Human Bingo cards (a grid with interesting facts in each square about the participants, such as \"Has a pet\", \"Speaks more than one language\", \"Has lived in a different country\", etc.)\n\n**Directions:**\n1. Distribute the Human Bingo cards and pens/pencils to each participant.\n2. Instruct participants to walk around the room and find someone who fits the description in each square and have that person sign their name in the corresponding square.\n3. The goal is to fill the entire card with different names in a designated time frame (e.g. 15-20 minutes).\n4. Once someone fills their entire card, they can call out \"Bingo!\" and share interesting facts they learned about their colleagues.\n\n**Debrief:** Ask participants what they discovered about teammates they didn't know and how those strengths can support collaboration this year.\n\nOption 2: Marshmallow Tower\n\n**Objective:** To promote teamwork and problem-solving skills.\n\n**Materials:** Several bags of mini-marshmallows, boxes of uncooked spaghetti, measuring tape\n\n**Directions:**\n1. Divide participants into small groups of 4-5 people.\n2. Provide each group with a bag of mini-marshmallows and a box of uncooked spaghetti.\n3. Instruct the groups to build the tallest freestanding structure they can using only the marshmallows and spaghetti within a specified time limit (e.g. 20-30 minutes).\n4. After the time limit, measure each group's structure using the measuring tape.\n5. Debrief as a large group to discuss the teamwork, communication, and problem-solving strategies used during the activity.\n\n**Debrief:** Prompt teams to reflect on role distribution, testing ideas quickly, and how they handled setbacks under time pressure.\n\nFeel free to choose the team builder that best fits the dynamics of your team. Good luck with your staff meeting!"
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 56: Difficult Conversations
+            "template": {
+                "slug": "difficult-conversations",
+                "name": "Difficult Conversations",
+                "description": "Communicate your intended message by scripting out an upcoming conversation.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "situation_and_context": {
+                            "type": "string",
+                            "title": "Situation and Context",
+                            "description": "I'm having an uncomfortable conversation with a colleague who didn't follow through on a committment. Include as much context as you can but do not use names or identifying information.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "what_you_want_to_communicate": {
+                            "type": "string",
+                            "title": "What you want to communicate:",
+                            "description": "That it caused harm in this way... and this is what I'd prefer in the future...",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "tone_and_approach": {
+                            "type": "string",
+                            "title": "How would you like to come across? What tone do you want to communicate?",
+                            "description": "I want to be firm but caring...",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["situation_and_context", "what_you_want_to_communicate", "tone_and_approach"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "DifficultConversationsOutput",
+                    "required": ["conversation_script"],
+                    "properties": {
+                        "conversation_script": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Structured script with opening, key message, anticipated responses, and delivery suggestions.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a respectful, direct script to help the user navigate a difficult conversation while protecting relationships.",
+                    "context": "Output must match output_schema exactly with one field: conversation_script. Use markdown. Include a **Conversation Script** heading and sections for **Opening**, **Core message**, at least 2-3 **Anticipated response** examples with suggested replies, and **Close**. Then include a **Delivery Suggestions** section with bullet points. Keep tone aligned to user request, avoid names/identifying details, and use practical language that sounds natural when spoken aloud. Do not output JSON.",
+                    "exemplar_input": {
+                        "situation_and_context": "Beginning of the year staff meeting",
+                        "what_you_want_to_communicate": "That it caused harm in this way... and this is what I'd prefer in the future...",
+                        "tone_and_approach": "I want to be firm but caring..."
+                    },
+                    "exemplar_output": {
+                        "conversation_script": "## Conversation Script\n\n*Opening:* \"As we begin the year together, I want to take a moment to name something that I think will help us work even more effectively as a team. We all bring valuable experience and ideas to the table, and I want to support a meeting culture where everyone feels respected and heard.\"\n\n*Core message:* \"During recent staff meetings, I've noticed that some team members are being interrupted or not getting enough time to fully share their thoughts. I know that's likely not anyone's intention, but it can leave people feeling unheard, and it can limit the quality of our collaboration.\"\n\n\"I want to be direct about that because the way we communicate with one another matters. If we want strong teamwork, we need to make sure everyone has space to contribute and that we're listening actively, even when we're eager to respond or move the discussion along.\"\n\n\"What I'd like us to do is be more mindful about pausing before jumping in, allowing a speaker to finish, and making room for quieter voices as well as those who tend to speak more quickly. I think that small shift would help create a more respectful and productive environment for all of us.\"\n\n\"I'm sharing this in the spirit of strengthening our team, not criticizing anyone. I know we all care about working well together, and I believe this is something we can improve collectively.\"\n\n*Anticipated response - someone feels singled out:* \"I appreciate you saying that, and I want to be clear that I'm not trying to single out any one person. I'm raising this as a team norm because it affects the overall tone of our meetings, and I think it's something we can all be mindful of.\"\n\n*Anticipated response - someone says interruptions happen because meetings are busy:* \"I understand that, and I know we're all balancing a lot. At the same time, when meetings feel rushed, it becomes even more important that we're intentional about how we listen and respond so important perspectives aren't lost.\"\n\n*Anticipated response - someone agrees and wants a solution:* \"I appreciate that. Maybe we can support this by using a few simple meeting norms, like letting people finish before responding, inviting in voices we haven't heard yet, and redirecting if someone gets cut off. I think those kinds of shared practices could make a real difference.\"\n\n*Close:* \"I wanted to raise this because I value this team and the way we work together. If we can be more intentional about giving everyone a chance to speak and really listening to one another, I think our meetings will be stronger and our collaboration will be better because of it.\"\n\n### Delivery Suggestions\n\n- Keep your tone calm and steady so the message feels constructive, not corrective.\n- Use \"we\" and \"our\" often to frame this as a team improvement, not a personal criticism.\n- Pause after naming the concern so others have space to reflect instead of react.\n- If the conversation becomes defensive, return to the shared goal of respect and stronger collaboration.\n- Model the behavior you are asking for by listening fully and not interrupting during the discussion."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 57: Three Dimensional (3D) Science Assessments
+            "template": {
+                "slug": "three-dimensional-3d-science-assessments",
+                "name": "Three Dimensional (3D) Science Assessments",
+                "description": "Write a three dimensional science assessment using NGSS standards.",
+                "category": "assessment",
+                "subject_default": "science",
+                "grade_bands_supported": ["6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for NGSS-aligned rigor.",
+                            "enum": [
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "number_of_questions": {
+                            "type": "string",
+                            "title": "Number of Questions",
+                            "description": "Choose the number of questions for the assessment set.",
+                            "enum": ["3", "5", "7", "10"],
+                        },
+                        "stimulus_type": {
+                            "type": "string",
+                            "title": "Stimulus Type (standard and description):",
+                            "description": "Select the type of stimulus for the assessment.",
+                            "enum": ["Data Table", "Graph", "Short Text", "Diagram", "Image Set"],
+                        },
+                        "ngss_standard": {
+                            "type": "string",
+                            "title": "NGSS Standard:",
+                            "description": "Enter the NGSS performance expectation or standard statement.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "number_of_questions", "stimulus_type", "ngss_standard"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ThreeDimensionalScienceAssessmentOutput",
+                    "required": ["assessment_output"],
+                    "properties": {
+                        "assessment_output": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown NGSS 3D assessment with phenomenon, stimulus, question set, and answer key.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a three-dimensional NGSS science assessment aligned to the selected standard, using the requested stimulus type and question count.",
+                    "context": "Output must match output_schema exactly with one field: assessment_output. Use markdown and include these sections in order: **Phenomenon**, **Dimensional Alignment** (SEP/DCI/CCC bullets), **Stimulus** (formatted to match selected stimulus type), **Question Set** (exactly number_of_questions items), and **Answer Key** (table or structured bullets mapping each question to expected response and aligned dimensions). Keep content scientifically accurate, grade-appropriate, and classroom-ready. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "number_of_questions": "3",
+                        "stimulus_type": "Data Table",
+                        "ngss_standard": "HS-PS1-1 Use the periodic table as a model to predict the relative properties of elements based on the patterns of electrons in the outermost energy level of atoms."
+                    },
+                    "exemplar_output": {
+                        "assessment_output": "Phenomenon:\n**Pattern of Electrons in the Outermost Energy Level of Sodium (Na), Magnesium (Mg), and Aluminum (Al) Atoms**\n\nStimulus:\n\n| Element | Atomic Number | Electron Configuration |\n| --- | --- | --- |\n| Sodium (Na) | 11 | 1s2 2s2 2p6 3s1 |\n| Magnesium (Mg) | 12 | 1s2 2s2 2p6 3s2 |\n| Aluminum (Al) | 13 | 1s2 2s2 2p6 3s2 3p1 |\n\nQuestion Set:\n\n1. Based on the electron configurations in the above table, which element has one electron in its outermost energy level?\n2. How does the number of electrons in the outermost energy level of an atom relate to its position on the Periodic Table?\n3. Predict the electron configuration of an atom with an atomic number of 14. How does it compare to the elements in the table above?\n\nAnswer Key:\n\n1. Sodium (Na) has one electron in its outermost energy level (3s1).\n2. The number of outermost electrons generally increases across a period and helps determine periodic trends and group behavior.\n3. Atomic number 14 is silicon (Si), with configuration 1s2 2s2 2p6 3s2 3p2; compared with Al, it has one additional valence electron."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 58: AI Resistant Assignments
+            "template": {
+                "slug": "ai-resistant-assignments",
+                "name": "AI Resistant Assignments",
+                "description": "Improve assignments to make them more difficult for AI chatbots to complete.",
+                "category": "assessment",
+                "subject_default": None,
+                "grade_bands_supported": ["6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for assignment rigor and language.",
+                            "enum": [
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "assignment_description": {
+                            "type": "string",
+                            "title": "Assignment Description:",
+                            "description": "Enter the full description of your assignment...",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "assignment_description"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "AIResistantAssignmentsOutput",
+                    "required": ["ai_resistant_updates"],
+                    "properties": {
+                        "ai_resistant_updates": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown suggestions with multiple assignment update ideas and explanations.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate concrete ways to revise a teacher's assignment so it is harder to complete with generic AI output and better reflects authentic student thinking.",
+                    "context": "Output must match output_schema exactly with one field: ai_resistant_updates. Use markdown. Provide 3 distinct ideas labeled clearly (e.g., Idea 1, Idea 2, Idea 3). For each idea include **Modified Assignment** and **Explanation** sections. Keep each idea practical for classroom implementation and aligned to the original assignment objective. Maintain a supportive teacher-facing tone and avoid punitive language. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "9th grade",
+                        "assignment_description": "Write a 5 paragraph essay about the book \"the hate you give\""
+                    },
+                    "exemplar_output": {
+                        "ai_resistant_updates": "Update to Make this Assignment AI-Resistant (Idea 1):\n\n**Assignment: Analyzing Themes in \"The Hate U Give\"**\n\n- Write a 5-paragraph essay exploring the prominent themes in the novel \"The Hate U Give.\"\n- Identify and discuss at least three significant themes from the book, providing textual evidence to support your analysis.\n- In each body paragraph, provide a thorough analysis of one theme, explaining its significance in the story and its relevance to real-life issues.\n- Use appropriate transitions to ensure a clear flow of ideas between paragraphs.\n- Conclude your essay by reflecting on the impact of the themes explored in the novel and how they relate to current social issues.\n\n**Explanation:** To make this assignment more AI-resistant, I modified the original prompt by focusing on the analysis of themes rather than a general essay about the book. This requires students to engage in critical thinking, interpret the text, and provide their own unique insights. By emphasizing the analysis of themes and the need for textual evidence, the task becomes less formulaic and more demanding of higher-order thinking skills.\n\nUpdate to Make this Assignment AI-Resistant (Idea 2):\n\n**Assignment: Character Development in \"The Hate U Give\"**\n\n- Write a 5-paragraph essay analyzing the development of the main character, Starr, throughout the novel \"The Hate U Give.\"\n- Begin with an introduction that provides an overview of Starr's character at the beginning of the book. Include a thesis statement that previews your analysis.\n- In each body paragraph, focus on a different stage in Starr's development, discussing key events, interactions, and inner conflicts that shape her character.\n- Support your analysis with specific textual evidence, such as quotes and references to the novel.\n- Conclude your essay by reflecting on the overall character growth of Starr and its impact on the story's themes.\n\n**Explanation:** Modifying the assignment to concentrate on the character development of Starr requires students to deeply understand the complexities and nuances of the protagonist. This task demands critical thinking, careful analysis of character traits and their evolution, and the ability to provide evidence from the text to support their claims. By emphasizing character development, the assignment becomes more intricate and less predictable, making it challenging for AI systems to generate a comprehensive response without a genuine understanding of the novel.\n\nUpdate to Make this Assignment AI-Resistant (Idea 3):\n\n**Assignment: Exploring Symbolism in \"The Hate U Give\"**\n\n- Compose a 5-paragraph essay delving into the symbolic elements present in \"The Hate U Give.\"\n- Select at least three recurring symbols from the novel and examine their significance in the story.\n- In each body paragraph, focus on one symbol, providing an in-depth analysis of its meaning, how it contributes to the plot or characterization, and its relevance to real-world issues.\n- Support your analysis with specific examples and quotes from the text.\n- Conclude your essay by reflecting on the overall impact of the symbols explored and their connection to larger themes in the book.\n\n**Explanation:** Shifting the focus of the assignment to symbolism challenges students to analyze deeper layers of the novel. By exploring symbols, students must engage in critical thinking, interpret the author's intentions, and make connections to broader societal issues. This assignment requires students to provide detailed explanations and textual evidence for the symbols they choose, making it more difficult for AI systems to generate responses without a genuine understanding of the book's symbolic elements."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 59: Coach's Sports Practice
+            "template": {
+                "slug": "coachs-sports-practice",
+                "name": "Coach's Sports Practice",
+                "description": "Generate a plan for practice for any sport that you're coaching!",
+                "category": "lesson_design",
+                "subject_default": "physical_education",
+                "grade_bands_supported": ["6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the player grade level.",
+                            "enum": [
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "length_of_practice": {
+                            "type": "string",
+                            "title": "Length of Practice:",
+                            "description": "Choose how long the practice should be.",
+                            "enum": ["30 mins", "45 mins", "60 mins", "90 mins"],
+                        },
+                        "sport": {
+                            "type": "string",
+                            "title": "Sport:",
+                            "description": "Soccer, Basketball, Cheerleading, Lacrosse, Baseball, Football, etc.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "additional_customization": {
+                            "type": "string",
+                            "title": "Additional Customization (Optional):",
+                            "description": "Include a jogging warmup, include weightlifting, activities to improve agility, focus on passing, etc.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "length_of_practice", "sport"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "CoachsSportsPracticeOutput",
+                    "required": ["practice_plan"],
+                    "properties": {
+                        "practice_plan": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown sports practice plan with objective, timed segments, and coaching notes.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a practical, timed sports practice plan tailored to grade level, sport, practice duration, and optional customization preferences.",
+                    "context": "Output must match output_schema exactly with one field: practice_plan. Use markdown. Start with a clear practice title. Include objective, total duration, and a step-by-step timed practice plan that fits the requested length_of_practice. Include warm-up, skill development, game/application segment, cooldown, and coach notes/safety reminders. Keep activities realistic and age-appropriate. Honor additional_customization when provided. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "10th grade",
+                        "length_of_practice": "30 mins",
+                        "sport": "Soccer",
+                        "additional_customization": "Include dribbling drills, a warmup with laps around a track, and other important soccer skills"
+                    },
+                    "exemplar_output": {
+                        "practice_plan": "Soccer Practice Plan for 10th-grade students:\n\nTitle: Soccer Skills and Warm-up Practice\n\n**Objective:** The objective of this practice is to improve the students' dribbling skills, enhance their endurance with a warm-up, and focus on other important soccer techniques.\n\n**Duration:** 30 minutes\n\n**Practice Plan:**\n\n1. **Warm-up:**\n   - Jogging: Start with a gentle warm-up by having the students jog around the track for 5 minutes. Emphasize the importance of proper breathing and posture during the warm-up.\n\n2. **Dribbling Drills:**\n   - Cone Dribbling: Set up a course using cones where students can practice their dribbling skills. Encourage them to use both feet and maintain close control of the ball. Time: 10 minutes.\n   - Zigzag Dribbling: Create a zigzag pattern using cones and have students dribble through the course while maintaining control of the ball. Emphasize quick changes of direction and using different parts of the foot. Time: 10 minutes.\n\n3. **Soccer Techniques:**\n   - Passing and Receiving: Pair up students and have them practice passing and receiving the ball using proper technique. Encourage accuracy and communication between teammates. Time: 5 minutes.\n   - Shooting Drills: Set up shooting stations with targets (e.g., cones or small goals) and have students practice shooting on target from different distances. Emphasize proper technique and accuracy. Time: 5 minutes.\n\n4. **Cool-down:**\n   - Stretching: Allocate the last few minutes of the practice for a cool-down session. Guide students through a series of stretching exercises to improve flexibility and prevent muscle soreness. Time: 5 minutes.\n\n**Note:** Modify the practice plan as needed to suit the skill level and physical abilities of the students. Ensure safety measures are followed and provide appropriate supervision throughout the practice."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 60: 504 Plan Generator
+            "template": {
+                "slug": "504-plan-generator",
+                "name": "504 Plan Generator",
+                "description": "Generate draft of a 504 plan to support a student.",
+                "category": "behavior",
+                "subject_default": None,
+                "grade_bands_supported": ["6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the student's grade level for age-appropriate supports.",
+                            "enum": [
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "student_profile_description": {
+                            "type": "string",
+                            "title": "Description of student academic performance, behaviors, needs, and strengths:",
+                            "description": "List the student's relevant observed behaviors, needs to support, and strengths. Do not use names or any other personal identifying information when describing the student.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "student_profile_description"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "Plan504GeneratorOutput",
+                    "required": ["plan_504_draft"],
+                    "properties": {
+                        "plan_504_draft": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown 504 plan draft with present levels, supports, goals, and monitoring notes.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a practical draft 504 plan based on student profile details, including accommodations and progress-monitoring steps.",
+                    "context": "Output must match output_schema exactly with one field: plan_504_draft. Use markdown with substantial detail. Begin with a clear title line that includes '504 Plan Draft - Review closely before implementation'. Then include sections in this order: **Present Levels of Performance**, **Accommodations**, **Goals**, **Monitoring and Review**. Use bullet points in Accommodations and Goals. Keep language school-safe, strengths-based, and non-diagnostic; avoid real names and use placeholder references when needed. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "9th grade",
+                        "student_profile_description": "Often fidgets with objects on the desk, unable to sit still for long periods. Easily distracted by classroom noise and activities. Frequently interrupts during group discussions, speaking out of turn. Struggles to wait for their turn to speak or participate. Has difficulty following multi-step instructions, often starts tasks but leaves them incomplete. Needs frequent reminders to stay on task."
+                    },
+                    "exemplar_output": {
+                        "plan_504_draft": "## 504 Plan Draft - Review closely before implementation\n\n### Present Levels of Performance\n[Student Name] demonstrates difficulty remaining seated and focused during class activities, often fidgeting with objects on the desk and becoming easily distracted by surrounding noise and movement. [He/She/They] frequently interrupts group discussions and struggles to wait for [his/her/their] turn to speak. Additionally, [Student Name] has challenges with following multi-step instructions, often starting tasks but leaving them incomplete, requiring regular reminders to stay on task.\n\n### Accommodations\n- Provide a designated fidget object that [Student Name] can use discreetly during class to help manage restlessness.\n- Allow [Student Name] to use noise-canceling headphones during independent work time to minimize distractions from the classroom environment.\n- Implement a \"turn-taking\" system during discussions to help [Student Name] wait for [his/her/their] turn to speak.\n- Break down multi-step instructions into smaller, manageable parts, and provide written instructions alongside verbal explanations.\n- Allow extended time for completing assignments and assessments to accommodate incomplete tasks and promote thoroughness.\n- Provide frequent check-ins and reminders to help [Student Name] stay focused and on task.\n\n### Goals\n- [Student Name] will remain seated and focused during classroom instruction for at least 80% of the time, as measured by teacher observations over a six-week period.\n- [Student Name] will participate in group discussions by waiting for [his/her/their] turn to speak at least 90% of the time, as documented by teacher notes during discussions over a semester.\n- [Student Name] will successfully complete 85% of multi-step assignments with minimal prompts by the end of the grading period.\n- [Student Name] will utilize a planner or checklist to track assignments and tasks, completing at least 4 out of 5 tasks on time each week over the next quarter.\n\n### Monitoring and Review\nThis 504 plan will be monitored through regular progress checks conducted by [Student Name]'s teachers, who will document observations and adjustments as needed. A review meeting will be scheduled every quarter to assess [Student Name]'s progress toward goals, discuss the effectiveness of accommodations, and make any necessary modifications to the plan to better support [his/her/their] learning needs. Input from [Student Name] will also be included to ensure [he/she/they] feels engaged in the process."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 61: Conceptual Understanding
+            "template": {
+                "slug": "conceptual-understanding",
+                "name": "Conceptual Understanding",
+                "description": "Generate ideas about how to help your students build conceptual understanding.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the target grade level.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "standard_or_topic": {
+                            "type": "string",
+                            "title": "Standard / Topic:",
+                            "description": "Enter the concept, topic, or standard you are teaching.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "additional_context": {
+                            "type": "string",
+                            "title": "Additional Context (Optional):",
+                            "description": "How can I help students understand that fractions that look completely different can actually be equal?",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "standard_or_topic"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ConceptualUnderstandingOutput",
+                    "required": ["conceptual_ideas"],
+                    "properties": {
+                        "conceptual_ideas": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown conceptual-teaching ideas with titles and implementation guidance.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate practical, concept-focused teaching ideas that deepen student understanding beyond procedural recall.",
+                    "context": "Output must match output_schema exactly with one field: conceptual_ideas. Use markdown. Provide at least 3 idea sections labeled clearly (e.g., Idea 1, Idea 2, Idea 3). Each idea should include a short title and a concrete classroom implementation paragraph. Keep explanations teacher-friendly and focused on conceptual reasoning, misconceptions, and student discourse. If additional context is provided, incorporate it directly. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "5th grade",
+                        "standard_or_topic": "Equivalent Fractions",
+                        "additional_context": "How can I help students understand that fractions that look completely different can actually be equal?"
+                    },
+                    "exemplar_output": {
+                        "conceptual_ideas": "Idea 1: Fraction Visuals and Manipulatives\n\nTitle: Fraction Building Blocks\n\nIdea: Provide students with a variety of fraction visuals and manipulatives, such as fraction bars, circles, or tiles. In small groups or individually, have students explore and compare different fractions by physically manipulating the visuals. Encourage them to build equivalent fractions using different combinations of the visuals. This hands-on activity will help students visually see how different fractions can represent the same quantity, fostering a conceptual understanding of equivalent fractions.\n\nIdea 2: Fraction Number Line\n\nTitle: Exploring Equivalent Fractions on a Number Line\n\nIdea: Draw a number line on the board or provide students with individual number lines. Start by marking a fraction, such as 1/2, as a reference point on the number line. Then, ask students to plot other equivalent fractions, such as 2/4, 3/6, or 4/8, on the number line. Discuss with the students how fractions that may appear different can still represent the same position on the number line. This exercise will help students connect visual representations to the concept of equivalent fractions.\n\nIdea 3: Fraction Comparison and Ordering\n\nTitle: Equivalent Fraction Puzzles\n\nIdea: Create a set of cards with pairs of fractions that are equivalent and mixed up. Distribute these cards to the students and have them work in pairs or small groups to match the equivalent fractions. Encourage them to discuss their reasoning behind matching particular fractions. This activity will strengthen their understanding of equivalent fractions by engaging them in comparing and ordering fractions, emphasizing that fractions can look different but still have the same value."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 62: PD Planner
+            "template": {
+                "slug": "pd-planner",
+                "name": "PD Planner",
+                "description": "Generate a professional development plan for staff on any topic or uploaded content.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "describe_the_audience": {
+                            "type": "string",
+                            "title": "Describe the Audience",
+                            "description": "9th grade English department, front office staff, elementary school teachers",
+                            "maxLength": 1000,
+                        },
+                        "length_of_pd": {
+                            "type": "string",
+                            "title": "Length of PD",
+                            "description": "Select session duration.",
+                            "enum": ["30 minutes", "45 minutes", "60 minutes", "90 minutes"],
+                        },
+                        "topic_or_objective_of_pd": {
+                            "type": "string",
+                            "title": "Topic or Objective of the PD:",
+                            "description": "TWBAT understand strategies for UDL in the classroom.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "additional_customization": {
+                            "type": "string",
+                            "title": "Additional Customization (Optional):",
+                            "description": "This is a virtual pd session, include activities that require movement, the staff has already learned about..., etc.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["describe_the_audience", "length_of_pd", "topic_or_objective_of_pd"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "PDPlannerOutput",
+                    "required": ["pd_session_plan"],
+                    "properties": {
+                        "pd_session_plan": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown professional development session plan with timed segments and facilitator guidance.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a complete PD session plan tailored to the audience, time available, and objective/topic.",
+                    "context": "Output must match output_schema exactly with one field: pd_session_plan. Use markdown with substantial detail. Include: title, audience, duration, session objectives, materials/preparation, and a timed agenda broken into practical segments with facilitator moves. End with reflection/commitment and optional follow-up supports. Keep language professional and immediately usable by school staff facilitators. Honor optional customization when provided. Do not output JSON.",
+                    "exemplar_input": {
+                        "describe_the_audience": "9th grade english department",
+                        "length_of_pd": "30 minutes",
+                        "topic_or_objective_of_pd": "TWBAT understand strategies for UDL in the classroom.",
+                        "additional_customization": "This is a virtual pd session, include activities that require movement, the staff has already learned about..."
+                    },
+                    "exemplar_output": {
+                        "pd_session_plan": "## Professional Development Session Plan: Understanding Strategies for UDL in the Classroom\n\n**Duration:** 30 Minutes  \n**Audience:** 9th Grade English Department  \n**Topic:** TWBAT understand strategies for UDL in the classroom\n\n### Session Overview\nThis professional development session focuses on practical Universal Design for Learning (UDL) strategies teachers can use immediately in 9th-grade English classrooms. The plan balances concise instruction, interactive collaboration, and actionable next steps.\n\n### Session Objectives\nBy the end of this PD, participants will:\n- Define UDL and explain why it matters for diverse learners.\n- Identify at least 3 UDL-aligned strategies they can apply in current units.\n- Adapt one upcoming lesson activity using UDL principles.\n- Leave with one concrete implementation commitment.\n\n### Materials & Preparation\n- Slide deck with a one-page UDL overview and examples.\n- Shared digital workspace for notes and strategy collection.\n- Sample English lesson artifacts (text, prompt, assignment, rubric).\n- Timer visible to facilitator and participants.\n- Optional: breakout-room prompts and digital sticky-note board.\n\n### Timed Agenda (30 Minutes)\n\n#### 1) Welcome, Purpose, and Quick Warm-Up (0:00-0:05)\nFacilitator welcomes participants, names the objective, and frames UDL as a way to increase access without lowering rigor. Quick prompt in chat: \"Name one barrier students face in your current unit and one support you already use.\"\n\n#### 2) UDL Mini-Lesson with English Examples (0:05-0:12)\nFacilitator introduces the 3 UDL areas:\n- **Engagement** (why learners stay invested)\n- **Representation** (how learners access content)\n- **Action & Expression** (how learners show understanding)\nUse one short 9th-grade English example for each area (e.g., text access supports, choice in response format, scaffolded discussion protocols).\n\n#### 3) Collaborative Activity - Adapt a Lesson (0:12-0:22)\nParticipants review a current lesson and identify:\n- One likely student barrier,\n- One UDL strategy to reduce that barrier,\n- One evidence indicator to check impact.\nSmall groups share ideas; facilitator synthesizes into a practical \"UDL moves\" list for departmental use.\n\n#### 4) Spotlight Share-Out and Discussion (0:22-0:27)\nEach group shares one revised lesson move. Facilitator highlights patterns that are high-impact and low-lift (e.g., structured note templates, flexible response options, clear success criteria, strategic peer supports).\n\n#### 5) Reflection and Commitment to Action (0:27-0:30)\nParticipants complete a short reflection:\n- \"One UDL move I will implement this week is...\"\n- \"One support I need from the team is...\"\nFacilitator closes with next-step follow-up plan and thank-you.\n\n### Facilitator Notes\n- Keep pacing tight and interaction high, especially in virtual format.\n- Use plain language and concrete classroom examples over theory-heavy explanations.\n- Reinforce that UDL supports all students and improves clarity for instruction.\n\n### Follow-Up Supports\n- Share a one-page UDL strategy bank aligned to English tasks.\n- Invite teachers to bring one revised lesson artifact to the next meeting.\n- Offer optional peer walkthroughs for implementation feedback."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 63: Common Misconceptions
+            "template": {
+                "slug": "common-misconceptions",
+                "name": "Common Misconceptions",
+                "description": "Generate common misconceptions on any topic and how to address them in your lesson.",
+                "category": "assessment",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for developmentally appropriate misconceptions.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "what_you_are_teaching": {
+                            "type": "string",
+                            "title": "What You Are Teaching:",
+                            "description": "Topic, standard, or longer description of what you are teaching",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "what_you_are_teaching"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "CommonMisconceptionsOutput",
+                    "required": ["misconceptions_and_moves"],
+                    "properties": {
+                        "misconceptions_and_moves": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown misconceptions with practical strategies to address each one.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate likely student misconceptions for the specified topic and provide clear, actionable instructional responses.",
+                    "context": "Output must match output_schema exactly with one field: misconceptions_and_moves. Use markdown. Provide at least 2 misconception entries. For each entry, use this pattern: **Common Misconception:** <statement> followed by **How to address this misconception:** <instructional response>. Keep language concise, classroom-ready, and grade-appropriate. Include practical examples or routines teachers can implement immediately. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "6th grade",
+                        "what_you_are_teaching": "6th Grade Finding areas of triangles, quadrilaterals and polygons"
+                    },
+                    "exemplar_output": {
+                        "misconceptions_and_moves": "**Common Misconception:** Area formulas only work if the shape is drawn with horizontal base and vertical height (students think height must \"look\" vertical).\n\n**How to address this misconception:** Show and practice decomposing shapes and using perpendicular height; draw the same triangle or quadrilateral rotated and calculate area using the perpendicular distance to the chosen base; use physical manipulatives or paper triangles where students measure the height with a right-angle tool and compare results so they see area depends on perpendicular height, not how the figure is oriented.\n\n**Common Misconception:** Confusing perimeter and area or mixing units (adding lengths when they should multiply, or leaving wrong units like \"cm\" instead of \"cm^2\").\n\n**How to address this misconception:** Have students solve paired problems that ask for perimeter and area of the same shape side-by-side, always write and name the units explicitly, and use unit-square counting activities (grid paper) to reinforce that area counts square units (e.g., cm^2) while perimeter sums linear units (e.g., cm)."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 64: Restorative Reflection
+            "template": {
+                "slug": "restorative-reflection",
+                "name": "Restorative Reflection",
+                "description": "Generate a student reflection assignment based on restorative practices.",
+                "category": "behavior",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for age-appropriate reflection prompts.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "number_of_questions": {
+                            "type": "string",
+                            "title": "Number of Questions:",
+                            "description": "Choose how many restorative reflection questions to generate.",
+                            "enum": ["3", "5", "7", "10"],
+                        },
+                        "details_of_incident": {
+                            "type": "string",
+                            "title": "Details of Incident:",
+                            "description": "The specific details of what the student was involved in, and any other relevant information",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "number_of_questions", "details_of_incident"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "RestorativeReflectionOutput",
+                    "required": ["restorative_reflection_assignment"],
+                    "properties": {
+                        "restorative_reflection_assignment": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown student reflection assignment with directions and numbered restorative questions.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a restorative reflection assignment that helps students process harm, responsibility, and repair actions.",
+                    "context": "Output must match output_schema exactly with one field: restorative_reflection_assignment. Use markdown. Include a clear assignment title, a short **Directions** paragraph, and a numbered **Questions** list with exactly number_of_questions prompts. Questions should focus on what happened, who was impacted, accountability, and repair/prevention steps. Keep language age-appropriate, non-shaming, and restorative in tone. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "6th grade",
+                        "number_of_questions": "5",
+                        "details_of_incident": "One student accidentally bumped into another student in the lunch line, spilling their tray full of food. Both students became escalated and they ended up in a shoving match in the lunch room."
+                    },
+                    "exemplar_output": {
+                        "restorative_reflection_assignment": "## Student Reflection - Restorative Practices\n\n**Directions:** Please answer each question with as much detail as possible, using complete sentences. Think carefully about what happened, how you felt, how others were affected, and what you will do differently next time.\n\n1. Describe, in your own words, what happened in the lunch line from the moment you bumped into the other student to the shoving match.\n2. What thoughts and feelings did you have at each point (when you bumped into the student, when trays spilled, when things became heated, and during the shoving)?\n3. How do you think the other student, the students nearby, and the lunch staff felt or were affected by what happened? Give specific examples.\n4. What part of this situation do you feel you were most responsible for, and why? What could you have done differently to help the situation not get worse?\n5. What steps will you take in the future to repair harm and prevent this from happening again (for example: apologies, how you will act in the lunch line, calming strategies you will use)?"
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 65: Syllabus Generator
+            "template": {
+                "slug": "syllabus-generator",
+                "name": "Syllabus Generator",
+                "description": "Generate a custom syllabus for your class.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select grade level for scope and complexity.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ]
+                        },
+                        "subject": {
+                            "type": "string",
+                            "title": "Subject:",
+                            "description": "Elementary, English, Science, French, Physics, Art, etc.",
+                            "format": "textarea",
+                            "maxLength": 75000
+                        },
+                        "course_description": {
+                            "type": "string",
+                            "title": "Course Description:",
+                            "description": "Briefly describe your course.",
+                            "format": "textarea",
+                            "maxLength": 75000
+                        },
+                        "course_objectives": {
+                            "type": "string",
+                            "title": "Course Objectives:",
+                            "description": "Insert the standards or objectives covered for the audience of parents / students.",
+                            "format": "textarea",
+                            "maxLength": 75000
+                        },
+                        "required_materials": {
+                            "type": "string",
+                            "title": "Required Materials:",
+                            "description": "Input supplies etc that are needed for this class.",
+                            "format": "textarea",
+                            "maxLength": 75000
+                        },
+                        "grading_policy": {
+                            "type": "string",
+                            "title": "Grading Policy:",
+                            "description": "Basic grading policy.",
+                            "format": "textarea",
+                            "maxLength": 75000
+                        },
+                        "class_policies_expectations": {
+                            "type": "string",
+                            "title": "Class Policies / Expectations:",
+                            "description": "Expectations and policies for students in your class.",
+                            "format": "textarea",
+                            "maxLength": 75000
+                        },
+                        "course_outline_what_is_covered": {
+                            "type": "string",
+                            "title": "Course Outline / What is Covered:",
+                            "description": "What will be covered in the course throughout the year.",
+                            "format": "textarea",
+                            "maxLength": 75000
+                        },
+                        "additional_customization": {
+                            "type": "string",
+                            "title": "Additional Customization (Optional):",
+                            "description": "Any additional information you want to include in the syllabus",
+                            "format": "textarea",
+                            "maxLength": 75000
+                        }
+                    },
+                    "required": [
+                        "grade_level",
+                        "subject",
+                        "course_description",
+                        "course_objectives",
+                        "required_materials",
+                        "grading_policy",
+                        "class_policies_expectations",
+                        "course_outline_what_is_covered"
+                    ]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SyllabusGeneratorOutput",
+                    "required": ["syllabus"],
+                    "properties": {
+                        "syllabus": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown syllabus with course details, expectations, grading, and year outline."
+                        }
+                    }
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a complete, parent-friendly and student-friendly class syllabus based on the supplied course details.",
+                    "context": "Output must match output_schema exactly with one field: syllabus. Use markdown and substantial detail. Include sections for course description, objectives, required materials, grading policy, class expectations, course outline, and additional notes/customization if provided. For grading policy, provide clear category weights and a grade scale table when possible. Keep language clear and practical for school communication. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "8th grade",
+                        "subject": "Physical Science",
+                        "course_description": "This is an 8th Grade Physical Science class focused on matter, forces, energy, and Earth-space interactions.",
+                        "course_objectives": "Students will investigate properties of matter, explain motion and forces, explore energy transfer, and apply scientific reasoning through labs and projects.",
+                        "required_materials": "Notebook, pencil, scientific calculator, folder for handouts and lab sheets.",
+                        "grading_policy": "Tests/Quizzes 40%, Homework/Classwork 30%, Labs/Projects 20%, Participation 10%.",
+                        "class_policies_expectations": "Respect others, come prepared, follow lab safety rules, complete assignments on time, and participate in class discussions.",
+                        "course_outline_what_is_covered": "Unit 1: Matter and Interactions; Unit 2: Motion and Forces; Unit 3: Energy; Unit 4: Waves and Information Transfer.",
+                        "additional_customization": "Use middle-school NGSS language and include a brief through-the-course statement."
+                    },
+                    "exemplar_output": {
+                        "syllabus": "## 8th Grade Science Syllabus\n\n### Course Description\nWelcome to 8th Grade Science! This course explores core physical science concepts including matter and interactions, forces and motion, energy transfer, and waves. Students will investigate phenomena through labs, data analysis, modeling, and scientific argumentation.\n\n### Course Objectives\nBy the end of this course, students will be able to:\n- Develop models to describe the structure and properties of matter.\n- Analyze and interpret data to explain motion and force interactions.\n- Explain how energy transfers and transforms in systems.\n- Use evidence to evaluate scientific claims and communicate explanations.\n\n### Required Materials\n- Science notebook (composition or spiral)\n- Pencils/pens\n- Scientific calculator\n- Folder or binder for handouts and lab sheets\n\n### Grading Policy\n| Category | Weight |\n| --- | --- |\n| Tests and Quizzes | 40% |\n| Homework and Classwork | 30% |\n| Lab Work and Projects | 20% |\n| Class Participation | 10% |\n\n| Grade | Range |\n| --- | --- |\n| A | 90-100% |\n| B | 80-89% |\n| C | 70-79% |\n| D | 60-69% |\n| F | Below 60% |\n\n### Class Expectations\n- Respect classmates, staff, and materials.\n- Arrive prepared and ready to learn.\n- Follow safety procedures during all investigations.\n- Complete work on time and ask for help when needed.\n- Participate actively and contribute positively to class discussions.\n\n### Course Outline\n- **Unit 1: Matter and Interactions** - Properties of substances, atomic structure, and chemical/physical changes.\n- **Unit 2: Motion and Forces** - Newton's laws, balanced/unbalanced forces, and motion in everyday systems.\n- **Unit 3: Energy** - Energy transfer, transformation, conservation, and thermal systems.\n- **Unit 4: Waves and Information Transfer** - Wave behavior, electromagnetic concepts, and communication technologies.\n\n### Through the Course\nStudents will conduct investigations, analyze data, build models, and communicate explanations using evidence. The course is aligned to middle-school NGSS expectations and is designed to build confidence, curiosity, and scientific reasoning skills.\n\n### Additional Notes\nThis syllabus may be adjusted to meet student learning needs, pacing, and school calendar changes. Families will receive updates as needed."
+                    }
+                }
+            }
+        },
+        {
+            # TEMPLATE 66: SAT Math Practice
+            "template": {
+                "slug": "sat-math",
+                "name": "SAT Math Practice",
+                "description": "Generate a practice SAT Math exam to help students prepare.",
+                "category": "assessment",
+                "subject_default": "math",
+                "grade_bands_supported": ["9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "sat_level": {
+                            "type": "string",
+                            "title": "SAT Level (PSAT 8/9, PSAT 10, SAT):",
+                            "description": "Select the assessment level.",
+                            "enum": ["PSAT 8/9", "PSAT 10", "SAT"],
+                        }
+                    },
+                    "required": ["sat_level"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SATMathPracticeOutput",
+                    "required": ["sat_math_practice"],
+                    "properties": {
+                        "sat_math_practice": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown SAT-style math practice set with sections and answer key.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate an SAT-style math practice set aligned to the selected test level, including multiple-choice and student-produced response items.",
+                    "context": "Output must match output_schema exactly with one field: sat_math_practice. Use markdown. Include a title, a brief intro, a **No-Calculator Section** and **Calculator Section**, each with Part 1 (multiple choice) and Part 2 (grid-in/open response). Provide around 20 total questions with realistic SAT-style rigor and varied topics (algebra, problem solving, geometry, data analysis). End with an **Answer Key** list. Keep content classroom-safe and test-prep oriented. Do not output JSON.",
+                    "exemplar_input": {
+                        "sat_level": "SAT"
+                    },
+                    "exemplar_output": {
+                        "sat_math_practice": "## SAT Math Practice Exam\n\nThis exam is a sample SAT Math practice for the selected level. The actual SAT is longer and timed for test-day conditions.\n\n### No-Calculator Section\n\n#### Part 1: Multiple Choice\n1. If \\(f(x) = 2x^2 + 3x - 5\\), what is the value of \\(f(2)\\)?\n2. Solve for \\(x\\): \\(4(x+2)+3=5x-7\\).\n3. The line \\(y=mx+b\\) passes through \\((2,5)\\) and \\((4,9)\\). What is the value of \\(m\\)?\n4. If \\(\\sqrt{16x+3}=\\sqrt{x+15}+2\\), what is the value of \\(x\\)?\n5. What is the solution to the equation \\(|x-2|-5x+6=0\\)?\n\n#### Part 2: Grid-in / Open Response\n6. If \\((3x+2y)=24\\) and \\((x+2y)=14\\), what is \\(x\\)?\n7. The expression \\(\\sqrt{18}+\\sqrt{32}\\) can be simplified to \\(a\\sqrt{2}\\). What is \\(a\\)?\n8. A right triangle has a hypotenuse of 13 and one leg of length 5. What is the length of the other leg?\n9. If \\(7\\) is \\(n\\)% of \\(84\\), what is \\(n\\)?\n10. The sum of two numbers is 15, and their product is 56. What is the positive difference between the two numbers?\n\n### Calculator Section\n\n#### Part 1: Multiple Choice\n11. The function \\(h(x)=ax^2+bx+c\\) has zeros at \\(x=-2\\) and \\(x=3\\). If \\(a=1\\), what is \\(h(0)\\)?\n12. In a survey of 200 students, 120 like pizza and 100 like burgers. If 20 students like neither, how many like both?\n13. The graph of \\(y=-\\frac{1}{2}(x-4)^2+8\\) is shown. Which value could be the equation's y-intercept?\n14. A car travels at a constant speed of 60 miles per hour. How many miles will it travel in 45 minutes?\n15. If \\(\\log_2 x = 3\\) and \\(\\log_2 y = 4\\), what is \\(\\log_2(2xy)\\)?\n\n#### Part 2: Grid-in / Open Response\n16. The mean of a data set consisting of 5 numbers is 10. If the largest number is removed, the mean of the remaining 4 numbers is 8. What is the value of the largest number?\n17. A circle has area \\(100\\pi\\) square inches. What is the circumference of the circle in inches?\n18. In triangle ABC, angle A measures 30 degrees, angle B measures 60 degrees, and the length of side AB is 8 units. What is the length of side BC?\n19. The population of a town increases by 5% each year. If the current population is 10,000, what will be the population after 3 years? (Round to the nearest whole number.)\n20. A rectangular prism has a length of 5 cm, a width of 4 cm, and a volume of 120 cubic cm. What is the height of the prism in cm?\n\n### Answer Key\n1. 9\n2. 8\n3. 2\n4. 5\n5. 2\n6. 10\n7. 7\n8. 12\n9. 8.33\n10. 1\n11. -6\n12. 40\n13. 0\n14. 45\n15. 8\n16. 18\n17. 20pi\n18. 8sqrt(3)\n19. 11576\n20. 6\n\nReview this closely for accuracy, especially in math, as AI may have limitations."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 67: SAT ELA Practice Test
+            "template": {
+                "slug": "sat-ela-practice-test",
+                "name": "SAT ELA Practice Test",
+                "description": "Generate a practice SAT ELA test that has passages and associated questions.",
+                "category": "assessment",
+                "subject_default": "english",
+                "grade_bands_supported": ["9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {}
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SATELAPracticeTestOutput",
+                    "required": ["sat_ela_practice"],
+                    "properties": {
+                        "sat_ela_practice": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown SAT ELA reading and writing practice with questions and answer key."
+                        }
+                    }
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate SAT ELA practice content with passage-based multiple-choice questions aligned to digital SAT reading and writing style.",
+                    "context": "Output must match output_schema exactly with one field: sat_ela_practice. Use markdown. Include a clear title, multiple short passages, and associated multiple-choice questions with options A-D. Include both reading comprehension and writing/language style questions where possible. End with an answer key list. Keep content test-prep appropriate and school-safe. Do not output JSON.",
+                    "exemplar_input": {},
+                    "exemplar_output": {
+                        "sat_ela_practice": "## SAT Reading Practice\n\nSelect the best answer for each of the following reading questions:\n\n1. **Reading Passage:**\nScientists have discovered a new species of bird in the Amazon rainforest. This bird, named the Rainbow Wing, has vibrant feathers in all the colors of the rainbow. Researchers believe that its unique coloring is a result of adaptation to its surroundings, allowing it to blend into the colorful foliage of the rainforest. The Rainbow Wing has a distinct chirping pattern that sets it apart from other bird species in the same habitat.\n\n**Question:**\nWhat is the main reason behind the Rainbow Wing's vibrant coloring?\na. Camouflage in the rainforest\nb. Mating rituals\nc. Protection from predators\nd. Attracting prey\n\n2. **Reading Passage:**\nThe Earth's oceans are experiencing a decline in the population of sea turtles. Pollution, habitat destruction, and climate change are some of the factors contributing to this decline. Conservation efforts are being made to protect sea turtle nesting sites and reduce plastic pollution in the oceans to ensure the survival of these majestic creatures.\n\n**Question:**\nWhat is one of the factors contributing to the decline in the sea turtle population?\na. Overfishing\nb. Increased nesting sites\nc. Rising sea temperatures\nd. Reduced plastic pollution\n\n3. **Reading Passage:**\nIn the 19th century, the Industrial Revolution transformed society by introducing new manufacturing processes, leading to urbanization and technological advancements. This period marked a shift from agrarian economies to industrial economies in many countries, bringing about significant changes in labor practices and living conditions.\n\n**Question:**\nWhat was one of the major impacts of the Industrial Revolution?\na. Decreased urbanization\nb. Technological regression\nc. Shift from agricultural to industrial societies\nd. Stagnation in manufacturing processes\n\n4. **Reading Passage:**\nJane Austen's novel \"Pride and Prejudice\" explores themes of social class, marriage, and morality in 19th-century England. The protagonist, Elizabeth Bennet, navigates societal expectations and challenges traditional norms as she seeks love and independence in a society bound by rigid social conventions.\n\n**Question:**\nWhat are the main themes explored in \"Pride and Prejudice\"?\na. War and politics\nb. Love and independence\nc. Adventure and exploration\nd. Science and technology\n\n5. **Reading Passage:**\nPhotosynthesis is the process by which green plants, algae, and some bacteria convert light energy into chemical energy stored in glucose molecules. This biological process is essential for the survival of autotrophic organisms and plays a key role in the Earth's ecosystem by producing oxygen as a byproduct.\n\n**Question:**\nWhat is the main purpose of photosynthesis for plants?\na. Producing oxygen\nb. Absorbing water\nc. Regulating temperature\nd. Storing light energy\n\n6. **Reading Passage:**\nThe Renaissance was a period of cultural rebirth in Europe, characterized by a revival of art, literature, and learning. Artists like Leonardo da Vinci and Michelangelo produced masterpieces that reflected humanism and realism, setting the stage for the transition from the medieval to the modern world.\n\n**Question:**\nWhich term best describes the cultural movement of the Renaissance?\na. Enlightenment\nb. Revival\nc. Revolution\nd. Rebellion\n\n7. **Reading Passage:**\nThe Declaration of Independence, written by Thomas Jefferson in 1776, declared the thirteen American colonies' independence from British rule. It articulated fundamental principles of liberty, equality, and self-governance that shaped the foundation of the United States of America.\n\n**Question:**\nWhich document is described in the passage?\na. Constitution\nb. Declaration of Independence\nc. Bill of Rights\nd. Federalist Papers\n\n### Answer Key\n1. A\n2. C\n3. C\n4. B\n5. D\n6. B\n7. B\n\nReview this closely for accuracy, especially in math, as AI may have limitations."
+                    }
+                }
+            }
+        },
+        {
+            # TEMPLATE 68: Gift Suggestion
+            "template": {
+                "slug": "gift-suggestion",
+                "name": "Gift Suggestion",
+                "description": "Generate suggestions for gifts to give to others.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "gift_budget": {
+                            "type": "string",
+                            "title": "Gift Budget:",
+                            "description": "$20",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "recipient_description": {
+                            "type": "string",
+                            "title": "Describe the person you're buying the gift for:",
+                            "description": "A funny science teacher who loves the Chicago Cubs and chemistry. He also loves his dog Fozzy.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["gift_budget", "recipient_description"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "GiftSuggestionOutput",
+                    "required": ["gift_suggestions"],
+                    "properties": {
+                        "gift_suggestions": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown gift ideas list tailored to budget and recipient interests.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate practical and thoughtful gift suggestions tailored to the stated budget and recipient profile.",
+                    "context": "Output must match output_schema exactly with one field: gift_suggestions. Use markdown. Start with a short heading like 'Gift Suggestions:'. Provide at least 3 suggestions. Each suggestion should include a gift name and one concise sentence explaining why it fits the person and budget. Keep recommendations realistic, school-safe, and generally purchasable. Do not output JSON.",
+                    "exemplar_input": {
+                        "gift_budget": "$15",
+                        "recipient_description": "Funny science teacher who loves to engage with students in a playful way"
+                    },
+                    "exemplar_output": {
+                        "gift_suggestions": "Gift Suggestions:\n\n1. **Periodic Table Shower Curtain** - A shower curtain with the periodic table printed on it, this humorous and educational gift will surely bring a smile to the science teacher's face while also serving as a teaching aid in a fun way.\n2. **Science Lab Beaker Mug** - A mug that looks like a beaker from a science lab, perfect for a science teacher who enjoys a good cup of coffee or tea while bringing some science into their daily routine.\n3. **Science Joke Book** - A book filled with science-themed jokes and puns that the teacher can share with their students, adding a playful element to their interactions."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 69: MagicSchool for Students Ideas
+            "template": {
+                "slug": "magicschool-for-students-ideas",
+                "name": "MagicSchool for Students Ideas",
+                "description": "Generate ideas on how to use MagicStudent tools with your students.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for age-appropriate implementation ideas.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "assignment_or_activity_description": {
+                            "type": "string",
+                            "title": "Description of Assignment or Student Activity:",
+                            "description": "Enter an assignment description or other student activity to get ideas on how you can integrate the tools in MagicSchool for Students",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "assignment_or_activity_description"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "MagicSchoolForStudentsIdeasOutput",
+                    "required": ["integration_ideas"],
+                    "properties": {
+                        "integration_ideas": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown list of practical ideas for integrating MagicStudent tools into a lesson.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate actionable ideas for integrating MagicStudent tools into the described assignment/activity.",
+                    "context": "Output must match output_schema exactly with one field: integration_ideas. Use markdown. Provide at least 3 ideas labeled clearly (Idea 1, Idea 2, Idea 3). Each idea should name at least one MagicStudent-style tool/workflow and explain how students would use it in the activity. Keep suggestions practical, age-appropriate, and teacher-ready. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "8th grade",
+                        "assignment_or_activity_description": "A lesson that is an introduction to the process of mitosis"
+                    },
+                    "exemplar_output": {
+                        "integration_ideas": "Idea 1 to Integrate MagicSchool for Students:\n\nUtilize the **Conceptual Understanding** tool to generate ideas about how to visually represent the process of mitosis. Students can use this tool to brainstorm different ways to create diagrams or models that illustrate the stages of mitosis. This will help them deepen their understanding of the concept by engaging in visual learning and creativity.\n\nIdea 2 to Integrate MagicSchool for Students:\n\nEmploy the **Step by Step** tool to provide students with a detailed step-by-step guide on the process of mitosis. This tool can break down the complex process into simpler, easier-to-follow steps, helping students grasp each stage of mitosis more effectively. Students can use this tool as a reference as they create their own summaries or explanations of mitosis.\n\nIdea 3 to Integrate MagicSchool for Students:\n\nEncourage students to use the **Data Collection Table** tool to create a table comparing the different stages of mitosis. They can input key characteristics of each stage such as the number of chromosomes, the structure of the cell, and the main events occurring. This will not only help them organize information but also reinforce their understanding of the distinct phases of mitosis through a study approach."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 70: SAT ELA Custom Practice
+            "template": {
+                "slug": "sat-ela-custom-practice",
+                "name": "SAT ELA Custom Practice",
+                "description": "Generate practice SAT question based on a specific domain.",
+                "category": "assessment",
+                "subject_default": "english",
+                "grade_bands_supported": ["9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "sat_level": {
+                            "type": "string",
+                            "title": "SAT Level (PSAT 8/9, PSAT 10, SAT):",
+                            "description": "Choose the SAT test level.",
+                            "enum": ["PSAT 8/9", "PSAT 10", "SAT"],
+                        },
+                        "number_of_questions": {
+                            "type": "string",
+                            "title": "Number of Questions:",
+                            "description": "How many questions to generate.",
+                            "enum": ["3", "5", "7", "10"],
+                        },
+                        "domain": {
+                            "type": "string",
+                            "title": "Domain:",
+                            "description": "Select SAT ELA domain focus.",
+                            "enum": [
+                                "Information and Ideas",
+                                "Craft and Structure",
+                                "Expression of Ideas",
+                                "Standard English Conventions"
+                            ],
+                        },
+                        "additional_information": {
+                            "type": "string",
+                            "title": "Additional Information:",
+                            "description": "Focus on Inferences questions\nInclude a variety of difficulty levels",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "attach_a_reference": {
+                            "type": "string",
+                            "title": "Attach a Reference:",
+                            "description": "Example questions or reference documents",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["sat_level", "number_of_questions", "domain"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SATELACustomPracticeOutput",
+                    "required": ["sat_ela_custom_practice"],
+                    "properties": {
+                        "sat_ela_custom_practice": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown SAT reading/writing custom practice with questions, choices, and answer key.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate SAT ELA custom practice aligned to selected level, domain, and question count, with realistic test-prep style items.",
+                    "context": "Output must match output_schema exactly with one field: sat_ela_custom_practice. Use markdown. Include a title, short directions, numbered multiple-choice questions (A-D) matching the requested number_of_questions, and an answer key. Align question stems and distractors to the selected domain, and incorporate additional_information/reference context when provided. Keep style similar to SAT reading & writing prep and do not output JSON.",
+                    "exemplar_input": {
+                        "sat_level": "PSAT 10",
+                        "number_of_questions": "5",
+                        "domain": "Information and Ideas",
+                        "additional_information": "Focus specifically on the Central Ideas and Details skill. Create a balanced mix of question difficulties, including easy, medium, and hard items.",
+                        "attach_a_reference": ""
+                    },
+                    "exemplar_output": {
+                        "sat_ela_custom_practice": "## SAT Reading and Writing Practice\n\nSelect the best answer for each of the following reading questions:\n\n1. A botanist surveying an old urban lot found seedlings of several species growing in remarkable soil: compacted, with fragments of brick and glass, and little organic matter. She observed that some species established themselves rapidly in disturbed patches while others appeared only where small accumulations of leaf litter had gathered. From these observations she concluded that the site supports a mix of colonizing species that tolerate harsh conditions and later-arriving species that require slight improvements in microhabitat. Which statement best captures the central idea of the passage?\n\na. The botanist collected soil samples from the lot to analyze nutrient content.\nb. The urban lot contains both hardy colonizers and species that depend on improving microhabitats.\nc. Seedlings never grow well in urban lots because of bricks and glass in the soil.\nd. Leaf litter always prevents colonizing species from establishing.\n\n2. In the late nineteenth century, newspapers serializing novels sometimes altered endings to suit local tastes or publication schedules. Readers in one city protested when a popular magazine ran a truncated conclusion to a beloved story; the publisher apologized and reprinted the full ending in a subsequent issue. The incident highlights the tension between serialized fiction's need to maintain subscription rhythms and readers' expectations for complete artistic works. Which choice best states the central idea of the passage?\n\na. Publishers always printed novels without changes to keep readers satisfied.\nb. Serial publication created conflicts between timely printing and preserving an author's complete ending.\nc. Readers in the nineteenth century preferred magazines over books.\nd. Truncated conclusions improved sales by making readers subscribe longer.\n\n3. A technology education program introduced a peer-mentoring element to its robotics course. Students who had completed the course served as mentors during weekly lab sessions. After one semester, instructors reported that mentees showed faster gains in troubleshooting skills, while mentors demonstrated improved communication and leadership. The program director argued that peer mentoring benefited both groups by providing teaching practice for mentors and immediate collaborative feedback for mentees. Which choice best identifies the central idea of the passage?\n\na. Peer mentoring caused mentors to stop improving their technical skills.\nb. Adding peer mentors to the robotics course helped mentees learn troubleshooting faster and gave mentors leadership practice.\nc. Faculty should always replace lab instructors with student mentors to save costs.\nd. Robotics courses cannot teach communication skills.\n\n4. Archaeologists excavating a coastal settlement noted a sudden shift in pottery styles in layers dated to roughly the same year across multiple nearby sites. They proposed that the change reflected a rapid cultural adoption of new aesthetic preferences, perhaps tied to a shared religious festival or new trade connections. An alternative explanation was that a single influential artisan migrated and introduced the style, which then spread gradually. Which choice best captures the central idea of the passage?\n\na. Pottery styles always change because of migrating artisans.\nb. A sudden, regionwide change in pottery could reflect either broad cultural adoption or the influence of a single migrating artisan.\nc. Dating pottery layers is impossible and yields no useful information.\nd. Trade connections never affect artistic styles.\n\n5. A small coastal town instituted a nighttime light-reduction policy to protect nesting sea turtles. Officials dimmed some streetlights and installed turtle-friendly fixtures near beaches; business owners were required to shield outdoor lighting. In the year after implementation, volunteer patrollers recorded a substantial rise in successful hatchling journeys to the sea. Town leaders concluded that the lighting changes had directly improved hatchling survival. Which choice most accurately states the central idea of the passage?\n\na. Reducing beachfront light was followed by more hatchlings reaching the sea, suggesting the policy improved survival.\nb. The town banned all outdoor lights, which harmed tourism.\nc. Volunteer patrollers caused the increase in hatchling success by walking on the beach.\nd. Hatchlings prefer well-lit beaches and avoid dark sand.\n\nAnswer Key:\n\n1. b\n2. b\n3. b\n4. b\n5. a\n\nReview this closely for accuracy, especially in math, as AI may have limitations."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 71: Advanced Learning Plan (ALP)
+            "template": {
+                "slug": "advanced-learning-plan-alp",
+                "name": "Advanced Learning Plan (ALP)",
+                "description": "Generate draft of an Advanced Learning Plan (ALP) for a student.",
+                "category": "behavior",
+                "subject_default": None,
+                "grade_bands_supported": ["6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the student's grade level.",
+                            "enum": [
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade"
+                            ],
+                        },
+                        "student_description": {
+                            "type": "string",
+                            "title": "Description of Student:",
+                            "description": "List the student's relevant observed behaviors, academic performance interests and passions, social-emotional needs, and strengths.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "student_description"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "AdvancedLearningPlanOutput",
+                    "required": ["alp_draft"],
+                    "properties": {
+                        "alp_draft": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown advanced learning plan draft with goals, interventions, accommodations, and progress monitoring.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a detailed Advanced Learning Plan (ALP) draft with actionable goals and supports based on student profile information.",
+                    "context": "Output must match output_schema exactly with one field: alp_draft. Use markdown and substantial detail. Include sections in this order: **Advanced Learning Plan Draft**, **Present Levels of Performance**, **Strengths and Needs**, **Goals**, **Programming Options and Interventions**, **Accommodations and Modifications**, **Progress Monitoring**, and **Parent and Student Involvement**. Keep language strengths-based, practical, and school-safe. Avoid real names and use placeholder references. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "9th grade",
+                        "student_description": "Loves solving advanced math problems, seeks extra challenges. Enthusiastic about computer games, especially strategy ones. Combines math and coding in own projects. Quickly finishes math work, seeks more challenges. Struggles when bored in class exhibiting disruptive behavior"
+                    },
+                    "exemplar_output": {
+                        "alp_draft": "Advanced Learning Plan Draft\n\nPresent Levels of Performance\n\n[Student Name] is a 9th-grade learner who demonstrates advanced mathematical reasoning and strong interest in coding and strategy-based computer games. They complete assigned math tasks quickly and independently, routinely seeking additional challenge problems and integrating coding into self-directed projects. Socially, they are enthusiastic but show signs of disengagement in whole-class settings when work is unstimulating, sometimes producing off-task or disruptive behaviors. Motivation increases when tasks combine mathematics with programming, problem-solving, or competitive/strategic elements.\n\nStrengths and Needs:\n\nStrengths:\n- Rapid mastery of grade-level math procedures and strong problem-solving persistence.\n- Applies mathematical thinking to coding projects; comfortable with algorithms and logical structures.\n- High intrinsic motivation for challenge, strategy, and competition.\n\nNeeds:\n- More consistently challenging, meaningful math tasks to prevent boredom and resultant disruptive behavior.\n- Opportunities to connect math to coding and real-world problem contexts.\n- Structured outlets for enrichment that teach self-management when class-level pacing is slower.\n\nGoals:\n\n1. Academic (Mathematics & STEM integration): Given advanced problem sets or open-ended projects, [Student Name] will apply higher-level algebraic and problem-solving strategies (e.g., modeling with functions, systems, or basic discrete math) to complete tasks at least 3 times per grading period, demonstrating correct reasoning and clear justification on 4 out of 5 rubric criteria measured for depth and accuracy.\n\n2. Affective / Self-Regulation: When classroom instruction is at grade-level pace, [Student Name] will use at least two pre-approved independent challenge options (compacting menu, coding problem set, or extension project) in 90% of lessons where core work is completed early, reducing observed disruptive incidents by 75% across a quarter.\n\n3. Enrichment / Extension: Over the semester, [Student Name] will design and complete a self-directed math + coding project (e.g., algorithmic simulation, strategy-game puzzle generator) with a teacher-approved proposal, interim checkpoints, and final demonstration, meeting the project rubric (planning, implementation, mathematical accuracy, and reflection) at a proficient level.\n\nProgramming Options and Interventions:\n\n- Curriculum compacting with tiered extensions: Pre-assess and compact standard practice; replace redundant practice with tiered challenge packets or accelerated topics.\n- Independent study / Mentored project: Semester-long math + coding capstone with clear milestones, teacher mentor, and optional community/competitions (e.g., coding/math contests, local hackathon).\n- Subject acceleration and pull-out problem-solving: Weekly pull-out seminar or advanced math lab (small group) focused on higher-level algebra, discrete math, and algorithmic thinking; include opportunities for competition or publication of solutions.\n\nAccommodations and Modifications:\n\n- Compact pacing: Permission to skip routine practice after demonstrating mastery; receive alternative advanced tasks immediately.\n- Choice board of approved extension activities (coding challenges, proofs, modeling tasks) available during independent work times.\n- Structured check-in: Brief teacher check-in within the same class period when core work is finished to assign extensions and confirm appropriate behavior.\n- Behavior-support plan: Agreed signal and quick redirection strategies to replace disruptive behavior (e.g., prearranged break to work on enrichment at a supervised station).\n\nProgress Monitoring:\n\nMonitor academic progress through rubric-scored challenge tasks, checkpoints on the independent project (proposal, midpoint demo, final presentation), and performance on higher-level assessments (monthly problem sets). Track frequency of early-completion extension use and incidents of disruptive behavior in a weekly teacher log. Review data formally each quarter with adjustments to challenge level, mentoring frequency, or programming options as needed.\n\nParent and Student Involvement:\n\nStudent will co-create the project proposal and select preferred extension options; they will reflect in written logs after major tasks. Parents will be informed of the ALP, invited to review the project plan, and asked to encourage project work at home (e.g., scheduling work time, providing resources). Parents and student will attend quarterly check-ins in person or virtually with the teacher to review progress, celebrate successes, and revise goals or supports.\n\nReview this closely for accuracy, especially in math, as AI may have limitations."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 72: BIP Generator
+            "template": {
+                "slug": "bip-generator",
+                "name": "BIP Generator",
+                "description": "Generate a draft Behavior Intervention Plan (BIP) to support a student.",
+                "category": "behavior",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the student's grade level.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "behavior_context": {
+                            "type": "string",
+                            "title": "Description of strengths, problem behaviors, function of behaviors, etc.",
+                            "description": "The student's strengths, problem behaviors, function of behaviors, etc. Do not use names or any other personal identifying information when describing the student's behavior.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "behavior_context"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "BIPGeneratorOutput",
+                    "required": ["behavior_intervention_plan"],
+                    "properties": {
+                        "behavior_intervention_plan": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Behavior Intervention Plan in markdown with practical strategies, progress criteria, and follow-up steps.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a clear, actionable Behavior Intervention Plan (BIP) based on the provided student strengths, behavior concerns, and likely behavior function.",
+                    "context": "Output must match output_schema exactly with one field: behavior_intervention_plan. Use human-readable markdown only. Start with ## Behavior Intervention Plan. Then include these sections in this order and with substantial detail: **Behavior Description**, **Summary Statement**, **Interventions** (numbered list with at least 4 actions), **Results**, **Behavior Goals** (numbered list), **Teaching and Support Plan** (numbered list), **Description of Success Criteria** (include bullets for criteria and consequences), **Fidelity Measurement** (bullets), and **Follow-Up Activities**. Keep language school-appropriate, practical, and non-judgmental. Do not include personally identifying information. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "behavior_context": "The student in third grade displays consistent non-compliance during classroom activities, often ignoring or verbally refusing instructions. This behavior, observed in about 80% of direct participation requests, disrupts class flow and requires individual intervention. Additionally, the student frequently exhibits intense tantrums, especially during routine transitions, characterized by screaming, crying, and occasionally throwing objects. These episodes, occurring roughly three times per week, require intervention for calming and reintegration into class activities."
+                    },
+                    "exemplar_output": {
+                        "behavior_intervention_plan": "## Behavior Intervention Plan\n\n**Behavior Description:** The student consistently displays non-compliance during classroom activities, often ignoring or verbally refusing instructions. Additionally, the student frequently exhibits intense tantrums during transitions, characterized by screaming, crying, and occasionally throwing objects.\n\n**Summary Statement:** The function of the non-compliance behavior appears to be avoidance of tasks, while the tantrums serve as a means of seeking attention or escaping from transitions.\n\n**Interventions:**\n\n1. Utilized visual schedules and checklists for task completion.\n2. Implemented a token economy system to reinforce positive behaviors.\n3. Provided a designated safe space for self-regulation during tantrums.\n4. Taught coping strategies for managing frustration and anxiety.\n\n**Results:** The student's compliance improved by 30% following the implementation of visual supports and the token economy system. The tantrums reduced in frequency by 50% with the introduction of the safe space and coping strategies.\n\n**Behavior Goals:**\n\n1. Increase compliance to 90% during classroom activities.\n2. Reduce tantrums to once per week during routine transitions.\n\n**Teaching and Support Plan:**\n\n1. Teach the student self-regulation techniques and coping strategies during calm periods.\n2. Provide explicit instruction and modeling of expected behaviors.\n3. Implement a crisis intervention plan for managing severe tantrums, including de-escalation techniques and staff support.\n\n**Description of Success Criteria:**\n\n- Compliance goal met for 3 consecutive weeks.\n- Tantrums reduced to once per week for 4 consecutive weeks.\n\nConsequences:\n\n- Positive reinforcement and praise for meeting behavioral goals.\n- Additional support and re-teaching if goals are not met.\n\n**Fidelity Measurement:**\n\n- Behavior data collection using ABC (Antecedent, Behavior, Consequence) charts.\n- Regular progress monitoring through observations and checklists.\n\n**Follow-Up Activities:** Regular review and adjustments to the behavior intervention plan based on ongoing data analysis and observations. Collaborate with student support team and parents for consistent implementation across settings."
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 48: Social Stories
             "template": {
                 "slug": "social-stories",
                 "name": "Social Stories",
@@ -6978,6 +8795,1363 @@ def get_template_data() -> list[Dict[str, Any]]:
                     },
                     "exemplar_output": {
                         "observation_feedback": "## Post-observation feedback — 7th grade ELA (after lunch)\n\n### **Areas of strength (keep it up!)**\n\n- **Relationships and tone:** Your warm greetings and use of student names set a positive entry routine—especially valuable right after lunch.\n- **Clarity of purpose:** Posting and revisiting the learning target helped students orient to the \"why\" of the lesson.\n- **Discourse structure:** Think–pair–share before whole-group discussion is a strong lever for voice and rehearsal—keep this as a signature move.\n\n### **Opportunities for growth / next steps**\n\n- **Wait time & thinking space**\n  - **Bite-sized next step:** After you ask a question, silently count **4–5** (or tap a sticky note five times) before taking a response. Invite \"turn and talk\" as the default when a question is heavy.\n- **Equitable participation in groups**\n  - **Bite-sized next step:** Assign rotating roles (**Recorder**, **Speaker**, **Timekeeper**) for 6–8 minutes and use a visible participation checklist you scan once mid-task.\n- **Exit ticket alignment**\n  - **Bite-sized next step:** Show the exit prompt **3 minutes** early and read success criteria aloud: *I will look for …* Then collect—aim to sort responses within **48 hours** to match your school priority.\n\n### **Suggested follow-up conversation**\n\n- Which question in today's lesson do you want students to wrestle with longer next time?\n- What is one small data point from the exit ticket that would change your warm-up tomorrow?\n\n---\n\n*Review this closely for accuracy and fit with your school's observation rubric and labor agreements—AI-generated drafts have limitations and should be edited by a human before sharing formally.*",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 55: Social Media Post
+            "template": {
+                "slug": "social-media-post",
+                "name": "Social Media Post",
+                "description": "Generate a strong social media post to share on popular platforms.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "description_of_post_and_relevant_details": {
+                            "type": "string",
+                            "title": "Description of Post and Relevant Details",
+                            "description": "Include the event, date/time, audience, call-to-action, and any school-specific details to include.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["description_of_post_and_relevant_details"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SocialMediaPostOutput",
+                    "required": ["social_posts"],
+                    "properties": {
+                        "social_posts": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown social post variants for key platforms.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Create platform-ready school communication copy from a short event description.",
+                    "context": "Output must match output_schema exactly with one field: social_posts. Use markdown with these headings in this exact order: **Twitter**, **Facebook**, **Instagram**, **LinkedIn**. Under each heading, write one polished post tailored to that platform's voice and length norms while keeping all factual details consistent. Include 1-3 relevant hashtags per platform when natural (not spammy). Keep tone warm, inclusive, and school-safe. Add a clear call to action where appropriate. Do not invent event facts beyond the user input; if details are missing, keep phrasing general instead of guessing. Do not output JSON.",
+                    "exemplar_input": {
+                        "description_of_post_and_relevant_details": "Reminder for Back to School night that is happening on Thursday, September 28th at 8pm",
+                    },
+                    "exemplar_output": {
+                        "social_posts": "**Twitter**\n\nBack-to-School Night this Thursday, Sept. 28 at 8 PM - join us to meet teachers and learn about the year ahead! Questions welcome. #BackToSchool #MeetTheTeacher\n\n**Facebook**\n\nReady for Back-to-School Night? Join us this Thursday, September 28 at 8:00 PM to meet your child's teachers, learn about class routines, and hear what's planned for the year. Bring your questions - we can't wait to see you! #BackToSchool #SchoolCommunity\n\n**Instagram**\n\nWant a sneak peek at the school year? Back-to-School Night is Thursday, Sept. 28 at 8 PM. Meet teachers, explore classroom plans, and ask your questions. Bring your school spirit! #BackToSchoolNight #MeetTheTeacher #SchoolYear\n\n**LinkedIn**\n\nJoin us for Back-to-School Night on Thursday, September 28 at 8:00 PM. This is an opportunity to connect with teachers, understand classroom goals, and engage in your child's academic plan for the year. Your presence and questions make a difference. #Education #ParentEngagement #SchoolCommunity",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 56: Teacher Jokes
+            "template": {
+                "slug": "teacher-jokes",
+                "name": "Teacher Jokes",
+                "description": "Generate jokes for your class based on any topic.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Choose the grade to keep the humor age-appropriate.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "additional_customization": {
+                            "type": "string",
+                            "title": "Additional Customization (Optional)",
+                            "description": "Optional topic, subject, or style notes (e.g., grammar, fractions, science lab, puns).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TeacherJokesOutput",
+                    "required": ["jokes"],
+                    "properties": {
+                        "jokes": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown list of classroom-safe jokes.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate short, classroom-safe jokes for teachers, tailored by grade and optional topic customization.",
+                    "context": "Output must match output_schema exactly with one field: jokes. Use markdown. Start with a short heading (## ...) such as \"Grammar Jokes for 5th Graders\" based on grade and optional topic. Then provide exactly 3 numbered jokes (1., 2., 3.). Keep jokes clean, positive, and school-appropriate; avoid sarcasm, stereotypes, insults, politics, religion, or adult themes. Prefer simple puns/wordplay students can understand at the chosen grade level. If additional_customization is provided, weave that topic naturally into all jokes. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "5th grade",
+                        "additional_customization": "Make it about grammar",
+                    },
+                    "exemplar_output": {
+                        "jokes": "## Grammar Jokes for 5th Graders\n\n1. Why did the verb break up with the noun? Because it didn't agree with her!\n2. What do you call a sleeping apostrophe? A comma, because it's taking a pause!\n3. Why do commas and apostrophes make such good superheroes? They always come to the rescue in a sentence!",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 57: Exemplar & Non-Exemplar
+            "template": {
+                "slug": "exemplar-and-non-exemplar",
+                "name": "Exemplar & Non-Exemplar",
+                "description": "Generate exemplar and non-exemplar responses to specific assignments.",
+                "category": "assessment",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Choose the grade to calibrate complexity, vocabulary, and structure.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "assignment_prompt": {
+                            "type": "string",
+                            "title": "Assignment Prompt",
+                            "description": "The exact student-facing prompt or task directions.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "standard_and_or_objective": {
+                            "type": "string",
+                            "title": "Standard and/or Objective (optional)",
+                            "description": "Optional standard code(s) or objective statement to anchor alignment.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "rubric_and_or_criteria_for_success": {
+                            "type": "string",
+                            "title": "Rubric and / or Criteria For Success",
+                            "description": "Rubric language or success criteria to distinguish strong vs weak responses.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "assignment_prompt",
+                        "rubric_and_or_criteria_for_success",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ExemplarAndNonExemplarOutput",
+                    "required": ["comparison_response"],
+                    "properties": {
+                        "comparison_response": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown output containing exemplar and non-exemplar responses with brief rationale.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Create one high-quality exemplar and one intentionally weaker non-exemplar so teachers can model quality using assignment criteria.",
+                    "context": "Output must match output_schema exactly with one field: comparison_response. Use markdown with this order: **Exemplary Response:**, then the exemplar paragraph(s); then **Why this is exemplary:** (1 concise paragraph tied to rubric/criteria). Next **Non-Exemplary Response:** with a clearly weaker but school-appropriate response that misses key criteria. Then **Why this is non-exemplary:** (1 concise paragraph naming specific gaps). Keep both responses on the same assignment topic and grade level. Do not include harmful, offensive, or policy-violating content. If standard/objective is provided, align analysis to it. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "9th grade",
+                        "assignment_prompt": "Analyze the major theme of the story and give me three supporting pieces of evidence from the text that supports your analysis of the theme of the story.",
+                        "standard_and_or_objective": "RL.9-10.2",
+                        "rubric_and_or_criteria_for_success": "1 paragraph with three supporting pieces of evidence from a text that supports your analysis of the theme of the text.",
+                    },
+                    "exemplar_output": {
+                        "comparison_response": "**Exemplary Response:**\nIn \"The Necklace,\" the major theme is the danger of pride and the consequences of valuing appearance over honesty; Mathilde's desire to appear wealthy drives every choice that leads to her ruin. First, Mathilde's dissatisfaction with her middle-class life is shown when she obsessively imagines a more glamorous existence and refuses the simple pleasures her husband offers, demonstrating that her pride fuels unrealistic expectations. Second, she borrows an expensive necklace to keep up appearances at the ball, a decision that directly links her pride to the pivotal action that causes her downfall. Third, after losing the necklace she and her husband choose to repay the debt by living in poverty for ten years - an ironic reversal that shows how the effort to maintain a false image results in genuine loss, emphasizing the theme that placing appearance above truth brings harsh consequences.\n\n**Why this is exemplary:**\nThis response states a clear theme and provides three specific pieces of textual evidence tied directly to the analysis, all within one cohesive paragraph as required.\n\n**Non-Exemplary Response:**\nThe story is about being proud. Mathilde wanted to be rich and she went to a ball. She lost the necklace and they had to pay for it and became poor. It was sad.\n\n**Why this is non-exemplary:**\nThe response is vague, offers only one weakly connected piece of evidence, lacks a clear analysis linking details to the theme, and does not include three distinct supporting pieces of evidence in a single paragraph.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 58: Vocabulary Based Texts
+            "template": {
+                "slug": "vocabulary-based-texts",
+                "name": "Vocabulary Based Texts",
+                "description": "Generate custom texts that include vocabulary words for your class to practice them in context.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select grade level to calibrate vocabulary depth and sentence complexity.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "text_length": {
+                            "type": "string",
+                            "title": "Text Length",
+                            "description": "Choose how long the generated text should be.",
+                            "enum": ["1 paragraph", "2 paragraphs", "3 paragraphs", "1 page"],
+                        },
+                        "vocabulary_to_include": {
+                            "type": "string",
+                            "title": "Vocabulary to include",
+                            "description": "List target vocabulary words or phrases separated by commas.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "topic_of_text": {
+                            "type": "string",
+                            "title": "Topic of Text",
+                            "description": "Specify the content topic, theme, person, event, or concept for the passage.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "text_length",
+                        "vocabulary_to_include",
+                        "topic_of_text",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "VocabularyBasedTextsOutput",
+                    "required": ["vocabulary_text"],
+                    "properties": {
+                        "vocabulary_text": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown passage that naturally includes the requested vocabulary words.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a coherent informational or narrative passage on a user topic that naturally includes target vocabulary words.",
+                    "context": "Output must match output_schema exactly with one field: vocabulary_text. Use markdown. Start with a clear title line (## ...). On the next line, add **Vocabulary Words Included:** followed by the requested list (preserve words/spelling). Then write the passage with the requested length. Use grade-appropriate readability and factual tone. Integrate each vocabulary term naturally in context (avoid awkward keyword stuffing). Keep content school-safe and free of harmful themes. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "4th grade",
+                        "text_length": "1 page",
+                        "vocabulary_to_include": "Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto, Inner Planets, Outer Planets, Sun",
+                        "topic_of_text": "Planets in the Solar System and the order of the inner and outer planets",
+                    },
+                    "exemplar_output": {
+                        "vocabulary_text": "## Planets in the Solar System and the Order of the Inner and Outer Planets\n\n**Vocabulary Words Included:** Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto, Inner Planets, Outer Planets, Sun\n\nThe Solar System is made up of the **Sun** and all the objects that travel around it. There are eight planets in our Solar System, and they are grouped into two sets called the **Inner Planets** and the **Outer Planets**.\n\nThe **Inner Planets** are closest to the Sun. They are **Mercury**, **Venus**, **Earth**, and **Mars**. These planets are rocky and smaller than the outer planets. Mercury is the closest planet to the Sun and is very hot during the day. Venus has thick clouds and is even hotter than Mercury. Earth is our home and has water, air, and life. Mars is a red planet with large volcanoes and deep valleys.\n\nAfter Mars comes a region with many asteroids, and beyond that are the **Outer Planets**. The outer planets are much larger and made mostly of gas or ice. The first outer planet is **Jupiter**, the biggest planet in the Solar System. Jupiter has a huge storm called the Great Red Spot. Next is **Saturn**, known for its beautiful rings. After Saturn comes **Uranus**, which spins in a tilted way. The last outer planet is **Neptune**, a cold, dark-blue world far from the Sun.\n\nLong ago, **Pluto** was called the ninth planet. Today, scientists classify Pluto as a dwarf planet because it is smaller and very different from the major planets. Even though Pluto is not one of the main planets now, it is still an interesting part of what we study about space.\n\nLearning about the planets helps us understand how our world fits into a much larger universe, from the hot, rocky inner planets to the giant outer planets that orbit the Sun.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 59: Lesson Hook
+            "template": {
+                "slug": "lesson-hook",
+                "name": "Lesson Hook",
+                "description": "Get suggestions for a 'hook' to engage students in your lesson based on the topic or standard.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for developmentally appropriate engagement strategies.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "what_you_are_teaching": {
+                            "type": "string",
+                            "title": "What You're Teaching - Topic, Objective, Standard, or Text",
+                            "description": "Paste the topic, standard, objective, or text excerpt the hook should launch.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "what_you_are_teaching"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "LessonHookOutput",
+                    "required": ["lesson_hooks"],
+                    "properties": {
+                        "lesson_hooks": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown list of engaging lesson hook options.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate multiple high-engagement lesson hook options that connect directly to the teaching target.",
+                    "context": "Output must match output_schema exactly with one field: lesson_hooks. Use markdown with a numbered list of exactly 3 hook options. For each option, include a bold hook name followed by concise bullets for Setup, Activity, Materials/management, and Why it hooks this grade. Keep ideas practical, school-safe, and feasible in typical classrooms. Align all hooks to the provided topic/standard and grade. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "what_you_are_teaching": "HS-PS1- Use the periodic table as a model to predict the relative properties of elements based on the patterns of electrons in the outermost energy level of atoms.",
+                    },
+                    "exemplar_output": {
+                        "lesson_hooks": "1. **Element Speed-Dating (2-4 minutes setup, 5-7 minutes activity)**\n- **Setup:** Prepare index cards with element names, symbols, atomic numbers, and a quick note about valence electrons.\n- **Activity:** Students rotate in quick rounds, introducing their \"element\" and predicting one likely property from table position.\n- **Materials/management:** Index cards, timer, and brief share-out after rotations.\n- **Why it hooks this grade:** Fast pacing and social movement keep energy high while practicing evidence-based predictions.\n\n2. **Mystery Element Lab Stations (5 minutes setup, 8-10 minutes activity)**\n- **Setup:** Place clue cards at 3-4 stations (e.g., group/period clues and simple property statements).\n- **Activity:** Teams use periodic-table patterns to infer which element matches each clue set, then justify reasoning.\n- **Materials/management:** Printed clues, periodic tables, response sheet.\n- **Why it hooks this grade:** Puzzle-solving builds curiosity and makes abstract patterns feel concrete.\n\n3. **Build-a-Bond Quick Demo (3 minutes setup, 7 minutes activity)**\n- **Setup:** Project a periodic table and select a few sample elements from different groups.\n- **Activity:** Students use hand signs or mini cards to represent valence-electron behavior and predict likely reactivity.\n- **Materials/management:** Projector or chart, mini cards/whiteboards for fast checks.\n- **Why it hooks this grade:** Short predictions plus immediate feedback create confidence and spark discussion before direct instruction.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 60: Prompt Assistant
+            "template": {
+                "slug": "prompt-assistant",
+                "name": "Prompt Assistant",
+                "description": "Write an AI prompt and get feedback on it to improve your prompting skills.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "what_would_you_like_the_ai_to_do": {
+                            "type": "string",
+                            "title": "What would you like the AI to do? (your prompt)",
+                            "description": "Paste your draft prompt or describe what you want the AI assistant to do.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["what_would_you_like_the_ai_to_do"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "PromptAssistantOutput",
+                    "required": ["prompt_feedback"],
+                    "properties": {
+                        "prompt_feedback": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown output with improved prompt and explanation of improvements.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Improve a user's draft prompt and explain the key upgrades clearly.",
+                    "context": "Output must match output_schema exactly with one field: prompt_feedback. Use markdown. Start with **Improved Prompt** and provide a polished, copy-ready version of the user's prompt that adds role clarity, constraints, expected output format, and quality/safety guardrails where helpful. After that, add **How the prompt was improved** with concise bullet points explaining specific upgrades in plain language. Keep the improved prompt faithful to user intent, school-safe, and practical for educators. Do not output JSON.",
+                    "exemplar_input": {
+                        "what_would_you_like_the_ai_to_do": "Chatbot that helps students learn about the Civil War",
+                    },
+                    "exemplar_output": {
+                        "prompt_feedback": "**Improved Prompt**\n\nYou are an educational chatbot designed to help high school students understand the American Civil War. Your role is to:\n\n1. **Explain key concepts** using clear, accessible language appropriate for grades 9-12.\n2. **Answer student questions** about causes, major battles, key figures, and consequences of the war.\n3. **Provide historical context** that connects events to broader themes (e.g., slavery, states' rights, union).\n4. **Encourage critical thinking** by asking follow-up questions when appropriate (e.g., \"Why do you think this was a turning point?\").\n5. **Correct misconceptions** gently and provide accurate information.\n6. **Stay focused** on the Civil War era (1861-1865) and avoid unrelated topics.\n\nWhen responding:\n\n- Use grade-appropriate vocabulary and sentence structure.\n- Keep explanations concise unless the student asks for more detail.\n- Cite specific dates, battles, or figures when relevant.\n- Acknowledge different historical perspectives when appropriate.\n\n**How the prompt was improved**\n\n- Added a clear role and audience so the AI calibrates tone and depth.\n- Broke the goal into concrete responsibilities (explain, answer, provide context, encourage thinking, correct misconceptions).\n- Added boundaries to keep responses focused on the Civil War and avoid drift.\n- Included response-quality guidelines (clarity, concise output, factual specificity, perspective awareness) for better consistency.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 61: Behavior Intervention Suggestions
+            "template": {
+                "slug": "behavior-intervention-suggestions",
+                "name": "Behavior Intervention Suggestions",
+                "description": "Generate suggestions for intervention based on the behaviors of a student that needs support.",
+                "category": "behavior",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select grade level to make intervention suggestions developmentally appropriate.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "areas_to_support": {
+                            "type": "string",
+                            "title": "Areas to Support",
+                            "description": "Describe student behaviors needing support and context. Do not include names or other personally identifying information.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "areas_to_support"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "BehaviorInterventionSuggestionsOutput",
+                    "required": ["intervention_plan"],
+                    "properties": {
+                        "intervention_plan": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown behavior support suggestions with actionable interventions.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate practical, strengths-based behavior intervention ideas from observed support needs.",
+                    "context": "Output must match output_schema exactly with one field: intervention_plan. Use markdown. Start with **Behaviors to support:** and restate the concern in neutral language. Then provide exactly 3 numbered intervention strategies. For each strategy, include a bold strategy name followed by a clear explanation of implementation and why it helps for the selected grade level. Keep tone supportive, non-stigmatizing, and school-safe. Do not diagnose conditions, prescribe medication, or provide legal/medical claims. End with a short note encouraging progress monitoring and collaboration with caregivers/support staff. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "3rd grade",
+                        "areas_to_support": "Student hides every time teacher turns their back",
+                    },
+                    "exemplar_output": {
+                        "intervention_plan": "**Behaviors to support:** Student hides every time teacher turns their back.\n\n1. **Check-In Signal and Safe Spot** - Teach a simple, discreet signal the student can use when they feel anxious when the teacher turns away (for example, placing a sticker on their desk or tapping their knee). Pair this with an assigned \"safe spot\" in the classroom (a defined area at their desk or a nearby corner) where the student can momentarily look toward or reposition themselves without leaving the learning area. Explain and practice the signal and safe spot through role-play so the student learns when and how to use them. **Why it helps:** This gives the student a predictable, low-stakes way to communicate anxiety and regain a sense of control without disrupting instruction.\n\n2. **Gradual Exposure with Teacher-Back Routine** - Create a stepped plan that gradually increases the time the teacher turns their back while paired with positive reinforcement. Start with very short, supported moments (teacher turns partly away for 2-3 seconds while standing close and giving a calming cue), then slowly extend duration and distance as the student tolerates it. Use praise or tokens at each successful step. **Why it helps:** Gradual exposure reduces fear by building tolerance in small, manageable steps and pairing teacher movement with predictable positive outcomes.\n\n3. **Teach and Reinforce Attention-Seeking Alternatives** - Explicitly teach age-appropriate ways to get the teacher's attention that do not involve hiding (raising hand, using a small attention card, or using the agreed check-in signal). Practice these alternatives in short role-play sessions and celebrate when the student uses them instead of hiding. **Why it helps:** The student replaces hiding with a taught strategy and gains social-emotional tools that transfer to other classroom moments.\n\n*Note: Monitor progress with simple data (for example, frequency of hiding instances per day) and collaborate with caregivers and support staff to ensure consistency across settings.*",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 62: Class Newsletter
+            "template": {
+                "slug": "class-newsletter",
+                "name": "Class Newsletter",
+                "description": "Generate a custom newsletter to send to families.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "celebrations_from_the_week": {
+                            "type": "string",
+                            "title": "Celebrations from the week",
+                            "description": "Share student or class highlights from the week.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "important_announcements": {
+                            "type": "string",
+                            "title": "Important Announcements",
+                            "description": "List key upcoming reminders, dates, or family-facing notices.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "additional_content": {
+                            "type": "string",
+                            "title": "Additional Content (Optional)",
+                            "description": "Optional extra notes, gratitude messages, volunteer asks, or classroom updates.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["celebrations_from_the_week", "important_announcements"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ClassNewsletterOutput",
+                    "required": ["newsletter"],
+                    "properties": {
+                        "newsletter": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown class newsletter ready to send to families.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Draft a warm, clear class newsletter for families using celebration highlights and school announcements.",
+                    "context": "Output must match output_schema exactly with one field: newsletter. Use markdown. Start with a greeting like **Dear Families,** then include headings in this order: **Important Announcements**, **Celebrations from the Week**, and **Additional Information**. Use concise bullets under each heading where useful. Keep tone welcoming, family-friendly, and school-safe. Preserve all concrete dates/details from user input; do not invent sensitive information. End with a warm closing and simple signature placeholders (for example [Your Name], [Your School Name]). Do not output JSON.",
+                    "exemplar_input": {
+                        "celebrations_from_the_week": "Johnny won the spelling bee, the class had a great time at the field trip to the zoo",
+                        "important_announcements": "school fair on Friday, no school on Monday, don't forget the coat drive happening all month",
+                        "additional_content": "",
+                    },
+                    "exemplar_output": {
+                        "newsletter": "**Dear Families,**\n\nI hope this message finds you well. We are grateful for the warmth and support you bring to our school community each day.\n\n**Important Announcements**\n\n- **School Fair - Friday:** Our school fair is this Friday. Families are invited to join us for games, food, and fun.\n- **No School - Monday:** Reminder that there will be no school on Monday.\n- **Coat Drive - All Month:** Our coat drive continues throughout the month. Thank you for donating gently used coats for families in need.\n\n**Celebrations from the Week**\n\n- **Spelling Bee:** Congratulations to Johnny for winning the spelling bee.\n- **Field Trip:** Our class had a wonderful time at the zoo and showed excellent curiosity and behavior.\n\n**Additional Information**\n\n- Thank you for your continued partnership and support.\n- If you have questions, please reach out anytime.\n\nWarmly,\n[Your Name]\n[Your School Name]",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 63: Assignment Scaffolder
+            "template": {
+                "slug": "assignment-scaffolder",
+                "name": "Assignment Scaffolder",
+                "description": "Break assignments down into manageable steps for students.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level to calibrate language, rigor, and independence.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "assignment_prompt": {
+                            "type": "string",
+                            "title": "Assignment Prompt",
+                            "description": "Paste the full assignment directions students are expected to complete.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "assignment_prompt"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "AssignmentScaffolderOutput",
+                    "required": ["scaffolded_assignment"],
+                    "properties": {
+                        "scaffolded_assignment": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown step-by-step scaffold students can follow to complete the task.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Transform an assignment into clear, student-friendly scaffolded steps.",
+                    "context": "Output must match output_schema exactly with one field: scaffolded_assignment. Use markdown. Start with a short title indicating this is a scaffolded assignment for the selected grade. Include a brief assignment topic line, then break the task into numbered steps with explicit actions and checkpoints. Keep language student-facing, concrete, and encouraging. End with a short reminder or success checklist. Keep content school-safe and aligned to the exact assignment prompt without changing core expectations. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "10th grade",
+                        "assignment_prompt": "A story has to be told by somebody. Compare in detail your impressions of the \"story-tellers\" in two or three novels or short stories that you have studied. Was the \"story-teller\" the same as the writer (implicitly or explicitly) or not? How does this question influence your reading?",
+                    },
+                    "exemplar_output": {
+                        "scaffolded_assignment": "## Scaffolded Assignment for 10th Grade\n\n**Assignment Topic:** Comparing \"Story-Tellers\" in Novels and Short Stories\n\nThis assignment asks you to compare the \"story-tellers\" in two or three texts and explain whether the narrator is the same as the writer, either explicitly or implicitly.\n\n1. **Choose Your Texts**\n   - Pick two or three novels or short stories you have studied.\n   - Make sure the texts give you enough evidence to compare narrators.\n\n2. **Identify the Story-Teller in Each Text**\n   - Note who is telling the story in each text.\n   - Record clues about point of view, tone, and what the narrator knows.\n\n3. **Compare the Story-Tellers**\n   - Use a chart or notes to compare similarities and differences.\n   - Focus on voice, reliability, distance from events, and attitude.\n\n4. **Analyze Narrator vs. Writer**\n   - Decide whether the narrator appears to be the same as the writer in each text.\n   - Explain whether the text makes this explicit or if you infer it.\n\n5. **Explain How This Affects Reading**\n   - Write how narrator choice influences meaning, trust, and interpretation.\n   - Use specific examples from each text.\n\n6. **Draft Your Response**\n   - Organize your ideas into clear paragraphs.\n   - Include evidence and analysis, not just summary.\n\n7. **Revise and Check**\n   - Confirm you answered all parts of the prompt.\n   - Check for clear comparisons, strong evidence, and accurate writing.\n\n**Quick Success Checklist**\n- I compared narrators across two or three texts.\n- I explained narrator vs. writer clearly.\n- I used text evidence to support my analysis.\n- I showed how narrator choice influences reading.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 64: Sentence Starters
+            "template": {
+                "slug": "sentence-starters",
+                "name": "Sentence Starters",
+                "description": "Provide sentence starters for any topic, assignment, standard, or objective.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level so sentence stems match student language needs.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "assignment_topic_question_description_standard": {
+                            "type": "string",
+                            "title": "Assignment, topic, question, description, standard",
+                            "description": "Enter the prompt, concept, question, or standard the sentence starters should support.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "assignment_topic_question_description_standard",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SentenceStartersOutput",
+                    "required": ["sentence_starters"],
+                    "properties": {
+                        "sentence_starters": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown list of sentence starter stems for student responses.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Create concise, student-friendly sentence starters aligned to a specific task or concept.",
+                    "context": "Output must match output_schema exactly with one field: sentence_starters. Use markdown. Start with a short heading that restates the topic or question. Then provide a numbered list of 5-10 sentence starters (stems), each ending in an ellipsis when appropriate so students can complete them. Keep language age-appropriate for the selected grade and useful for academic responses. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "6th grade",
+                        "assignment_topic_question_description_standard": "Explain the differences between physical and chemical changes?",
+                    },
+                    "exemplar_output": {
+                        "sentence_starters": "### Explain the differences between physical and chemical changes\n\n1. When I observe a physical change, I notice that...\n2. A chemical change can be distinguished from a physical change by...\n3. An example of a physical change is when...\n4. A physical change is when...\n5. In contrast, a chemical change occurs when...\n6. One way to tell them apart is...",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 65: Science Labs
+            "template": {
+                "slug": "science-labs",
+                "name": "Science Labs",
+                "description": "Generate a custom science lab based on topics and standards of your choice.",
+                "category": "lesson_design",
+                "subject_default": "science",
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select the grade level for age-appropriate lab design and safety language.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "science_lab_description": {
+                            "type": "string",
+                            "title": "Science Lab Description",
+                            "description": "Describe the science lab you'd like to generate (topic, objective, and constraints).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "additional_context": {
+                            "type": "string",
+                            "title": "Additional Context",
+                            "description": "Optional class context, prior knowledge, grouping, timing, or materials limits.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "standards_set_to_align_to": {
+                            "type": "string",
+                            "title": "Standards Set to Align to",
+                            "description": "Optional standards framework (NGSS, CCSS, TEKS, Ontario, Florida, etc.).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "science_lab_description"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ScienceLabsOutput",
+                    "required": ["science_lab_plan"],
+                    "properties": {
+                        "science_lab_plan": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown full science lab plan including safety, procedure, and reflection.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a classroom-ready science lab plan tailored to grade level, topic, context, and standards.",
+                    "context": "Output must match output_schema exactly with one field: science_lab_plan. Use markdown. Include clear sections in this order: title, objective/introduction, materials, safety, background, procedure, data collection (if applicable), reflection questions, assessment, and standards alignment. Keep procedures practical and school-safe; include explicit safety notes and teacher facilitation details. Align to provided standards when supplied. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "6th grade",
+                        "science_lab_description": "My chemistry students are beginning their unit exploring acids and bases. I need an introductory lab that helps them understand how pH scale and acids work.",
+                        "additional_context": "My school is not one-to-one, but every student has a cell phone they can use. Students can pair up in partners. They don't have much background information in chemistry.",
+                        "standards_set_to_align_to": "NGSS",
+                    },
+                    "exemplar_output": {
+                        "science_lab_plan": "## Introduction to Acids and Bases: Testing Household Substances with Indicators\n\n### Learning Objective\nStudents will classify common substances as acidic, basic, or neutral by using indicators and interpreting evidence from color change and pH reasoning.\n\n### Materials (per group of 2-3 students)\n- pH paper or pH strips\n- Distilled water\n- White vinegar\n- Baking soda solution\n- Lemon juice\n- Diluted dish soap solution\n- Safety goggles and gloves\n- Small cups or beakers\n- Stirring sticks\n- Labels and marker\n\n### Safety\n- Wear goggles and gloves for the full activity.\n- Do not taste or directly smell substances.\n- Handle all liquids carefully and clean spills immediately.\n- Wash hands after the lab and follow classroom disposal directions.\n\n### Background\nAcids and bases are common in daily life. Acids usually have a low pH and bases usually have a high pH. Indicators help us identify whether a substance is acidic, basic, or neutral by changing color.\n\n### Procedure\n1. Put on goggles and gloves.\n2. Label each cup with one test substance.\n3. Add a small amount of each substance into its labeled cup.\n4. Dip pH paper into each sample and observe color change.\n5. Compare results to the pH key and record your findings.\n6. Discuss patterns with your partner and identify which substances are acids, bases, or neutral.\n\n### Data Collection\nCreate a table with columns: Substance, Indicator Color, Estimated pH, Acid/Base/Neutral, Evidence.\n\n### Reflection Questions\n1. Which substances were acidic? What evidence supports your claim?\n2. Which substances were basic? How do you know?\n3. Why is pH useful in science and everyday life?\n\n### Assessment\n- **Notebook check:** completed data table with evidence.\n- **Discussion participation:** students justify classifications using observations.\n- **Exit ticket:** explain one difference between acids and bases using lab evidence.\n\n### Standards Alignment (NGSS)\n- **MS-PS1-2:** Analyze and interpret data on properties of substances.\n- **MS-PS1-5:** Develop and use a model to describe how total number of atoms does not change in reactions (introductory connection to future lessons).",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 66: YouTube Video Summarizer
+            "template": {
+                "slug": "youtube-video-summarizer",
+                "name": "YouTube Video Summarizer",
+                "description": "Summarize a YouTube video in whatever length you choose.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "length_of_summary": {
+                            "type": "string",
+                            "title": "Length of summary",
+                            "description": "Choose the desired summary length (for example: 1 paragraph, 1 page, 5 bullet points, 500 words).",
+                            "enum": [
+                                "1 paragraph",
+                                "1 page",
+                                "5 bullet points",
+                                "500 words",
+                            ],
+                        },
+                        "youtube_transcript": {
+                            "type": "string",
+                            "title": "Youtube Transcript",
+                            "description": "Paste the transcript text from the video (timestamps optional).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["length_of_summary", "youtube_transcript"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "YouTubeVideoSummarizerOutput",
+                    "required": ["video_summary"],
+                    "properties": {
+                        "video_summary": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown summary of the transcript at requested length.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Summarize a pasted YouTube transcript into a concise and readable format at the requested length.",
+                    "context": "Output must match output_schema exactly with one field: video_summary. Use markdown. Start with a short title line (for example **Title:** or ## heading), then provide the summary in the requested format/length. Preserve core ideas accurately, remove filler language, and keep factual claims tied to transcript content only. If transcript appears partial, summarize what is available without inventing missing details. Do not output JSON.",
+                    "exemplar_input": {
+                        "length_of_summary": "1 paragraph",
+                        "youtube_transcript": "In this video, we're gonna learn the basics about how to add fractions. Now a lot of math books will teach you how to add fractions before they teach you how to multiply them, but here at Math Antics, we think you should learn the other way around. You remember how easy it is to multiply fractions, right? You just multiply the top numbers together, and you multiply the bottom numbers together, and you have your answer. (00:00:06 - 00:00:27)\n\nSo, you might be wondering, 'Well... can't we just do that with addition too?' ... If we added the top numbers, we'd get 2. And if we added the bottom numbers, we'd get 4 (00:00:27 - 00:00:48)\n\nBut... well that can't be right, because 2 over 4 simplifies to one-half. And if you add one-half and one-half, what should you get? ... a whole [Alarm sounds]. Uh Oh! We must have broke some sort of math rule. (00:00:48 - 00:01:10)\n\n... the order of operations requires multiplication and division before addition and subtraction. Since fractions can be seen as division problems, adding the top and bottom numbers directly breaks this rule.\n\nThe video introduces a clever trick for fractions with the same bottom numbers: add the top numbers and keep the same bottom number. For example, 1/2 + 1/2 = 2/2, which simplifies to 1 whole.\n\nThen it previews unlike fractions and says you'll need a common denominator, which will be covered in the next video.",
+                    },
+                    "exemplar_output": {
+                        "video_summary": "**Title: Basics of Adding Fractions**\n\nThe video explains how to add fractions by first showing what *not* to do: you cannot add numerators and denominators directly because fractions represent division, and operations must follow order-of-operations logic. It demonstrates why \\(\\frac{1}{2} + \\frac{1}{2}\\) cannot be solved as \\(\\frac{2}{4}\\), then introduces the correct rule for like fractions: add the top numbers while keeping the same denominator, so \\(\\frac{1}{2} + \\frac{1}{2} = \\frac{2}{2} = 1\\). The lesson closes by previewing unlike fractions, where a common denominator is needed, and notes that this process will be taught in the next video.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 67: Clear Directions
+            "template": {
+                "slug": "clear-directions",
+                "name": "Clear Directions",
+                "description": "Make your directions clearer, more concise, and sequential.",
+                "category": "communication",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select grade level so the revised directions match student reading level.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "original_directions": {
+                            "type": "string",
+                            "title": "Original Directions",
+                            "description": "Paste the original assignment directions you want rewritten.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "original_directions"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ClearDirectionsOutput",
+                    "required": ["clear_directions"],
+                    "properties": {
+                        "clear_directions": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown set of concise, sequential directions for students.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Rewrite assignment directions into clear, age-appropriate, step-by-step instructions.",
+                    "context": "Output must match output_schema exactly with one field: clear_directions. Use markdown. Begin with a short assignment heading, then present directions as a numbered sequence. Keep instructions explicit, concise, and actionable for the selected grade. Preserve the original task intent and required outcomes while improving clarity. Include simple quality-check or completion reminders at the end when useful. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "original_directions": "Write 3 paragraphs on the causes and effects of the civil war including specific examples from the primary sources",
+                    },
+                    "exemplar_output": {
+                        "clear_directions": "**Directions (7th grade - concise and sequential)**\n\n1. Write **3 paragraphs**.\n2. **Paragraph 1:** Explain the causes of the Civil War. Use at least one specific example from a primary source.\n3. **Paragraph 2:** Describe the effects of the Civil War. Use at least one specific example from a primary source.\n4. **Paragraph 3:** Connect one cause to one effect and explain how they are related.\n5. Use clear sentences and include the title/date of each primary source you cite.\n6. Check your work for grammar and make sure each paragraph has 3-6 sentences.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 68: SEL Lesson Plan
+            "template": {
+                "slug": "sel-lesson-plan",
+                "name": "SEL Lesson Plan",
+                "description": "Generate a custom social emotional learning (SEL) lesson plan for students.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select grade level to align SEL language and lesson complexity.",
+                            "enum": [
+                                "Kindergarten",
+                                "1st grade",
+                                "2nd grade",
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "topic_standard_objective": {
+                            "type": "string",
+                            "title": "Topic, standard, objective (be as specific as possible)",
+                            "description": "Describe the SEL topic, target behavior, or standard/objective for the lesson.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "sel_competency": {
+                            "type": "string",
+                            "title": "SEL Competency",
+                            "description": "Select the primary SEL competency focus.",
+                            "enum": [
+                                "Self-Awareness - Helping students recognize and understand their emotions, strengths, and weaknesses.",
+                                "Self-Management - Teaching students strategies to regulate their emotions, set goals, and make responsible decisions.",
+                                "Social Awareness - Developing empathy, perspective-taking, and appreciation of diversity.",
+                                "Relationship Skills - Building communication, teamwork, conflict resolution, and help-seeking skills.",
+                                "Responsible Decision-Making - Supporting ethical choices, problem-solving, and reflection on consequences.",
+                            ],
+                        },
+                        "additional_criteria_for_content": {
+                            "type": "string",
+                            "title": "Additional Criteria for the Content (optional)",
+                            "description": "Optional constraints such as timing, group size, student needs, or activity preferences.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "topic_standard_objective", "sel_competency"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SELLessonPlanOutput",
+                    "required": ["sel_lesson_plan"],
+                    "properties": {
+                        "sel_lesson_plan": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown SEL lesson plan with objective, key points, activities, and closure.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Create a practical SEL lesson plan aligned to grade level, topic, and selected SEL competency.",
+                    "context": "Output must match output_schema exactly with one field: sel_lesson_plan. Use markdown with clear sections: title, objective, assessment, key points, opening, introduction/new material, guided practice, independent practice, closing, extension activity, and homework. Keep language student-centered, strengths-based, and school-safe. Include concrete teacher moves and age-appropriate activities. Honor additional criteria when provided. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "6th grade",
+                        "topic_standard_objective": "How to manage your actions when you notice yourself having big feelings",
+                        "sel_competency": "Self-Management - Teaching students strategies to regulate their emotions, set goals, and make responsible decisions.",
+                        "additional_criteria_for_content": "",
+                    },
+                    "exemplar_output": {
+                        "sel_lesson_plan": "## Self-Management: Managing Big Feelings\n\n**Objective:** Students will identify personal emotional cues and practice at least two self-management strategies to regulate strong emotions and make responsible choices.\n\n### Assessment\n- Teacher observation checklist during role-play and guided practice.\n- Exit slip where students name one cue and one strategy they will use.\n\n### Key Points\n- Recognizing physical/emotional signs of rising stress.\n- Using calming strategies (for example: deep breathing, pause-and-plan, positive self-talk).\n- Making a responsible next-step decision after regulating emotions.\n\n### Opening\nInvite students to reflect on a time they felt a \"big feeling\" in class (no names/details required). Ask: \"What did you notice in your body or thoughts?\"\n\n### Introduction to New Material\nIntroduce the idea of emotional cues and explain how noticing cues early helps with self-management. Model two strategies: 4-count breathing and pause-and-plan.\n\n### Guided Practice\nIn pairs, students rotate through short scenarios and identify (1) likely emotional cues and (2) a matching self-management strategy. Debrief as a class.\n\n### Independent Practice\nStudents complete a brief personal plan: \"When I notice ____, I will ____ so that I can _____.\" Teacher circulates and gives coaching feedback.\n\n### Closing\nReview key strategies and ask volunteers to share one approach they will try this week. Reinforce that self-management is a skill that improves with practice.\n\n### Extension Activity\nCreate SEL role-play cards for common school situations (peer conflict, test stress, transitions) and practice strategy selection in small groups.\n\n### Homework\nStudents track one moment of strong emotion at home or school and record which strategy they used, then reflect on how effective it was.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 69: Multi-Step Assignment
+            "template": {
+                "slug": "multi-step-assignment",
+                "name": "Multi-Step Assignment",
+                "description": "Generate an assignment based on any topic, including a warmup, academic content, vocabulary, and questions.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select grade level to match rigor, vocabulary, and assignment structure.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "content_type": {
+                            "type": "string",
+                            "title": "Content Type",
+                            "description": "Type of source text students should read (e.g., textbook page, short story, article).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "text_length": {
+                            "type": "string",
+                            "title": "Text Length",
+                            "description": "Desired reading length (e.g., 1 page, exactly 1 paragraph, 2 pages).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "topic_standard_objective": {
+                            "type": "string",
+                            "title": "Topic, standard, objective (be as specific as possible)",
+                            "description": "Specify the lesson topic, standard, or objective for the assignment.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "additional_criteria_for_content": {
+                            "type": "string",
+                            "title": "Additional Criteria for the Content (optional)",
+                            "description": "Optional content constraints, writing style directions, or focus requirements.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                        "standards_set_to_align_to": {
+                            "type": "string",
+                            "title": "Standards Set to Align to",
+                            "description": "Optional standards framework to align to (CCSS, TEKS, Ontario, etc.).",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": [
+                        "grade_level",
+                        "content_type",
+                        "text_length",
+                        "topic_standard_objective",
+                    ],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "MultiStepAssignmentOutput",
+                    "required": ["assignment_plan"],
+                    "properties": {
+                        "assignment_plan": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown multi-step assignment with objective, warmup, vocabulary, reading, and questions.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a complete multi-step classroom assignment with reading content and student tasks.",
+                    "context": "Output must match output_schema exactly with one field: assignment_plan. Use markdown with substantial depth. Include these sections in order: title, objective, warm up, key vocabulary, main reading/content passage, question directions, writing prompt directions, and standards covered. Ensure the reading section length reflects the requested text length and the assignment feels classroom-ready. Keep content factual, school-safe, and age-appropriate. Align to provided standards when present. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "10th grade",
+                        "content_type": "Textbook Page",
+                        "text_length": "2 pages",
+                        "topic_standard_objective": "I want students to be able to explain the various factors that led the United States to join in the fighting during World War II.",
+                        "additional_criteria_for_content": "Specifically, I want students to understand the significance of pearl harbor to the US decision to join the war.",
+                        "standards_set_to_align_to": "CCSS",
+                    },
+                    "exemplar_output": {
+                        "assignment_plan": "## Why the United States Entered World War II\n\n**Objective:** Students will be able to explain the main political, economic, and military factors that led the United States to enter World War II and analyze the significance of the attack on Pearl Harbor in shifting U.S. public opinion and policy.\n\n### Warm Up\n1. Before 1941, what was the dominant U.S. policy toward involvement in foreign wars?\n2. Name one way the United States supported other countries before officially entering World War II.\n3. What do you already know about the attack on Pearl Harbor?\n\n### Key Vocabulary\n- **Isolationism:** A policy of avoiding direct involvement in foreign alliances or wars.\n- **Neutrality Acts:** Laws passed in the 1930s designed to keep the U.S. out of foreign conflicts.\n- **Lend-Lease Act:** A policy allowing the U.S. to provide military aid to Allied nations.\n- **Embargo:** A government order restricting trade with another country.\n- **Pearl Harbor:** U.S. naval base in Hawaii attacked by Japan on December 7, 1941.\n- **Allied Powers:** Nations including Great Britain, the Soviet Union, China, and later the United States.\n\n### Main Reading (Textbook-Style Passage)\nIn the years before World War II, many Americans believed the country should avoid becoming involved in overseas conflicts. The memory of World War I remained strong, and many citizens felt the human and economic costs of that war had been too high. This belief, often called isolationism, shaped public debate and influenced leaders in Congress.\n\nAt the same time, global events made strict neutrality increasingly difficult. In Europe, Nazi Germany expanded aggressively, invading neighboring nations and threatening the balance of power. In Asia, Japan pursued imperial expansion, seeking resources and territory. As these conflicts grew, the United States took cautious steps to support countries resisting aggression while still trying to avoid direct combat.\n\nOne major shift came with policies such as the Lend-Lease Act, which allowed the U.S. to send military supplies to Allied nations. Supporters argued this aid was necessary to defend democratic nations and prevent hostile powers from gaining too much influence. Critics warned that providing arms could pull the U.S. into war.\n\nTensions between the United States and Japan intensified over trade and military actions in the Pacific. U.S. economic sanctions and embargoes were intended to pressure Japan to change course, but relations continued to worsen. Diplomatic negotiations became increasingly strained through 1941.\n\nThe turning point came on December 7, 1941, when Japan launched a surprise attack on Pearl Harbor, Hawaii. The attack destroyed or damaged ships, aircraft, and military infrastructure and resulted in significant loss of life. News of the attack spread rapidly and shocked the nation.\n\nPublic opinion shifted dramatically after Pearl Harbor. Many Americans who had previously supported staying out of war now viewed military action as necessary for national defense and global stability. On December 8, 1941, the United States declared war on Japan. Soon after, Germany and Italy declared war on the United States, bringing the U.S. fully into World War II.\n\nU.S. entry into the war transformed the conflict. The nation mobilized its industrial base, expanded the armed forces, and coordinated with Allied partners. American involvement became a decisive factor in both the European and Pacific theaters.\n\n### Question Directions — Answer using Evidence from the Text\nWrite complete sentences and cite specific details from the reading.\n\n1. What was U.S. foreign policy before entering World War II?\n2. How did the Lend-Lease Act show a change from strict neutrality?\n3. Why did tensions between the U.S. and Japan increase before 1941?\n4. Explain why the Pearl Harbor attack was a major turning point for U.S. policy.\n5. Identify one political factor, one economic factor, and one military factor that contributed to U.S. entry into the war.\n\n### Writing Prompt Directions — Organized Short Essay (3-5 paragraphs)\nUsing evidence from the reading, explain why the United States entered World War II. In your response:\n- Describe at least three factors that influenced the decision.\n- Analyze the significance of Pearl Harbor in changing public opinion.\n- Use at least two vocabulary words accurately.\n- Include clear topic sentences and text-based evidence.\n\n### Standards Covered\n- **CCSS.ELA-LITERACY.RH.9-10.2:** Determine the central ideas or information of a primary or secondary source.\n- **CCSS.ELA-LITERACY.RH.9-10.3:** Analyze in detail a series of events and explain causation.\n- **CCSS.ELA-LITERACY.WHST.9-10.1:** Write arguments focused on discipline-specific content using valid reasoning and evidence.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 70: Text Analysis Assignment
+            "template": {
+                "slug": "text-analysis-assignment",
+                "name": "Text Analysis Assignment",
+                "description": "Generate a text assignment that includes a writing prompt and text dependent questions.",
+                "category": "assessment",
+                "subject_default": "english",
+                "grade_bands_supported": ["6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select grade level to calibrate question complexity and writing expectations.",
+                            "enum": [
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "text": {
+                            "type": "string",
+                            "title": "Text",
+                            "description": "Paste the full reading passage to build the analysis assignment around.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "text"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "TextAnalysisAssignmentOutput",
+                    "required": ["analysis_assignment"],
+                    "properties": {
+                        "analysis_assignment": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown assignment with writing prompt, text-dependent questions, and model responses.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a rigorous text analysis assignment using the provided passage.",
+                    "context": "Output must match output_schema exactly with one field: analysis_assignment. Use markdown with substantial detail. Include sections in this order: **Writing Prompt**, **Writing Prompt Text Dependent Questions** (5 numbered questions), **Answer for Writing Prompt** (model paragraph/short response), and **Answers for Writing Prompt Text Dependent Questions** (numbered to match). Keep questions evidence-based and grade-appropriate. Maintain analytical depth and include explicit references to details from the provided text. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "9th grade",
+                        "text": "TRUE!—nervous—very, very dreadfully nervous I had been and am; but why will you say that I am mad? ... It was open—wide, wide open—and I grew furious as I gazed upon it. ... I heard all things in the heaven and in the earth. I heard many things in hell. ... You should have seen how wisely I proceeded—with what caution—with what foresight—with what dissimulation I went to work! ... And every night, about midnight, I turned the latch of his door and opened it—oh so gently! ... It took me an hour to place my whole head within the opening so far that I could see him as he lay upon his bed. ... It was not the old man who vexed me, but his Evil Eye. ... I then replaced the lantern cautiously and kept the ray upon the eye. ... The old man's terror must have been extreme! ... It grew louder—louder—louder! ... Villains! I shrieked, dissemble no more! I admit the deed!",
+                    },
+                    "exemplar_output": {
+                        "analysis_assignment": "**Writing Prompt:**\nIn a well-organized essay, analyze how the narrator's unreliable perspective shapes the story's development and creates suspense. Use specific textual evidence from the passage to explain how the narrator's tone, descriptions, and actions influence the reader's understanding of events and motives.\n\n**Writing Prompt Text Dependent Questions:**\n\n1. Which lines or phrases show the narrator insisting he is not mad, and how does his insistence affect your trust in his account?\n2. How does the narrator describe the old man's eye and how do those descriptions reveal the narrator's motivation?\n3. What details does the narrator provide about the method and timing of his nightly visits, and how do those details contribute to suspense?\n4. How does the narrator describe the sound of the old man's heart and his reaction to it? What does this reveal about his mental state?\n5. Which passages describe the interaction with the police and the narrator's behavior afterward, and how do those moments develop the story's climax?\n\n**Answer for Writing Prompt:**\nThe narrator's unreliable perspective drives the story's development and heightens suspense by blending self-justification with obsessive sensory detail. His repeated insistence that he is \"not mad\" invites doubt, while his vivid focus on the old man's \"vulture\" eye externalizes a personal fixation that becomes his motive. Precise descriptions of his cautious nightly actions—opening the door \"oh so gently,\" inching his head in, and using a darkened lantern—create mounting tension as the reader anticipates discovery. The amplified heartbeat imagery and the narrator's escalating agitation transform an internal sensation into an outward threat, culminating in a public unraveling when he confesses to officers. Because the narrator interprets events through his distorted senses and defensive rhetoric, readers must question his claims and rely on the text's concrete details to reconstruct what likely happened, making his perspective the engine of both suspense and meaning.\n\n**Answers for Writing Prompt Text Dependent Questions:**\n\n1. Lines such as \"TRUE!—nervous—very, very dreadfully nervous I had been and am; but why will you say that I am mad?\" and \"How, then, am I mad?\" show the narrator insisting he is rational. The repeated denials paradoxically weaken his credibility and make readers more suspicious of his account.\n2. The narrator calls the eye \"the eye of a vulture\" and later \"a pale blue eye, with a film over it.\" These exaggerated, hostile descriptions show that his motive is irrational and obsessive rather than reasonable, suggesting projection and instability.\n3. He describes opening the latch \"oh so gently,\" taking nearly an hour to place his head through the opening, and repeating this ritual nightly around midnight. These slow, methodical details build suspense by delaying action and emphasizing the narrator's controlled but unnatural behavior.\n4. He reports hearing the heartbeat become \"louder—louder—louder,\" and says it \"increased my fury.\" His reaction reveals rising paranoia and loss of control, indicating a mental state shaped by anxiety, guilt, and possible hallucination.\n5. The climax appears in lines where he initially behaves calmly with the officers, then grows increasingly agitated until he shouts, \"Villains! ... I admit the deed!\" This shift from composure to confession shows how internal pressure overwhelms his performance of sanity and resolves the story's tension.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 71: Decodable Texts
+            "template": {
+                "slug": "decodable-texts",
+                "name": "Decodable Texts",
+                "description": "Generate a decodable text based on the Science of Reading to support early literacy.",
+                "category": "lesson_design",
+                "subject_default": "english",
+                "grade_bands_supported": ["K-2", "3-5"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "objective_pattern_example_word": {
+                            "type": "string",
+                            "title": "Objective / Pattern / Example Word",
+                            "description": "Choose or enter a phonics pattern and sample word focus for the decodable text.",
+                            "enum": [
+                                "1 m /m/ am",
+                                "2 s /s/ sat",
+                                "3 t /t/ tap",
+                                "4 p /p/ pan",
+                                "5 a short a /a/ cat",
+                            ],
+                        },
+                    },
+                    "required": ["objective_pattern_example_word"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "DecodableTextsOutput",
+                    "required": ["decodable_text"],
+                    "properties": {
+                        "decodable_text": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown decodable text list using the selected pattern.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate short, controlled decodable text examples based on a selected phonics objective/pattern.",
+                    "context": "Output must match output_schema exactly with one field: decodable_text. Use markdown. Start with a short heading naming the selected pattern. Then provide a numbered list of 3 short decodable lines/sentences that emphasize the target pattern and use simple high-frequency words. Keep lines short and beginner-friendly. Avoid introducing many off-pattern words. Do not output JSON.",
+                    "exemplar_input": {
+                        "objective_pattern_example_word": "1 m /m/ am",
+                    },
+                    "exemplar_output": {
+                        "decodable_text": "**Decodable Text based on /m/**\n\n1. **Sam and Pam** Sam and Pam met at 10 am.\n2. **The Ram** The ram ran.\n3. **Cam and Ham** Cam had ham for lunch.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 72: Accommodation Suggestions
+            "template": {
+                "slug": "accommodation-suggestions",
+                "name": "Accommodation Suggestions",
+                "description": "Generate a list of accommodations for a student who needs support.",
+                "category": "behavior",
+                "subject_default": None,
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select grade level so accommodations are developmentally appropriate.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "areas_to_support": {
+                            "type": "string",
+                            "title": "Areas to Support",
+                            "description": "Describe student behaviors and areas where support is needed. Do not include names or personally identifying information.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "areas_to_support"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "AccommodationSuggestionsOutput",
+                    "required": ["accommodation_plan"],
+                    "properties": {
+                        "accommodation_plan": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown list of accommodations with practical implementation details.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate classroom accommodation suggestions tailored to student support needs.",
+                    "context": "Output must match output_schema exactly with one field: accommodation_plan. Use markdown. Start with **Suggestions for Accommodations:** then provide exactly 4 numbered accommodations. For each one, include a bolded accommodation name and a practical explanation of how it should be implemented in classroom routines. Keep recommendations strengths-based, concrete, and school-safe. Do not diagnose conditions or provide legal determinations. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "7th grade",
+                        "areas_to_support": "prefers to be alone, struggles to understand social cues, has trouble starting or keeping conversations, doesn't get social rules.",
+                    },
+                    "exemplar_output": {
+                        "accommodation_plan": "**Suggestions for Accommodations:**\n\n1. **Social Skills Small-Group Instruction** - Provide regular short sessions (for example, 10-15 minutes, 2-3 times per week) with a counselor, special educator, or trained staff member. Teach conversation starters, turn-taking, perspective-taking, and expected responses through modeling and role-play. Reinforce transfer by prompting the same skills during lunch, partner work, and group discussions.\n\n2. **Structured Peer Buddy and Check-In System** - Pair the student with a consistent, supportive peer for selected routines (entry task, transitions, partner activities). Add scheduled teacher check-ins before and after high-social-demand tasks to preview expectations and debrief what worked. Use a simple script card (\"Ask, Listen, Respond\") to reduce uncertainty.\n\n3. **Visual Social Supports and Conversation Prompts** - Provide cue cards or a small reference sheet with sentence stems, examples of appropriate greetings, and reminders for entering/exiting conversations. Keep supports discreet and portable so the student can use them independently during class, clubs, and cooperative learning.\n\n4. **Modified Participation Expectations with Gradual Exposure** - Break social participation into small, measurable goals (for example: greet one peer, ask one follow-up question, contribute one idea in a small group). Offer role choices in group work (recorder, researcher, timekeeper) and increase verbal participation gradually as confidence builds. Track growth and celebrate progress frequently.",
+                    },
+                },
+            },
+        },
+        {
+            # TEMPLATE 73: Data Table Analysis
+            "template": {
+                "slug": "data-table-analysis",
+                "name": "Data Table Analysis",
+                "description": "Generate a table with data of your choice for your class with associated questions.",
+                "category": "assessment",
+                "subject_default": "math",
+                "grade_bands_supported": ["3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {
+                            "type": "string",
+                            "title": "Grade level",
+                            "description": "Select grade level to align table complexity and analysis questions.",
+                            "enum": [
+                                "3rd grade",
+                                "4th grade",
+                                "5th grade",
+                                "6th grade",
+                                "7th grade",
+                                "8th grade",
+                                "9th grade",
+                                "10th grade",
+                                "11th grade",
+                                "12th grade",
+                            ],
+                        },
+                        "criteria_for_data_table": {
+                            "type": "string",
+                            "title": "Criteria for Data Table",
+                            "description": "Describe what data to include and how to organize the table.",
+                            "format": "textarea",
+                            "maxLength": 75000,
+                        },
+                    },
+                    "required": ["grade_level", "criteria_for_data_table"],
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "DataTableAnalysisOutput",
+                    "required": ["table_analysis"],
+                    "properties": {
+                        "table_analysis": {
+                            "type": "string",
+                            "title": "Exemplar",
+                            "description": "Markdown data table with context and analysis prompts.",
+                        }
+                    },
+                },
+                "stub_config": None,
+                "prompt_definition": {
+                    "description": "Generate a classroom-ready data table and analysis prompts based on user criteria.",
+                    "context": "Output must match output_schema exactly with one field: table_analysis. Use markdown. First provide a clear table with headers and at least 5 rows of relevant data that follows the user criteria. After the table, include a short data-context note. Then provide exactly 3 analysis questions students can answer from the table. Keep values realistic and age-appropriate for the selected grade. Do not output JSON.",
+                    "exemplar_input": {
+                        "grade_level": "8th grade",
+                        "criteria_for_data_table": "The top 5 fruits with the most calories with fruit in one column and calories in the other",
+                    },
+                    "exemplar_output": {
+                        "table_analysis": "| Fruit | Calories (per typical serving) |\n|---|---:|\n| Avocado (1 medium, ~150g edible) | 240 |\n| Coconut (1 cup shredded, ~80g) | 283 |\n| Dates (5 medjool dates, ~100g) | 277 |\n| Banana (1 large, ~136g) | 121 |\n| Grapes (1 cup, ~151g) | 104 |\n\n*Data Context:* The table displays fruit choices and estimated calories per typical serving size.\n\n1. **Comparative Analysis:** Which fruit in the table has the highest calories, and how much higher is it than the lowest-calorie fruit listed?\n2. **Nutritional Choice Reasoning:** If a student wanted a lower-calorie snack, which fruit from the table might be the best option and why?\n3. **Application Question:** Choose two fruits and calculate the combined calories for one serving of each. What does this tell you about portion planning?",
                     },
                 },
             },
