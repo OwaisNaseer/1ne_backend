@@ -19,12 +19,12 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-# HTTP Bearer token scheme
-security = HTTPBearer()
+# HTTP Bearer token scheme (auto_error=False so we can return 401 with a clear message)
+security = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
     """
@@ -35,8 +35,12 @@ def get_current_user(
         AccountLockedError: If account is locked
         EmailNotVerifiedError: If email is not verified
     """
+    if not credentials:
+        raise AuthenticationError(
+            "Not authenticated. Provide a valid Bearer token in the Authorization header (e.g. Authorization: Bearer <access_token>)."
+        )
     token = credentials.credentials
-    
+
     try:
         logger.debug(f"Validating token: {token[:20]}..." if len(token) > 20 else f"Token: {token}")
         payload = decode_token(token, token_type="access")

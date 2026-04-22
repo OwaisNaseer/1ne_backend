@@ -11,6 +11,7 @@ try:
     from app.domains.auth import routes as auth_routes
     from app.domains.subscriptions import routes as subscription_routes
     from app.domains.chatbots import routes as chatbot_routes
+    from app.domains.pixgen import routes as pixgen_routes
     from app.domains.youtube_quiz import routes as youtube_quiz_routes
     from app.domains.content_ingestion import routes as content_ingestion_routes
     from app.domains.content_ingestion.quiz_catalog_routes import router as quiz_catalog_router
@@ -64,6 +65,9 @@ try:
     
     # Chatbot routes
     router.include_router(chatbot_routes.router)
+
+    # PixGen routes
+    router.include_router(pixgen_routes.router)
     
     # Content Ingestion routes
     try:

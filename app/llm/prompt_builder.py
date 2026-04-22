@@ -3,6 +3,7 @@ TOON-aware prompt builder for LLM communication.
 
 Builds prompts with TOON input format and schema instructions for token efficiency.
 """
+import json
 from typing import Any, Dict, Optional, Tuple
 
 from app.core.logging import get_logger
@@ -31,6 +32,7 @@ class TOONPromptBuilder:
         prompt_definition: Dict[str, Any],
         template_category: TemplateCategory,
         model_config: Optional[Dict[str, Any]] = None,
+        output_schema: Optional[Dict[str, Any]] = None,
     ) -> Tuple[str, str]:
         """
         Build complete prompt with TOON input and output schema.
@@ -125,11 +127,12 @@ class TOONPromptBuilder:
         
         # 3. Build system message with TOON instructions and language/standard
         system_message = self._build_system_message(
-            schema_type, 
+            schema_type,
             prompt_definition,
             output_language=output_language,
             lang_instruction=lang_instruction,
-            standard=standard
+            standard=standard,
+            output_schema=output_schema,
         )
         
         # 4. Build user prompt with TOON input and schema instructions
@@ -363,7 +366,8 @@ FINAL REMINDERS:
         prompt_definition: Dict[str, Any],
         output_language: str = "English",
         lang_instruction: str = "in English",
-        standard: Optional[str] = None
+        standard: Optional[str] = None,
+        output_schema: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Build system message with TOON instructions and language/standard handling (like Activity).
@@ -452,8 +456,15 @@ FINAL REMINDERS:
                 parts.append(f"Task: {description}")
                 parts.append("")
         
-        # Add detailed content instructions for LESSON_DESIGN category - INTERNATIONAL QUALITY
-        if schema_type == "lesson_design_output" or schema_type == "universal_output":
+        # When template provides output_schema, use ONLY that structure (future-proof, per-template).
+        # Do NOT add generic lesson-plan sections (Learning Goals, Opening, Guided Practice, etc.).
+        if output_schema and isinstance(output_schema, dict):
+            parts.append("Your response must contain ONLY the keys defined in the OUTPUT STRUCTURE below. Use the exact property names from the schema.")
+            parts.append("QUALITY: Generate high-quality, international-level content suitable for top-tier institutions (Silicon Valley / global tech and education standards). Every schema key must have substantial, detailed content—no empty sections, no placeholder text, no one-line answers. Write comprehensive, professional material that is ready for expert educators and high-performing schools.")
+            parts.append("Do not add sections (e.g. Learning Objective, Opening, Guided Practice) that are not in the schema. Do not leave any key empty.")
+            parts.append("")
+        # Add detailed content instructions only when no template-specific output_schema (legacy/default)
+        elif schema_type == "lesson_design_output" or schema_type == "universal_output":
             parts.append("CONTENT REQUIREMENTS FOR LESSON PLANS (INTERNATIONAL STANDARDS):")
             parts.append("- Overview: Write 2-3 detailed paragraphs explaining the lesson context, purpose, pedagogical approach, and how it fits into broader learning progression.")
             parts.append("- Learning Goals: Provide 3-5 comprehensive, measurable learning objectives using Bloom's Taxonomy levels. Each objective should:")
@@ -493,18 +504,26 @@ FINAL REMINDERS:
             parts.append("- Include opportunities for critical thinking, problem-solving, creativity, and metacognition.")
             parts.append("")
         
-        # Output schema instructions
-        schema_instruction = self.toon_handler.build_toon_schema_string(schema_type)
-        parts.append(schema_instruction)
-        parts.append("")
+        # Output schema instructions: use version's output_schema when provided (per-template flexibility)
+        if output_schema and isinstance(output_schema, dict):
+            parts.append("OUTPUT STRUCTURE (your response must match this schema):")
+            parts.append(json.dumps(output_schema, indent=2))
+            parts.append("")
+            parts.append("IMPORTANT: Return ONLY the data object (the key-value content that fits the schema). Do NOT wrap it in a schema envelope (no top-level 'type', 'required', or 'properties' wrapper). For example, return {\"title\": \"...\", \"overview\": \"...\", ...} not {\"type\": \"object\", \"properties\": {...}}.")
+            parts.append("")
+        else:
+            schema_instruction = self.toon_handler.build_toon_schema_string(schema_type)
+            parts.append(schema_instruction)
+            parts.append("")
         
         # Additional instructions - INTERNATIONAL QUALITY
         parts.append("Ensure your response is complete, accurate, and follows the TOON schema structure above.")
         parts.append("Return only the TOON-formatted data, no additional explanation.")
         parts.append("")
         parts.append("FINAL QUALITY REQUIREMENTS:")
-        parts.append("- Generate detailed, comprehensive content suitable for international schools and high-performing institutions.")
-        parts.append("- Write full descriptions, complete explanations, and thorough details - no brief summaries or placeholder text.")
+        parts.append("- Generate detailed, comprehensive content suitable for international schools and high-performing institutions (Silicon Valley / global high-tech education standards).")
+        parts.append("- Write full descriptions, complete explanations, and thorough details - no brief summaries, no placeholder text, no empty sections.")
+        parts.append("- Every output key in the schema must have substantial content - never leave a section empty or one sentence only.")
         parts.append("- Ensure content is academically rigorous, pedagogically sound, and culturally appropriate.")
         parts.append("- Use research-based teaching methods and align with international best practices.")
         parts.append("- Content should be ready for immediate use in USA, UK, IB, or other high-level international school contexts.")

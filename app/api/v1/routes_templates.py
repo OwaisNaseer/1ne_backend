@@ -327,22 +327,40 @@ async def execute_template(
     user_id = current_user.id if current_user else None
     tenant_id = current_user.tenant_id if current_user else None
 
-    # Execute via execution service (async)
-    execution, universal_output = await ExecutionService.execute(
-        db,
-        template=template,
-        template_version=latest_version,
-        input_data=payload.data,
-        user_id=user_id,
-        tenant_id=tenant_id,
-        is_demo=False,
-    )
+    try:
+        # Execute via execution service (async); output shape is from template's output_schema
+        execution, output_dict = await ExecutionService.execute(
+            db,
+            template=template,
+            template_version=latest_version,
+            input_data=payload.data,
+            user_id=user_id,
+            tenant_id=tenant_id,
+            is_demo=False,
+        )
+    except RuntimeError as e:
+        logger.warning(f"Template execute LLM failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "message": "LLM is unavailable. Check OPENAI_API_KEY (or provider key) and network, then try again.",
+                "error_type": "llm_unavailable",
+                "hint": str(e),
+            },
+        )
+    except ValueError as e:
+        if "USE_REAL_LLM" in str(e) or "API key" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"message": str(e), "error_type": "llm_config"},
+            )
+        raise
 
     return TemplateExecuteResponse(
         execution_id=execution.id,
         template_id=execution.template_id,
         template_version=execution.template_version or latest_version.version,
-        output=universal_output,
+        output=output_dict,
         model_used=execution.model_used,
         provider_used=execution.provider_used,
         token_usage=execution.token_usage,
@@ -363,7 +381,9 @@ async def execute_template_stream(
     """
     Execute a template with streaming output (Server-Sent Events).
 
-    Returns an SSE stream with content chunks, done event, or error event.
+    Returns an SSE stream with schema-based section events only:
+    meta, section_start, section_content (per output_schema), done, or error.
+    Does not stream raw JSON or "content" chunks.
     """
     template: Optional[Template] = (
         db.query(Template)
@@ -406,8 +426,10 @@ async def execute_template_stream(
                 tenant_id=tenant_id,
                 is_demo=False,
             ):
+                # Only forward schema-based events; never send raw "content" (legacy/prevents JSON leak)
+                if isinstance(event, dict) and event.get("type") == "content":
+                    continue
                 # CRITICAL: Format and send immediately without buffering
-                # This ensures chunks arrive in real-time for word-by-word streaming
                 event_json = json.dumps(event)
                 yield f"data: {event_json}\n\n"
         except Exception as e:

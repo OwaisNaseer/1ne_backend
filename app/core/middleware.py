@@ -15,6 +15,7 @@ logger = get_logger(__name__)
 
 # Default timeout: 30 seconds (matches frontend timeout)
 DEFAULT_REQUEST_TIMEOUT = 30.0
+PIXGEN_REQUEST_TIMEOUT = 120.0
 
 
 class TimeoutMiddleware(BaseHTTPMiddleware):
@@ -29,6 +30,23 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, timeout: float = DEFAULT_REQUEST_TIMEOUT):
         super().__init__(app)
         self.timeout = timeout
+
+    def _resolve_timeout(self, request: Request) -> float:
+        """
+        Resolve per-route timeout while keeping a safe global default.
+
+        PixGen generation calls can exceed 30s due to external model latency,
+        so they receive a larger budget without relaxing timeout for all APIs.
+        """
+        path = request.url.path
+        if path in {
+            "/api/v1/generate",
+            "/api/v1/generate-batch",
+            "/api/v1/pixgen/generate",
+            "/api/v1/pixgen/generate-batch",
+        }:
+            return PIXGEN_REQUEST_TIMEOUT
+        return self.timeout
     
     async def dispatch(self, request: Request, call_next: Callable):
         """
@@ -59,19 +77,21 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
         
         try:
             # Wrap the request handling in a timeout
+            timeout_seconds = self._resolve_timeout(request)
             response = await asyncio.wait_for(
                 call_next(request),
-                timeout=self.timeout
+                timeout=timeout_seconds
             )
             return response
         except asyncio.TimeoutError:
+            timeout_seconds = self._resolve_timeout(request)
             logger.warning(
-                f"Request timeout after {self.timeout}s: {request.method} {request.url.path}"
+                f"Request timeout after {timeout_seconds}s: {request.method} {request.url.path}"
             )
             return JSONResponse(
                 status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                 content={
-                    "detail": f"Request timeout: The server took longer than {self.timeout} seconds to process the request. Please try again or contact support if the issue persists."
+                    "detail": f"Request timeout: The server took longer than {timeout_seconds} seconds to process the request. Please try again or contact support if the issue persists."
                 }
             )
         except Exception as e:

@@ -1,5 +1,5 @@
 """
-Seed script for 12 core system templates with detailed input/output specifications.
+Seed script for 20 core system templates with detailed input/output specifications.
 """
 from datetime import datetime
 from typing import Dict, Any
@@ -8,118 +8,6 @@ from sqlalchemy.orm import Session
 
 from app.models.template import Template, TemplateCategory
 from app.models.template_version import TemplateVersion, TemplateVersionStatus
-
-
-def get_base_input_schema() -> Dict[str, Any]:
-    """Get base input schema with universal fields - enhanced for international schools."""
-    return {
-        "type": "object",
-        "properties": {
-            "subject": {
-                "type": "string",
-                "enum": ["english", "math", "science", "social_studies", "steam", "other"],
-                "title": "Subject Area",
-                "description": "Select the subject area for this lesson/activity. Choose the primary academic discipline that aligns with international curriculum standards (e.g., English Language Arts, Mathematics, Science, Social Studies, or STEAM)."
-            },
-            "grade": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 12,
-                "title": "Grade Level",
-                "description": "Enter the grade level (0 for Kindergarten/K, 1-12 for grades 1-12). This ensures content is age-appropriate and aligns with international grade-level expectations (e.g., USA Common Core, UK National Curriculum, IB PYP/MYP/DP)."
-            },
-            "grade_band": {
-                "type": "string",
-                "enum": ["K-2", "3-5", "6-8", "9-12"],
-                "title": "Grade Band (Optional)",
-                "description": "Optional: Select a grade band for broader age-group alignment. Useful for multi-grade classrooms or when targeting developmental stages rather than specific grades."
-            },
-            "topic": {
-                "type": "string",
-                "title": "Topic or Learning Theme",
-                "description": "Enter the specific topic, concept, or theme for this lesson/activity. Be specific and clear (e.g., 'Fractions and Decimals', 'The Water Cycle', 'Persuasive Writing', 'World War II'). This will be the central focus of the generated content."
-            },
-            "learning_objective": {
-                "type": "string",
-                "title": "Learning Objective",
-                "description": "State the learning objective using SMART criteria (Specific, Measurable, Achievable, Relevant, Time-bound). Example: 'Students will be able to solve multi-step word problems involving fractions and decimals with 80% accuracy.' This should align with international curriculum standards and Bloom's Taxonomy levels."
-            },
-            "time_duration": {
-                "type": "string",
-                "title": "Time Duration",
-                "description": "Specify the duration for this lesson/activity. Use clear formats like '45 minutes', '1 hour', '2 weeks', '90 minutes'. This helps ensure the generated content is appropriately paced for the available time."
-            },
-            "time_duration_minutes": {
-                "type": "integer",
-                "minimum": 5,
-                "maximum": 480,
-                "title": "Duration in Minutes (Optional)",
-                "description": "Optional: Enter the duration in minutes for more precise time allocation. This helps generate content with accurate time estimates for each section."
-            },
-            "bloom_level": {
-                "type": "string",
-                "enum": ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create", "Understand → Apply", "Analyze → Evaluate"],
-                "title": "Bloom's Taxonomy Level",
-                "description": "Select the cognitive level(s) from Bloom's Taxonomy that students will engage with. This ensures the content promotes appropriate levels of thinking: Remember (recall facts), Understand (comprehend meaning), Apply (use in new situations), Analyze (examine relationships), Evaluate (make judgments), Create (produce new work). You can select a progression (e.g., 'Understand → Apply') for lessons that build complexity."
-            },
-            "standard": {
-                "type": "string",
-                "title": "Educational Standard (Optional)",
-                "description": "Optional: Enter specific educational standards to align with (e.g., 'CCSS.MATH.CONTENT.6.EE.A.2', 'UK National Curriculum Year 7', 'IB MYP Criterion A', 'NGSS MS-LS1-1'). This ensures the generated content aligns with recognized international curriculum frameworks."
-            },
-            "standards_framework": {
-                "type": "string",
-                "enum": ["CCSS", "UK_NATIONAL", "IB", "NGSS", "CAMBRIDGE", "EDEXCEL", "AQA", "AUSTRALIAN", "CANADIAN", "SINGAPORE", "OTHER"],
-                "title": "Standards Framework (Optional)",
-                "description": "Optional: Select the primary educational standards framework. This helps ensure content aligns with the appropriate international curriculum system (Common Core State Standards, UK National Curriculum, International Baccalaureate, Next Generation Science Standards, etc.)."
-            },
-            "output_language": {
-                "type": "string",
-                "enum": ["English", "Spanish", "French", "German", "Italian", "Portuguese", "Chinese", "Japanese", "Korean", "Russian", "Arabic", "Hindi", "Urdu", "Other"],
-                "title": "Output Language",
-                "description": "Select the language for the generated content. All headings, instructions, and content will be generated in this language. Choose 'Other' if you need a language not listed and specify it in the 'Language' field below."
-            },
-            "language": {
-                "type": "string",
-                "title": "Custom Language (if 'Other' selected)",
-                "description": "If you selected 'Other' for Output Language, specify the language here. The system will attempt to generate content in this language."
-            },
-            "differentiation_needs": {
-                "type": "boolean",
-                "title": "Include Differentiation Strategies",
-                "description": "Check this box if you need specific differentiation strategies included in the generated content. This will add support for struggling learners, advanced learners, English Language Learners, and students with diverse learning styles - essential for international classrooms with diverse student populations."
-            },
-            "differentiation_notes": {
-                "type": "string",
-                "title": "Differentiation Notes (Optional)",
-                "description": "Optional: Provide specific information about student needs, learning differences, or accommodations required. This helps generate more targeted differentiation strategies (e.g., '3 ELL students at intermediate level', '2 students with ADHD need movement breaks', 'Advanced learners need extension activities')."
-            },
-            "materials": {
-                "type": "string",
-                "title": "Available Materials (Optional)",
-                "description": "Optional: List the materials, resources, or equipment available for this lesson/activity. Be specific (e.g., 'Whiteboards, markers, calculators, graph paper, access to tablets'). This ensures the generated content uses realistic, available resources."
-            },
-            "available_materials": {
-                "type": "array",
-                "items": {"type": "string"},
-                "title": "Materials List (Optional)",
-                "description": "Optional: Provide a list of available materials as separate items. This is useful when you have a specific inventory of resources."
-            },
-            "constraints": {
-                "type": "string",
-                "title": "Constraints or Special Considerations (Optional)",
-                "description": "Optional: Note any constraints, limitations, or special considerations for this lesson (e.g., 'No internet access', 'Limited space', 'Students must work in pairs', 'Cultural sensitivity required for diverse backgrounds'). This helps generate content that is practical and appropriate for your specific context."
-            }
-        }
-    }
-
-
-def get_output_schema_placeholder() -> Dict[str, Any]:
-    """Get placeholder output schema describing universal output container."""
-    return {
-        "type": "object",
-        "description": "Universal output container with overview, learning_goals, materials, steps, differentiation, assessment, teacher_notes, bloom_alignment, and optional questions (for assessments) or communication (for communication templates)"
-    }
 
 
 def get_default_model_config() -> Dict[str, Any]:
@@ -133,7 +21,7 @@ def get_default_model_config() -> Dict[str, Any]:
 
 
 def get_template_data() -> list[Dict[str, Any]]:
-    """Get all 12 template definitions with their versions matching detailed criteria."""
+    """Get all 20 template definitions with their versions matching detailed criteria."""
     return [
         {
             # TEMPLATE 1: General Lesson Planner
@@ -147,11 +35,178 @@ def get_template_data() -> list[Dict[str, Any]]:
             },
             "version": {
                 "input_schema": {
-                    **get_base_input_schema(),
+                    "type": "object",
                     "properties": {
-                        **get_base_input_schema()["properties"],
+                        "subject": {
+                            "type": "string",
+                            "enum": ["english", "math", "science", "social_studies", "steam", "other"],
+                            "title": "Subject",
+                            "description": "Primary subject for this lesson (e.g. english, math, science)."
+                        },
+                        "grade": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 12,
+                            "title": "Grade",
+                            "description": "Numeric grade level (0 for Kindergarten, 1–12 for grades 1–12)."
+                        },
+                        "topic": {
+                            "type": "string",
+                            "title": "Topic",
+                            "description": "Short description of the lesson topic or focus."
+                        },
+                        "learning_objective": {
+                            "type": "string",
+                            "title": "Learning Objective",
+                            "description": "Single clear objective for what students will know or be able to do."
+                        },
+                        "time_duration_minutes": {
+                            "type": "integer",
+                            "minimum": 5,
+                            "maximum": 480,
+                            "title": "Duration (minutes)",
+                            "description": "Total lesson time in minutes."
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom Level",
+                            "description": "Primary Bloom level for the lesson (e.g. Analyze, Apply, Create)."
+                        },
+                        "standard": {
+                            "type": "string",
+                            "title": "Standard",
+                            "description": "Optional curriculum standard identifier (e.g. RL.8.2)."
+                        },
+                        "differentiation_needs": {
+                            "type": "boolean",
+                            "title": "Include Differentiation",
+                            "description": "Whether to include specific differentiation suggestions."
+                        },
+                        "materials": {
+                            "type": "string",
+                            "title": "Materials",
+                            "description": "Brief description of key materials (e.g. 'Printed short story, projector')."
+                        },
+                        "constraints": {
+                            "type": "string",
+                            "title": "Constraints",
+                            "description": "Any important constraints or special considerations (e.g. mixed reading levels)."
+                        }
                     },
-                    "required": ["subject", "grade", "topic", "time_duration", "learning_objective", "bloom_level"]
+                    "required": [
+                        "subject",
+                        "grade",
+                        "topic",
+                        "learning_objective",
+                        "time_duration_minutes",
+                        "bloom_level"
+                    ]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "LessonPlannerOutput",
+                    "required": [
+                        "title",
+                        "overview",
+                        "learning_objectives",
+                        "lesson_flow",
+                        "assessment",
+                        "bloom_alignment"
+                    ],
+                    "properties": {
+                        "title": {"type": "string", "title": "Lesson Title"},
+                        "overview": {"type": "string", "title": "Overview"},
+                        "learning_objectives": {
+                            "type": "array",
+                            "title": "Learning Objectives",
+                            "items": {"type": "string"}
+                        },
+                        "lesson_flow": {
+                            "type": "array",
+                            "title": "Lesson Flow",
+                            "items": {
+                                "type": "object",
+                                "title": "LessonPhase",
+                                "required": ["phase", "minutes", "activity"],
+                                "properties": {
+                                    "phase": {"type": "string", "title": "Phase"},
+                                    "minutes": {"type": "integer", "title": "Minutes"},
+                                    "activity": {"type": "string", "title": "Activity"}
+                                }
+                            }
+                        },
+                        "assessment": {
+                            "type": "object",
+                            "title": "Assessment",
+                            "required": ["type", "description"],
+                            "properties": {
+                                "type": {"type": "string", "title": "Assessment Type"},
+                                "description": {"type": "string", "title": "Assessment Description"}
+                            }
+                        },
+                        "differentiation": {
+                            "type": "object",
+                            "title": "Differentiation",
+                            "properties": {
+                                "support": {
+                                    "type": "array",
+                                    "title": "Support Strategies",
+                                    "items": {"type": "string"}
+                                },
+                                "extension": {
+                                    "type": "array",
+                                    "title": "Extension Opportunities",
+                                    "items": {"type": "string"}
+                                }
+                            }
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom Alignment",
+                            "required": ["level", "note"],
+                            "properties": {
+                                "level": {"type": "string", "title": "Bloom Level"},
+                                "note": {"type": "string", "title": "Alignment Note"}
+                            }
+                        },
+                        "standards_alignment": {
+                            "type": "string",
+                            "title": "Standards Alignment"
+                        }
+                    }
+                },
+                "stub_config": {
+                    "title_template": "Finding the Theme",
+                    "overview_template": "Students analyze how authors develop theme through details in {topic}.",
+                    "learning_objectives_template": [
+                        "Identify the theme of a short story.",
+                        "Support theme with textual evidence."
+                    ],
+                    "lesson_flow": [
+                        {"phase": "Hook", "minutes": 5, "activity": "Quote discussion related to {topic}."},
+                        {"phase": "Instruction", "minutes": 10, "activity": "Model identifying theme in a short story."},
+                        {"phase": "Guided Practice", "minutes": 15, "activity": "Whole-class analysis of a short story."},
+                        {"phase": "Independent Practice", "minutes": 15, "activity": "Students identify theme and evidence in a new text."},
+                        {"phase": "Closure", "minutes": 5, "activity": "Exit ticket: state the theme and one supporting quote."}
+                    ],
+                    "assessment": {
+                        "type": "exit_ticket",
+                        "description_template": "Students identify the theme and provide 2 supporting quotes from the text."
+                    },
+                    "differentiation": {
+                        "support": [
+                            "Provide highlighted or annotated versions of the text.",
+                            "Offer sentence stems for stating theme and evidence."
+                        ],
+                        "extension": [
+                            "Ask students to compare two possible themes and justify which is stronger using evidence."
+                        ]
+                    },
+                    "bloom_alignment": {
+                        "level": "Analyze",
+                        "note_template": "Students interpret and justify theme using textual evidence in {topic}."
+                    },
+                    "standards_alignment_template": "Aligned to {standard}"
                 },
                 "prompt_definition": {
                     "description": "Generate a comprehensive, internationally-aligned lesson plan suitable for high-level schools (USA, UK, IB, etc.) with: Lesson Overview, Learning Intentions, Success Criteria, Materials, Lesson Steps (Warmup → Instruction → Activity → Closure), Differentiation, Formative Assessment, Teacher Notes, and Bloom Mapping. Map topic to subject-specific instructional model, align steps with Bloom levels, auto-generate learning intentions and success criteria, build 4-stage lesson flow, add differentiation and exit ticket. Ensure content meets international quality standards, uses research-based pedagogy, and is culturally appropriate for diverse student populations.",
@@ -171,23 +226,148 @@ def get_template_data() -> list[Dict[str, Any]]:
             },
             "version": {
                 "input_schema": {
-                    **get_base_input_schema(),
+                    "type": "object",
                     "properties": {
-                        **get_base_input_schema()["properties"],
+                        "subject": {
+                            "type": "string",
+                            "enum": ["english", "math", "science", "social_studies", "steam", "other"],
+                            "title": "Subject",
+                            "description": "Primary subject for this activity."
+                        },
+                        "grade": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 12,
+                            "title": "Grade",
+                            "description": "Numeric grade level (0 for Kindergarten, 1–12 for grades 1–12)."
+                        },
+                        "topic": {
+                            "type": "string",
+                            "title": "Topic",
+                            "description": "Short description of the activity topic or concept (e.g. 'Food Chains')."
+                        },
+                        "time_duration_minutes": {
+                            "type": "integer",
+                            "minimum": 5,
+                            "maximum": 480,
+                            "title": "Duration (minutes)",
+                            "description": "Total time needed for the activity."
+                        },
+                        "bloom_level": {
+                            "type": "string",
+                            "title": "Bloom Level",
+                            "description": "Primary Bloom level for the activity (e.g. Analyze, Apply, Create)."
+                        },
                         "activity_type": {
                             "type": "string",
                             "enum": ["hands_on", "discussion", "creative", "game"],
                             "title": "Activity Type",
-                            "description": "Select the type of engagement activity. Hands-on: Physical manipulation and experimentation. Discussion: Collaborative dialogue and debate. Creative: Artistic expression and innovation. Game: Interactive, rule-based learning. Choose the format that best supports your learning objective and student engagement needs."
+                            "description": "Type of engagement: hands_on, discussion, creative, or game."
                         },
-                        "materials_available": {
+                        "materials": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "title": "Available Materials",
-                            "description": "List the specific materials, resources, or equipment available for this activity. Be detailed and specific (e.g., 'Construction paper', 'Markers', 'Scissors', 'Digital tablets with internet access'). This ensures the generated activity uses realistic, available resources suitable for international school contexts."
+                            "title": "Materials",
+                            "description": "List of materials available for the activity."
+                        },
+                        "constraints": {
+                            "type": "string",
+                            "title": "Constraints",
+                            "description": "Any important constraints (e.g. 'No internet')."
                         }
                     },
-                    "required": ["subject", "grade", "topic", "time_duration", "activity_type", "bloom_level"]
+                    "required": [
+                        "subject",
+                        "grade",
+                        "topic",
+                        "time_duration_minutes",
+                        "bloom_level",
+                        "activity_type",
+                        "materials"
+                    ]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ActivitySuggestionOutput",
+                    "required": [
+                        "title",
+                        "time_needed",
+                        "learning_goal",
+                        "materials",
+                        "steps",
+                        "assessment",
+                        "bloom_alignment"
+                    ],
+                    "properties": {
+                        "title": {"type": "string", "title": "Activity Title"},
+                        "time_needed": {"type": "integer", "title": "Time Needed (minutes)"},
+                        "learning_goal": {"type": "string", "title": "Learning Goal"},
+                        "materials": {
+                            "type": "array",
+                            "title": "Materials",
+                            "items": {"type": "string"}
+                        },
+                        "steps": {
+                            "type": "array",
+                            "title": "Steps",
+                            "items": {"type": "string"}
+                        },
+                        "assessment": {"type": "string", "title": "Assessment Prompt"},
+                        "differentiation": {
+                            "type": "object",
+                            "title": "Differentiation",
+                            "properties": {
+                                "support": {
+                                    "type": "array",
+                                    "title": "Support Strategies",
+                                    "items": {"type": "string"}
+                                },
+                                "extension": {
+                                    "type": "array",
+                                    "title": "Extension Ideas",
+                                    "items": {"type": "string"}
+                                }
+                            }
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom Alignment",
+                            "required": ["level", "note"],
+                            "properties": {
+                                "level": {"type": "string", "title": "Bloom Level"},
+                                "note": {"type": "string", "title": "Alignment Note"}
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "title_template": "Food Web Disruption Game",
+                    "time_needed": 30,
+                    "learning_goal_template": "Analyze relationships in a food web.",
+                    "materials": [
+                        "Chart paper",
+                        "Markers"
+                    ],
+                    "steps_template": [
+                        "Draw a food web.",
+                        "Assign one organism to each group.",
+                        "Remove an organism and predict the impact on the food web."
+                    ],
+                    "assessment_template": "Students explain how removal of one organism affects the ecosystem.",
+                    "differentiation": {
+                        "support": [
+                            "Provide sentence starters for describing cause and effect.",
+                            "Offer a partially completed food web for students who need more scaffolding."
+                        ],
+                        "extension": [
+                            "Ask students to add a climate change variable and predict additional impacts.",
+                            "Have students design a new organism and place it in the food web."
+                        ]
+                    },
+                    "bloom_alignment": {
+                        "level": "Analyze",
+                        "note_template": "Students examine cause-effect relationships in the food web for {topic}."
+                    }
                 },
                 "prompt_definition": {
                     "description": "Generate a quick, engaging activity suitable for international classrooms with: Activity Title, Learning Goal, Materials Needed, Steps (simple and fast), Differentiation, Assessment Prompt, and Teacher Notes. Ensure the activity promotes active learning, critical thinking, and is appropriate for diverse student populations. Use research-based engagement strategies and align with international pedagogical best practices.",
@@ -196,7 +376,159 @@ def get_template_data() -> list[Dict[str, Any]]:
             }
         },
         {
-            # TEMPLATE 3: Multi-Lesson Unit Planner
+            # TEMPLATE 3: Inquiry-Based Lesson Planner
+            "template": {
+                "slug": "inquiry_lesson_planner",
+                "name": "Inquiry-Based Lesson Planner",
+                "description": "Create inquiry-based lesson plans with driving question, 5E phases (Engage → Explore → Explain → Elaborate → Evaluate), and claim-evidence-reasoning assessment.",
+                "category": "lesson_design",
+                "subject_default": None,
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "subject": {
+                            "type": "string",
+                            "enum": ["english", "math", "science", "social_studies", "steam", "other"],
+                            "title": "Subject"
+                        },
+                        "grade": {"type": "integer", "minimum": 0, "maximum": 12, "title": "Grade"},
+                        "topic": {"type": "string", "title": "Topic"},
+                        "learning_objective": {"type": "string", "title": "Learning objective"},
+                        "time_duration_minutes": {"type": "integer", "minimum": 5, "maximum": 480, "title": "Time (minutes)"},
+                        "bloom_level": {"type": "string", "title": "Bloom level", "description": "Often Analyze or Evaluate"},
+                        "standards_framework": {"type": "string", "title": "Standards framework (optional)"},
+                        "standard": {"type": "string", "title": "Standard code (optional)"},
+                        "differentiation_needs": {"type": "boolean", "title": "Differentiation toggle"},
+                        "differentiation_notes": {"type": "string", "title": "Differentiation notes (optional)"},
+                        "materials": {"type": "string", "title": "Materials (optional)"},
+                        "constraints": {"type": "string", "title": "Constraints (optional)"}
+                    },
+                    "required": ["subject", "grade", "topic", "learning_objective", "time_duration_minutes", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "InquiryLessonPlannerOutput",
+                    "required": [
+                        "title",
+                        "driving_question",
+                        "overview",
+                        "lesson_flow",
+                        "assessment",
+                        "differentiation",
+                        "bloom_alignment",
+                        "teacher_notes"
+                    ],
+                    "properties": {
+                        "title": {"type": "string", "title": "Title"},
+                        "driving_question": {"type": "string", "title": "Driving question"},
+                        "overview": {"type": "string", "title": "Overview"},
+                        "lesson_flow": {
+                            "type": "array",
+                            "title": "Lesson phases",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "phase": {"type": "string", "title": "Phase"},
+                                    "minutes": {"type": "integer", "title": "Minutes"},
+                                    "teacher_role": {"type": "string", "title": "Teacher facilitation"},
+                                    "student_role": {"type": "string", "title": "Student actions"}
+                                },
+                                "required": ["phase", "minutes", "teacher_role", "student_role"]
+                            }
+                        },
+                        "assessment": {
+                            "type": "object",
+                            "title": "Evidence of learning (CER)",
+                            "properties": {
+                                "type": {"type": "string", "title": "Type"},
+                                "prompt": {"type": "string", "title": "Prompt"},
+                                "success_criteria": {"type": "array", "title": "Success criteria", "items": {"type": "string"}}
+                            },
+                            "required": ["type", "prompt", "success_criteria"]
+                        },
+                        "differentiation": {
+                            "type": "object",
+                            "title": "Differentiation",
+                            "properties": {
+                                "support": {"type": "array", "items": {"type": "string"}},
+                                "extension": {"type": "array", "items": {"type": "string"}}
+                            },
+                            "required": ["support", "extension"]
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom alignment",
+                            "properties": {"level": {"type": "string"}, "note": {"type": "string"}},
+                            "required": ["level", "note"]
+                        },
+                        "standards_alignment": {
+                            "type": "object",
+                            "title": "Standards alignment (optional)",
+                            "properties": {
+                                "framework": {"type": "string"},
+                                "code": {"type": "string"},
+                                "note": {"type": "string"}
+                            }
+                        },
+                        "teacher_notes": {"type": "array", "title": "Teacher notes", "items": {"type": "string"}}
+                    }
+                },
+                "stub_config": {
+                    "title_template": "How Do Humans Change Ecosystems?",
+                    "driving_question_template": "How can one human activity disrupt an ecosystem, and what should be done about it?",
+                    "overview_template": "Students investigate case studies and produce a claim supported by evidence and reasoning for {topic}.",
+                    "lesson_flow": [
+                        {"phase": "Engage", "minutes": 10, "teacher_role": "Show two contrasting ecosystem photos and ask students what changed.", "student_role": "Make observations and generate questions."},
+                        {"phase": "Explore", "minutes": 20, "teacher_role": "Assign case studies: deforestation, overfishing, pollution.", "student_role": "Extract evidence: what changed, what species are affected, what chain reactions occur."},
+                        {"phase": "Explain", "minutes": 10, "teacher_role": "Model cause-effect mapping and define 'biodiversity' and 'stability'.", "student_role": "Build a cause-effect map from their case."},
+                        {"phase": "Elaborate", "minutes": 15, "teacher_role": "Prompt evaluation: 'Which intervention is most realistic and why?'", "student_role": "Propose one solution and justify it using evidence and trade-offs."},
+                        {"phase": "Evaluate", "minutes": 5, "teacher_role": "Collect CER exit ticket.", "student_role": "Submit claim-evidence-reasoning response."}
+                    ],
+                    "assessment": {
+                        "type": "CER_exit_ticket",
+                        "prompt_template": "Make a claim about the impact of your human activity, provide 2 pieces of evidence from the case study, and explain your reasoning. Then recommend one solution and justify it.",
+                        "success_criteria": [
+                            "Claim is clear",
+                            "Evidence is relevant and accurate",
+                            "Reasoning explains cause-effect",
+                            "Solution is justified with trade-offs"
+                        ]
+                    },
+                    "differentiation": {
+                        "support": [
+                            "Provide CER sentence frames",
+                            "Use simplified case study versions for readers who need it"
+                        ],
+                        "extension": [
+                            "Compare two interventions and argue which is better",
+                            "Add a second variable (climate change, invasive species) and predict combined impacts"
+                        ]
+                    },
+                    "bloom_alignment": {
+                        "level": "Analyze → Evaluate",
+                        "note_template": "Students analyze cause-effect relationships and evaluate solutions with justification for {topic}."
+                    },
+                    "standards_alignment": {
+                        "framework_template": "{standards_framework}",
+                        "code_template": "{standard}",
+                        "note_template": "Students construct arguments supported by evidence about ecosystem interactions."
+                    },
+                    "teacher_notes": [
+                        "Push students past opinions: require evidence cited from the case study.",
+                        "Trade-offs must be explicit (cost, feasibility, unintended effects)."
+                    ]
+                },
+                "prompt_definition": {
+                    "description": "Generate an inquiry-based lesson plan with a driving question, 5E phases (Engage, Explore, Explain, Elaborate, Evaluate), clear student and teacher roles per phase, and claim-evidence-reasoning (CER) assessment. Include differentiation and Bloom/standards alignment.",
+                    "context": "This inquiry lesson will be used in international schools. It must promote investigation, evidence-based reasoning, and authentic scientific or disciplinary practices."
+                }
+            }
+        },
+        {
+            # TEMPLATE 4: Multi-Lesson Unit Planner
             "template": {
                 "slug": "unit_planner",
                 "name": "Multi-Lesson Unit Planner",
@@ -207,9 +539,25 @@ def get_template_data() -> list[Dict[str, Any]]:
             },
             "version": {
                 "input_schema": {
-                    **get_base_input_schema(),
+                    "type": "object",
                     "properties": {
-                        **get_base_input_schema()["properties"],
+                        "subject": {"type": "string", "enum": ["english", "math", "science", "social_studies", "steam", "other"], "title": "Subject Area", "description": "Select the subject area for this lesson/activity. Choose the primary academic discipline that aligns with international curriculum standards (e.g., English Language Arts, Mathematics, Science, Social Studies, or STEAM)."},
+                        "grade": {"type": "integer", "minimum": 0, "maximum": 12, "title": "Grade Level", "description": "Enter the grade level (0 for Kindergarten/K, 1-12 for grades 1-12). This ensures content is age-appropriate and aligns with international grade-level expectations (e.g., USA Common Core, UK National Curriculum, IB PYP/MYP/DP)."},
+                        "grade_band": {"type": "string", "enum": ["K-2", "3-5", "6-8", "9-12"], "title": "Grade Band (Optional)", "description": "Optional: Select a grade band for broader age-group alignment. Useful for multi-grade classrooms or when targeting developmental stages rather than specific grades."},
+                        "topic": {"type": "string", "title": "Topic or Learning Theme", "description": "Enter the specific topic, concept, or theme for this lesson/activity. Be specific and clear (e.g., 'Fractions and Decimals', 'The Water Cycle', 'Persuasive Writing', 'World War II'). This will be the central focus of the generated content."},
+                        "learning_objective": {"type": "string", "title": "Learning Objective", "description": "State the learning objective using SMART criteria (Specific, Measurable, Achievable, Relevant, Time-bound). Example: 'Students will be able to solve multi-step word problems involving fractions and decimals with 80% accuracy.' This should align with international curriculum standards and Bloom's Taxonomy levels."},
+                        "time_duration": {"type": "string", "title": "Time Duration", "description": "Specify the duration for this lesson/activity. Use clear formats like '45 minutes', '1 hour', '2 weeks', '90 minutes'. This helps ensure the generated content is appropriately paced for the available time."},
+                        "time_duration_minutes": {"type": "integer", "minimum": 5, "maximum": 480, "title": "Duration in Minutes (Optional)", "description": "Optional: Enter the duration in minutes for more precise time allocation. This helps generate content with accurate time estimates for each section."},
+                        "bloom_level": {"type": "string", "enum": ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create", "Understand → Apply", "Analyze → Evaluate"], "title": "Bloom's Taxonomy Level", "description": "Select the cognitive level(s) from Bloom's Taxonomy that students will engage with. This ensures the content promotes appropriate levels of thinking: Remember (recall facts), Understand (comprehend meaning), Apply (use in new situations), Analyze (examine relationships), Evaluate (make judgments), Create (produce new work). You can select a progression (e.g., 'Understand → Apply') for lessons that build complexity."},
+                        "standard": {"type": "string", "title": "Educational Standard (Optional)", "description": "Optional: Enter specific educational standards to align with (e.g., 'CCSS.MATH.CONTENT.6.EE.A.2', 'UK National Curriculum Year 7', 'IB MYP Criterion A', 'NGSS MS-LS1-1'). This ensures the generated content aligns with recognized international curriculum frameworks."},
+                        "standards_framework": {"type": "string", "enum": ["CCSS", "UK_NATIONAL", "IB", "NGSS", "CAMBRIDGE", "EDEXCEL", "AQA", "AUSTRALIAN", "CANADIAN", "SINGAPORE", "OTHER"], "title": "Standards Framework (Optional)", "description": "Optional: Select the primary educational standards framework. This helps ensure content aligns with the appropriate international curriculum system (Common Core State Standards, UK National Curriculum, International Baccalaureate, Next Generation Science Standards, etc.)."},
+                        "output_language": {"type": "string", "enum": ["English", "Spanish", "French", "German", "Italian", "Portuguese", "Chinese", "Japanese", "Korean", "Russian", "Arabic", "Hindi", "Urdu", "Other"], "title": "Output Language", "description": "Select the language for the generated content. All headings, instructions, and content will be generated in this language. Choose 'Other' if you need a language not listed and specify it in the 'Language' field below."},
+                        "language": {"type": "string", "title": "Custom Language (if 'Other' selected)", "description": "If you selected 'Other' for Output Language, specify the language here. The system will attempt to generate content in this language."},
+                        "differentiation_needs": {"type": "boolean", "title": "Include Differentiation Strategies", "description": "Check this box if you need specific differentiation strategies included in the generated content. This will add support for struggling learners, advanced learners, English Language Learners, and students with diverse learning styles - essential for international classrooms with diverse student populations."},
+                        "differentiation_notes": {"type": "string", "title": "Differentiation Notes (Optional)", "description": "Optional: Provide specific information about student needs, learning differences, or accommodations required. This helps generate more targeted differentiation strategies (e.g., '3 ELL students at intermediate level', '2 students with ADHD need movement breaks', 'Advanced learners need extension activities')."},
+                        "materials": {"type": "string", "title": "Available Materials (Optional)", "description": "Optional: List the materials, resources, or equipment available for this lesson/activity. Be specific (e.g., 'Whiteboards, markers, calculators, graph paper, access to tablets'). This ensures the generated content uses realistic, available resources."},
+                        "available_materials": {"type": "array", "items": {"type": "string"}, "title": "Materials List (Optional)", "description": "Optional: Provide a list of available materials as separate items. This is useful when you have a specific inventory of resources."},
+                        "constraints": {"type": "string", "title": "Constraints or Special Considerations (Optional)", "description": "Optional: Note any constraints, limitations, or special considerations for this lesson (e.g., 'No internet access', 'Limited space', 'Students must work in pairs', 'Cultural sensitivity required for diverse backgrounds'). This helps generate content that is practical and appropriate for your specific context."},
                         "duration_weeks": {
                             "type": "integer",
                             "minimum": 1,
@@ -220,6 +568,85 @@ def get_template_data() -> list[Dict[str, Any]]:
                     },
                     "required": ["subject", "grade", "topic", "duration_weeks", "learning_objective", "bloom_level"]
                 },
+                "output_schema": {
+                    "type": "object",
+                    "title": "UniversalTemplateOutput",
+                    "required": ["overview", "learning_goals", "materials", "steps"],
+                    "properties": {
+                        "overview": {"type": "string", "title": "Overview"},
+                        "learning_goals": {"type": "array", "title": "Learning Goals", "items": {"type": "string"}},
+                        "materials": {"type": "array", "title": "Materials", "items": {"type": "string"}},
+                        "steps": {
+                            "type": "array",
+                            "title": "Steps",
+                            "items": {
+                                "type": "object",
+                                "title": "LessonStep",
+                                "required": ["title", "description"],
+                                "properties": {"title": {"type": "string", "title": "Title"}, "description": {"type": "string", "title": "Description"}},
+                            },
+                        },
+                        "differentiation": {"type": "array", "title": "Differentiation", "items": {"type": "string"}},
+                        "assessment": {
+                            "type": ["object", "null"],
+                            "title": "AssessmentSection",
+                            "properties": {
+                                "checks_for_understanding": {"type": "array", "items": {"type": "string"}},
+                                "rubric": {"type": ["object", "null"]},
+                            },
+                            "required": ["checks_for_understanding"],
+                        },
+                        "teacher_notes": {"type": "array", "title": "Teacher Notes", "items": {"type": "string"}},
+                        "bloom_alignment": {
+                            "type": "array",
+                            "title": "Bloom Alignment",
+                            "items": {
+                                "type": "object",
+                                "title": "BloomAlignmentItem",
+                                "required": ["level", "description"],
+                                "properties": {
+                                    "level": {"type": "string", "enum": ["remember", "understand", "apply", "analyze", "evaluate", "create"]},
+                                    "description": {"type": "string", "title": "Description"},
+                                },
+                            },
+                        },
+                        "questions": {
+                            "type": ["array", "null"],
+                            "title": "Questions",
+                            "items": {
+                                "type": "object",
+                                "title": "AssessmentQuestion",
+                                "required": ["question_text", "type"],
+                                "properties": {
+                                    "question_text": {"type": "string", "title": "Question Text"},
+                                    "type": {"type": "string", "title": "Type"},
+                                    "answer_key": {"type": ["string", "null"]},
+                                    "difficulty": {"type": ["string", "null"]},
+                                },
+                            },
+                        },
+                        "communication": {
+                            "type": ["object", "null"],
+                            "title": "CommunicationSection",
+                            "properties": {
+                                "subject_line": {"type": ["string", "null"]},
+                                "message_body": {"type": ["string", "null"]},
+                                "key_details": {"type": ["array", "null"], "items": {"type": "string"}},
+                                "call_to_action": {"type": ["string", "null"]},
+                            },
+                        },
+                    },
+                },
+                "stub_config": {
+                    "overview_template": "{template_name} for {subject}: {topic}",
+                    "learning_goals_template": ["{learning_objective}", "Help students engage deeply with {topic}."],
+                    "materials": ["Whiteboard or digital board", "Student notebooks or devices"],
+                    "step_titles": ["Introduction & Activation of Prior Knowledge", "Guided Practice", "Independent or Small-Group Practice"],
+                    "step_descriptions_template": "Briefly introduce {topic} and ask students what they already know.",
+                    "differentiation": ["Offer sentence stems or visual supports for students who need additional scaffolding.", "Provide extension tasks for students who are ready for enrichment."],
+                    "teacher_notes": ["Adjust pacing based on student responses and check-ins.", "Capture examples of strong student thinking to highlight during debrief."],
+                    "assessment_checks": ["Cold-call a few students to explain the concept.", "Use exit tickets asking students to solve a short problem or respond to a prompt."],
+                },
                 "prompt_definition": {
                     "description": "Generate a comprehensive, internationally-aligned unit plan suitable for high-level schools with: Unit Overview, Weekly Breakdown, Learning Intentions, Success Criteria, Activities Weekly Planner, Assessments (Formative + Summative), Differentiation across unit, and Resources Needed. Ensure the unit plan demonstrates coherent learning progression, integrates multiple assessment strategies, and provides opportunities for deep understanding. Align with international curriculum standards and use evidence-based instructional design principles.",
                     "context": "This unit plan will be used in international schools. It must demonstrate academic rigor, coherent learning progression, and alignment with international educational standards."
@@ -227,7 +654,7 @@ def get_template_data() -> list[Dict[str, Any]]:
             }
         },
         {
-            # TEMPLATE 4: Formative Assessment Generator
+            # TEMPLATE 5: Formative Assessment Generator
             "template": {
                 "slug": "formative_assessment",
                 "name": "Formative Assessment Generator",
@@ -240,28 +667,107 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "subject": get_base_input_schema()["properties"]["subject"],
-                        "grade": get_base_input_schema()["properties"]["grade"],
-                        "grade_band": get_base_input_schema()["properties"]["grade_band"],
-                        "topic": get_base_input_schema()["properties"]["topic"],
-                        "learning_objective": get_base_input_schema()["properties"]["learning_objective"],
-                        "bloom_level": get_base_input_schema()["properties"]["bloom_level"],
-                        "standard": get_base_input_schema()["properties"]["standard"],
-                        "standards_framework": get_base_input_schema()["properties"]["standards_framework"],
-                        "output_language": get_base_input_schema()["properties"]["output_language"],
-                        "language": get_base_input_schema()["properties"]["language"],
-                        "time_duration": get_base_input_schema()["properties"]["time_duration"],
-                        "time_duration_minutes": get_base_input_schema()["properties"]["time_duration_minutes"],
+                        "subject": {"type": "string", "enum": ["english", "math", "science", "social_studies", "steam", "other"], "title": "Subject Area", "description": "Select the subject area for this lesson/activity. Choose the primary academic discipline that aligns with international curriculum standards (e.g., English Language Arts, Mathematics, Science, Social Studies, or STEAM)."},
+                        "grade": {"type": "integer", "minimum": 0, "maximum": 12, "title": "Grade Level", "description": "Enter the grade level (0 for Kindergarten/K, 1-12 for grades 1-12). This ensures content is age-appropriate and aligns with international grade-level expectations (e.g., USA Common Core, UK National Curriculum, IB PYP/MYP/DP)."},
+                        "grade_band": {"type": "string", "enum": ["K-2", "3-5", "6-8", "9-12"], "title": "Grade Band (Optional)", "description": "Optional: Select a grade band for broader age-group alignment. Useful for multi-grade classrooms or when targeting developmental stages rather than specific grades."},
+                        "topic": {"type": "string", "title": "Topic or Learning Theme", "description": "Enter the specific topic, concept, or theme for this lesson/activity. Be specific and clear (e.g., 'Fractions and Decimals', 'The Water Cycle', 'Persuasive Writing', 'World War II'). This will be the central focus of the generated content."},
+                        "learning_objective": {"type": "string", "title": "Learning Objective", "description": "State the learning objective using SMART criteria (Specific, Measurable, Achievable, Relevant, Time-bound). Example: 'Students will be able to solve multi-step word problems involving fractions and decimals with 80% accuracy.' This should align with international curriculum standards and Bloom's Taxonomy levels."},
+                        "bloom_level": {"type": "string", "enum": ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create", "Understand → Apply", "Analyze → Evaluate"], "title": "Bloom's Taxonomy Level", "description": "Select the cognitive level(s) from Bloom's Taxonomy that students will engage with. This ensures the content promotes appropriate levels of thinking: Remember (recall facts), Understand (comprehend meaning), Apply (use in new situations), Analyze (examine relationships), Evaluate (make judgments), Create (produce new work). You can select a progression (e.g., 'Understand → Apply') for lessons that build complexity."},
+                        "standard": {"type": "string", "title": "Educational Standard (Optional)", "description": "Optional: Enter specific educational standards to align with (e.g., 'CCSS.MATH.CONTENT.6.EE.A.2', 'UK National Curriculum Year 7', 'IB MYP Criterion A', 'NGSS MS-LS1-1'). This ensures the generated content aligns with recognized international curriculum frameworks."},
+                        "standards_framework": {"type": "string", "enum": ["CCSS", "UK_NATIONAL", "IB", "NGSS", "CAMBRIDGE", "EDEXCEL", "AQA", "AUSTRALIAN", "CANADIAN", "SINGAPORE", "OTHER"], "title": "Standards Framework (Optional)", "description": "Optional: Select the primary educational standards framework. This helps ensure content aligns with the appropriate international curriculum system (Common Core State Standards, UK National Curriculum, International Baccalaureate, Next Generation Science Standards, etc.)."},
+                        "output_language": {"type": "string", "enum": ["English", "Spanish", "French", "German", "Italian", "Portuguese", "Chinese", "Japanese", "Korean", "Russian", "Arabic", "Hindi", "Urdu", "Other"], "title": "Output Language", "description": "Select the language for the generated content. All headings, instructions, and content will be generated in this language. Choose 'Other' if you need a language not listed and specify it in the 'Language' field below."},
+                        "language": {"type": "string", "title": "Custom Language (if 'Other' selected)", "description": "If you selected 'Other' for Output Language, specify the language here. The system will attempt to generate content in this language."},
+                        "time_duration": {"type": "string", "title": "Time Duration", "description": "Specify the duration for this lesson/activity. Use clear formats like '45 minutes', '1 hour', '2 weeks', '90 minutes'. This helps ensure the generated content is appropriately paced for the available time."},
+                        "time_duration_minutes": {"type": "integer", "minimum": 5, "maximum": 480, "title": "Duration in Minutes (Optional)", "description": "Optional: Enter the duration in minutes for more precise time allocation. This helps generate content with accurate time estimates for each section."},
                         "assessment_type": {
                             "type": "string",
                             "enum": ["exit_ticket", "mini_quiz", "discussion_check"],
                             "title": "Formative Assessment Type",
                             "description": "Select the type of quick formative assessment. Exit Ticket: Brief end-of-lesson check (1-2 questions, typically 2-3 minutes). Mini Quiz: Short assessment with 3-5 questions (typically 5-10 minutes). Discussion Check: Oral or written response to prompt questions (typically 5-15 minutes). Choose the format that best fits your time constraints and assessment goals for international classroom contexts."
                         },
-                        "differentiation_needs": get_base_input_schema()["properties"]["differentiation_needs"],
-                        "differentiation_notes": get_base_input_schema()["properties"]["differentiation_notes"]
+                        "differentiation_needs": {"type": "boolean", "title": "Include Differentiation Strategies", "description": "Check this box if you need specific differentiation strategies included in the generated content. This will add support for struggling learners, advanced learners, English Language Learners, and students with diverse learning styles - essential for international classrooms with diverse student populations."},
+                        "differentiation_notes": {"type": "string", "title": "Differentiation Notes (Optional)", "description": "Optional: Provide specific information about student needs, learning differences, or accommodations required. This helps generate more targeted differentiation strategies (e.g., '3 ELL students at intermediate level', '2 students with ADHD need movement breaks', 'Advanced learners need extension activities')."}
                     },
                     "required": ["subject", "grade", "topic", "assessment_type", "bloom_level", "time_duration"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "UniversalTemplateOutput",
+                    "required": ["overview", "learning_goals", "materials", "steps"],
+                    "properties": {
+                        "overview": {"type": "string", "title": "Overview"},
+                        "learning_goals": {"type": "array", "title": "Learning Goals", "items": {"type": "string"}},
+                        "materials": {"type": "array", "title": "Materials", "items": {"type": "string"}},
+                        "steps": {
+                            "type": "array",
+                            "title": "Steps",
+                            "items": {
+                                "type": "object",
+                                "title": "LessonStep",
+                                "required": ["title", "description"],
+                                "properties": {"title": {"type": "string", "title": "Title"}, "description": {"type": "string", "title": "Description"}},
+                            },
+                        },
+                        "differentiation": {"type": "array", "title": "Differentiation", "items": {"type": "string"}},
+                        "assessment": {
+                            "type": ["object", "null"],
+                            "title": "AssessmentSection",
+                            "properties": {
+                                "checks_for_understanding": {"type": "array", "items": {"type": "string"}},
+                                "rubric": {"type": ["object", "null"]},
+                            },
+                            "required": ["checks_for_understanding"],
+                        },
+                        "teacher_notes": {"type": "array", "title": "Teacher Notes", "items": {"type": "string"}},
+                        "bloom_alignment": {
+                            "type": "array",
+                            "title": "Bloom Alignment",
+                            "items": {
+                                "type": "object",
+                                "title": "BloomAlignmentItem",
+                                "required": ["level", "description"],
+                                "properties": {
+                                    "level": {"type": "string", "enum": ["remember", "understand", "apply", "analyze", "evaluate", "create"]},
+                                    "description": {"type": "string", "title": "Description"},
+                                },
+                            },
+                        },
+                        "questions": {
+                            "type": ["array", "null"],
+                            "title": "Questions",
+                            "items": {
+                                "type": "object",
+                                "title": "AssessmentQuestion",
+                                "required": ["question_text", "type"],
+                                "properties": {
+                                    "question_text": {"type": "string", "title": "Question Text"},
+                                    "type": {"type": "string", "title": "Type"},
+                                    "answer_key": {"type": ["string", "null"]},
+                                    "difficulty": {"type": ["string", "null"]},
+                                },
+                            },
+                        },
+                        "communication": {
+                            "type": ["object", "null"],
+                            "title": "CommunicationSection",
+                            "properties": {
+                                "subject_line": {"type": ["string", "null"]},
+                                "message_body": {"type": ["string", "null"]},
+                                "key_details": {"type": ["array", "null"], "items": {"type": "string"}},
+                                "call_to_action": {"type": ["string", "null"]},
+                            },
+                        },
+                    },
+                },
+                "stub_config": {
+                    "overview_template": "{template_name} for {subject}: {topic}",
+                    "learning_goals_template": ["{learning_objective}", "Help students engage deeply with {topic}."],
+                    "materials": ["Whiteboard or digital board", "Student notebooks or devices"],
+                    "step_titles": ["Introduction & Activation of Prior Knowledge", "Guided Practice", "Independent or Small-Group Practice"],
+                    "step_descriptions_template": "Briefly introduce {topic} and ask students what they already know.",
+                    "differentiation": ["Offer sentence stems or visual supports for students who need additional scaffolding.", "Provide extension tasks for students who are ready for enrichment."],
+                    "teacher_notes": ["Adjust pacing based on student responses and check-ins.", "Capture examples of strong student thinking to highlight during debrief."],
+                    "assessment_checks": ["Cold-call a few students to explain the concept.", "Use exit tickets asking students to solve a short problem or respond to a prompt."],
                 },
                 "prompt_definition": {
                     "description": "Generate a high-quality formative assessment suitable for international classrooms with: Assessment Type, Learning Target, 3-5 Quick Questions, Answer Key, Common Misconceptions, and Differentiation Prompt. Ensure questions assess deep understanding, not just surface knowledge. Include questions at various Bloom's Taxonomy levels. Provide clear answer keys with explanations. Address common misconceptions with pedagogical guidance.",
@@ -270,7 +776,7 @@ def get_template_data() -> list[Dict[str, Any]]:
             }
         },
         {
-            # TEMPLATE 5: Summative Assessment / Test Builder
+            # TEMPLATE 6: Summative Assessment / Test Builder
             "template": {
                 "slug": "summative_assessment",
                 "name": "Summative Assessment / Test Builder",
@@ -283,22 +789,19 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "subject": get_base_input_schema()["properties"]["subject"],
-                        "grade": get_base_input_schema()["properties"]["grade"],
-                        "grade_band": get_base_input_schema()["properties"]["grade_band"],
-                        "topic": get_base_input_schema()["properties"]["topic"],
-                        "learning_objective": get_base_input_schema()["properties"]["learning_objective"],
-                        "bloom_level": get_base_input_schema()["properties"]["bloom_level"],
-                        "standard": get_base_input_schema()["properties"]["standard"],
-                        "standards_framework": get_base_input_schema()["properties"]["standards_framework"],
-                        "output_language": get_base_input_schema()["properties"]["output_language"],
-                        "language": get_base_input_schema()["properties"]["language"],
+                        "subject": {"type": "string", "enum": ["english", "math", "science", "social_studies", "steam", "other"], "title": "Subject Area", "description": "Select the subject area for this lesson/activity. Choose the primary academic discipline that aligns with international curriculum standards (e.g., English Language Arts, Mathematics, Science, Social Studies, or STEAM)."},
+                        "grade": {"type": "integer", "minimum": 0, "maximum": 12, "title": "Grade Level", "description": "Enter the grade level (0 for Kindergarten/K, 1-12 for grades 1-12). This ensures content is age-appropriate and aligns with international grade-level expectations (e.g., USA Common Core, UK National Curriculum, IB PYP/MYP/DP)."},
+                        "grade_band": {"type": "string", "enum": ["K-2", "3-5", "6-8", "9-12"], "title": "Grade Band (Optional)", "description": "Optional: Select a grade band for broader age-group alignment. Useful for multi-grade classrooms or when targeting developmental stages rather than specific grades."},
+                        "topic": {"type": "string", "title": "Topic or Learning Theme", "description": "Enter the specific topic, concept, or theme for this lesson/activity. Be specific and clear (e.g., 'Fractions and Decimals', 'The Water Cycle', 'Persuasive Writing', 'World War II'). This will be the central focus of the generated content."},
+                        "learning_objective": {"type": "string", "title": "Learning Objective", "description": "State the learning objective using SMART criteria (Specific, Measurable, Achievable, Relevant, Time-bound). Example: 'Students will be able to solve multi-step word problems involving fractions and decimals with 80% accuracy.' This should align with international curriculum standards and Bloom's Taxonomy levels."},
+                        "bloom_level": {"type": "string", "enum": ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create", "Understand → Apply", "Analyze → Evaluate"], "title": "Bloom's Taxonomy Level", "description": "Select the cognitive level(s) from Bloom's Taxonomy that students will engage with. This ensures the content promotes appropriate levels of thinking: Remember (recall facts), Understand (comprehend meaning), Apply (use in new situations), Analyze (examine relationships), Evaluate (make judgments), Create (produce new work). You can select a progression (e.g., 'Understand → Apply') for lessons that build complexity."},
+                        "standard": {"type": "string", "title": "Educational Standard (Optional)", "description": "Optional: Enter specific educational standards to align with (e.g., 'CCSS.MATH.CONTENT.6.EE.A.2', 'UK National Curriculum Year 7', 'IB MYP Criterion A', 'NGSS MS-LS1-1'). This ensures the generated content aligns with recognized international curriculum frameworks."},
+                        "standards_framework": {"type": "string", "enum": ["CCSS", "UK_NATIONAL", "IB", "NGSS", "CAMBRIDGE", "EDEXCEL", "AQA", "AUSTRALIAN", "CANADIAN", "SINGAPORE", "OTHER"], "title": "Standards Framework (Optional)", "description": "Optional: Select the primary educational standards framework. This helps ensure content aligns with the appropriate international curriculum system (Common Core State Standards, UK National Curriculum, International Baccalaureate, Next Generation Science Standards, etc.)."},
+                        "output_language": {"type": "string", "enum": ["English", "Spanish", "French", "German", "Italian", "Portuguese", "Chinese", "Japanese", "Korean", "Russian", "Arabic", "Hindi", "Urdu", "Other"], "title": "Output Language", "description": "Select the language for the generated content. All headings, instructions, and content will be generated in this language. Choose 'Other' if you need a language not listed and specify it in the 'Language' field below."},
+                        "language": {"type": "string", "title": "Custom Language (if 'Other' selected)", "description": "If you selected 'Other' for Output Language, specify the language here. The system will attempt to generate content in this language."},
                         "question_types": {
                             "type": "array",
-                            "items": {
-                                "type": "string",
-                                "enum": ["MCQ", "short_answer", "diagram", "essay", "matching"]
-                            },
+                            "items": {"type": "string", "enum": ["MCQ", "short_answer", "diagram", "essay", "matching"]},
                             "title": "Question Types",
                             "description": "Select the types of questions to include in this summative assessment. MCQ: Multiple choice questions for standardized assessment. Short Answer: Brief written responses requiring specific knowledge. Diagram: Visual representation, labeling, or drawing tasks. Essay: Extended written responses requiring analysis, synthesis, and evaluation. Matching: Pairing related concepts or items. Include multiple types to assess different cognitive skills and align with international assessment standards (e.g., GCSE, A-Level, IB, AP exams)."
                         },
@@ -325,14 +828,45 @@ def get_template_data() -> list[Dict[str, Any]]:
                     },
                     "required": ["subject", "grade", "topic", "question_types", "bloom_level", "difficulty", "learning_objective"]
                 },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SummativeAssessmentOutput",
+                    "required": [
+                        "test_overview",
+                        "learning_goals",
+                        "instructions",
+                        "rubric",
+                        "questions_section",
+                        "answer_key",
+                        "bloom_categorization",
+                    ],
+                    "properties": {
+                        "test_overview": {"type": "string", "title": "Test Overview", "description": "Brief overview of the assessment: purpose, format, and what is being assessed."},
+                        "learning_goals": {"type": "array", "title": "Learning Goals", "items": {"type": "string"}, "description": "Learning objectives this assessment measures."},
+                        "instructions": {"type": "string", "title": "Instructions", "description": "Clear instructions for students: time allowed, how to answer, formatting rules."},
+                        "rubric": {"type": "string", "title": "Rubric / Marking Guide", "description": "Marking rubric in readable form: performance levels (e.g. Beginning, Developing, Proficient, Advanced) with clear criteria for each. Use prose or bullet points, not raw JSON."},
+                        "questions_section": {"type": "string", "title": "Questions", "description": "All questions by type. Number each question (1., 2., 3.). For MCQ list options A, B, C, D only — do NOT give the correct answer here; correct answers go only in Answer Key."},
+                        "answer_key": {"type": "string", "title": "Answer Key", "description": "Numbered list matching each question: e.g. '1. B', '2. D', '3. A' for MCQ, or brief marking points for open questions. Must correspond one-to-one with question numbers. Do not write unrelated text."},
+                        "bloom_categorization": {"type": "string", "title": "Bloom Categorization", "description": "One short line per question (e.g. '1. Apply; 2. Understand; 3. Analyze') or a short summary. No long paragraphs."},
+                    },
+                },
+                "stub_config": {
+                    "test_overview": "Summative assessment for {topic} at grade {grade}. Assesses {learning_objective}.",
+                    "learning_goals": ["{learning_objective}", "Demonstrate understanding of {topic}."],
+                    "instructions": "Answer all questions. Short answer: write in full sentences. Essay: plan before writing. Time: as specified per section.",
+                    "rubric": "Proficient: Meets all criteria with clear evidence. Developing: Partial understanding. Beginning: Limited evidence. Advanced: Exceeds expectations with depth.",
+                    "questions_section": "Short Answer: 3 questions. Essay: 1 extended response. See rubric for marking.",
+                    "answer_key": "Answers and marking points will be provided in the full assessment.",
+                    "bloom_categorization": "Questions align with {bloom_level} level(s) as specified.",
+                },
                 "prompt_definition": {
-                    "description": "Generate a comprehensive, internationally-aligned summative assessment suitable for high-level schools with: Test Overview, Questions by Type, Rubric / Marking Guide, Answer Key, and Bloom Categorization. Ensure questions are academically rigorous, assess deep understanding, and align with international assessment standards. Include a detailed marking rubric that clearly distinguishes between performance levels. Questions should cover various cognitive levels and require critical thinking, not just recall.",
-                    "context": "This assessment will be used in international schools. It must meet high academic standards and provide clear, fair evaluation criteria."
+                    "description": "Generate a summative assessment with exactly these sections in order. (1) Test Overview — brief purpose and format. (2) Learning Goals — bullet list of what the test measures. (3) Instructions — clear student-facing rules and timing. (4) Rubric / Marking Guide — performance levels (Beginning, Developing, Proficient, Advanced) with criteria in prose or bullets. (5) Questions — number each question (1., 2., 3.); for MCQ show only question text and options A, B, C, D; do NOT reveal the correct answer in this section. (6) Answer Key — a numbered list that exactly matches the questions: for MCQ write '1. B', '2. D', etc.; for short answer/essay write brief marking points. The Answer Key must be the correct answer for each question number only; no unrelated sentences. (7) Bloom Categorization — one short line per question (e.g. '1. Apply; 2. Understand') or a brief summary. Write all sections in clear, human-readable form. No raw JSON. Match the question types and difficulty the user requested.",
+                    "context": "This assessment is for international schools. The Answer Key must correspond one-to-one with question numbers. Do not put correct answers inline under each question; put them only in the Answer Key section."
                 }
             }
         },
         {
-            # TEMPLATE 6: Behavior / SEL Activity Builder
+            # TEMPLATE 7: Behavior / SEL Activity Builder
             "template": {
                 "slug": "sel_activity",
                 "name": "Behavior / SEL Activity Builder",
@@ -343,20 +877,102 @@ def get_template_data() -> list[Dict[str, Any]]:
             },
             "version": {
                 "input_schema": {
-                    **get_base_input_schema(),
+                    "type": "object",
                     "properties": {
-                        "grade": get_base_input_schema()["properties"]["grade"],
-                        "topic": get_base_input_schema()["properties"]["topic"],
-                        "activity_type": {
+                        "grade": {"type": "integer", "minimum": 0, "maximum": 12, "title": "Grade"},
+                        "topic": {"type": "string", "title": "Topic", "description": "e.g. Start-of-year community building"},
+                        "goal": {
                             "type": "string",
-                            "enum": ["circle_time", "reflection", "discussion"],
-                            "title": "SEL Activity Type",
-                            "description": "Select the format for this social-emotional learning activity. Circle Time: Structured group sharing and community building (common in K-8). Reflection: Individual or small-group introspection and self-awareness. Discussion: Guided dialogue about emotions, relationships, or social situations. Choose the format appropriate for your grade level and cultural context in international schools."
+                            "enum": ["community building", "teamwork", "getting to know each other"],
+                            "title": "Goal (optional)"
                         },
-                        "time_duration": get_base_input_schema()["properties"]["time_duration"],
-                        "bloom_level": get_base_input_schema()["properties"]["bloom_level"]
+                        "time_duration_minutes": {"type": "integer", "minimum": 5, "maximum": 120, "title": "Time (minutes)"},
+                        "class_size": {"type": "integer", "minimum": 1, "maximum": 500, "title": "Class size (optional)"},
+                        "constraints": {"type": "string", "title": "Constraints (optional)", "description": "e.g. shy students, new class, no movement"},
+                        "bloom_level": {"type": "string", "title": "Bloom level (optional)", "description": "Usually Understand or Apply"},
+                        "standards_framework": {"type": "string", "title": "Standards framework (optional)", "description": "SEL frameworks if provided"},
+                        "standard": {"type": "string", "title": "Standard code (optional)"},
+                        "differentiation_needs": {"type": "boolean", "title": "Include differentiation"},
+                        "differentiation_notes": {"type": "string", "title": "Differentiation notes (optional)"},
+                        "materials": {"type": "string", "title": "Materials (optional)"}
                     },
-                    "required": ["grade", "topic", "activity_type", "time_duration", "bloom_level"]
+                    "required": ["grade", "topic", "time_duration_minutes"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ClassroomIcebreakerOutput",
+                    "required": [
+                        "title",
+                        "purpose",
+                        "time_needed",
+                        "grouping",
+                        "materials",
+                        "steps",
+                        "reflection_prompts",
+                        "differentiation",
+                        "bloom_alignment",
+                        "teacher_notes"
+                    ],
+                    "properties": {
+                        "title": {"type": "string", "title": "Title"},
+                        "purpose": {"type": "string", "title": "Purpose"},
+                        "time_needed": {"type": "integer", "title": "Time needed (minutes)"},
+                        "grouping": {"type": "string", "title": "Grouping"},
+                        "materials": {"type": "array", "title": "Materials", "items": {"type": "string"}},
+                        "steps": {"type": "array", "title": "Steps", "items": {"type": "string"}},
+                        "reflection_prompts": {"type": "array", "title": "Debrief/reflection prompts", "items": {"type": "string"}},
+                        "differentiation": {
+                            "type": "object",
+                            "title": "Differentiation",
+                            "properties": {
+                                "support": {"type": "array", "title": "Support", "items": {"type": "string"}},
+                                "extension": {"type": "array", "title": "Extension", "items": {"type": "string"}}
+                            },
+                            "required": ["support", "extension"]
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom alignment",
+                            "properties": {"level": {"type": "string"}, "note": {"type": "string"}},
+                            "required": ["level", "note"]
+                        },
+                        "teacher_notes": {"type": "array", "title": "Teacher notes", "items": {"type": "string"}}
+                    }
+                },
+                "stub_config": {
+                    "title_template": "Find Your Common Ground",
+                    "purpose_template": "Students discover shared interests safely and build early trust for {topic}.",
+                    "time_needed": 20,
+                    "grouping_template": "Small groups of 4",
+                    "materials": ["Sticky notes", "Markers"],
+                    "steps_template": [
+                        "Each student writes 3 low-risk facts (e.g., favorite food, hobby, music genre) on sticky notes.",
+                        "In groups, students place notes on a table and sort them into 'shared' vs 'unique'.",
+                        "Groups create one 'We are the kind of group that...' statement based on what they share.",
+                        "Each group shares their statement with the class."
+                    ],
+                    "reflection_prompts": [
+                        "What did you learn about your classmates that surprised you?",
+                        "How can shared interests help teamwork this year?"
+                    ],
+                    "differentiation": {
+                        "support": [
+                            "Provide a list of safe prompts to choose from",
+                            "Allow students to write instead of speak"
+                        ],
+                        "extension": [
+                            "Have groups set one teamwork norm based on what they learned",
+                            "Connect shared interests to a group goal for the semester"
+                        ]
+                    },
+                    "bloom_alignment": {
+                        "level": "Understand",
+                        "note_template": "Students explain meaning and connections rather than just listing facts for {topic}."
+                    },
+                    "teacher_notes": [
+                        "Keep prompts low-risk to protect privacy and cultural comfort.",
+                        "Model examples that are appropriate and inclusive."
+                    ]
                 },
                 "prompt_definition": {
                     "description": "Generate a culturally-sensitive SEL activity suitable for international, diverse classrooms with: SEL Activity Title, Purpose, Materials (if needed), Steps, Reflection Questions, and Teacher Notes. Ensure the activity promotes social-emotional learning, cultural awareness, empathy, and inclusivity. Activities should be appropriate for diverse student populations and respect different cultural perspectives.",
@@ -365,7 +981,7 @@ def get_template_data() -> list[Dict[str, Any]]:
             }
         },
         {
-            # TEMPLATE 7: Classroom Management Plan Generator
+            # TEMPLATE 8: Classroom Management Plan Generator
             "template": {
                 "slug": "classroom_management_plan",
                 "name": "Classroom Management Plan Generator",
@@ -382,29 +998,124 @@ def get_template_data() -> list[Dict[str, Any]]:
                             "type": "integer",
                             "minimum": 0,
                             "maximum": 12,
-                            "title": "Grade Level",
-                            "description": "Enter the grade level (0 for Kindergarten/K, 1-12 for grades 1-12). This ensures the management strategies are developmentally appropriate and align with international school expectations for student behavior and classroom culture."
+                            "title": "Grade",
+                            "description": "Numeric grade level (0 for Kindergarten, 1–12 for grades 1–12)."
                         },
                         "class_size": {
                             "type": "integer",
                             "minimum": 1,
                             "maximum": 50,
                             "title": "Class Size",
-                            "description": "Enter the number of students in your class. This helps generate realistic management strategies, grouping suggestions, and intervention approaches suitable for your specific classroom context in international schools."
+                            "description": "Number of students in the class."
                         },
                         "behavior_focus": {
                             "type": "string",
-                            "enum": ["low_attention", "noise", "routine"],
-                            "title": "Primary Behavior Focus Area",
-                            "description": "Select the primary behavior management challenge you want to address. Low Attention: Students struggle to focus or maintain engagement. Noise: Excessive talking or disruptive sounds. Routine: Difficulty following procedures or transitions. This helps generate targeted, evidence-based management strategies appropriate for international, diverse classrooms."
+                            "enum": ["noise", "low_attention", "routine"],
+                            "title": "Behavior Focus",
+                            "description": "Primary behavior focus (e.g. noise, low attention, routines)."
+                        },
+                        "teacher_style": {
+                            "type": "string",
+                            "enum": ["warm_strict", "authoritative", "student_led", "collaborative"],
+                            "title": "Teacher Style",
+                            "description": "Overall classroom management style (e.g. warm_strict)."
                         },
                         "differentiation_needs": {
                             "type": "boolean",
-                            "title": "Include Differentiation Strategies",
-                            "description": "Check this box if you need behavior management strategies that account for diverse student needs, cultural differences, and individual learning styles - essential for international classrooms with diverse populations."
+                            "title": "Include Differentiation",
+                            "description": "Whether to include specific differentiation supports in the plan."
                         }
                     },
-                    "required": ["grade", "class_size", "behavior_focus"]
+                    "required": ["grade", "class_size", "behavior_focus", "teacher_style"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ClassroomManagementPlanOutput",
+                    "required": [
+                        "classroom_philosophy",
+                        "rules",
+                        "routines",
+                        "reinforcement",
+                        "correction_ladder",
+                        "scripts",
+                        "differentiation"
+                    ],
+                    "properties": {
+                        "classroom_philosophy": {"type": "string", "title": "Classroom Philosophy"},
+                        "rules": {
+                            "type": "array",
+                            "title": "Rules",
+                            "items": {"type": "string"}
+                        },
+                        "routines": {
+                            "type": "object",
+                            "title": "Routines",
+                            "properties": {
+                                "entry": {"type": "string", "title": "Entry Routine"},
+                                "transition": {"type": "string", "title": "Transition Routine"}
+                            }
+                        },
+                        "reinforcement": {
+                            "type": "array",
+                            "title": "Reinforcement Strategies",
+                            "items": {"type": "string"}
+                        },
+                        "correction_ladder": {
+                            "type": "array",
+                            "title": "Correction Ladder",
+                            "items": {"type": "string"}
+                        },
+                        "scripts": {
+                            "type": "object",
+                            "title": "Teacher Scripts",
+                            "properties": {
+                                "redirect": {"type": "string", "title": "Redirect Script"},
+                                "choice": {"type": "string", "title": "Choice Script"}
+                            }
+                        },
+                        "differentiation": {
+                            "type": "object",
+                            "title": "Differentiation Supports",
+                            "properties": {
+                                "support": {
+                                    "type": "array",
+                                    "title": "Support Strategies",
+                                    "items": {"type": "string"}
+                                }
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "classroom_philosophy_template": "Clear expectations with consistent reinforcement, tailored to grade {grade} and a {teacher_style} style.",
+                    "rules": [
+                        "Raise hand to speak",
+                        "Respect classmates",
+                        "Follow directions the first time"
+                    ],
+                    "routines": {
+                        "entry_template": "Enter quietly and begin Do Now immediately.",
+                        "transition_template": "Teacher uses a 5-second countdown signal and visual cue."
+                    },
+                    "reinforcement": [
+                        "Specific, labeled praise for meeting expectations.",
+                        "Positive call or email home for consistent effort."
+                    ],
+                    "correction_ladder": [
+                        "Non-verbal cue (proximity, eye contact, gesture).",
+                        "Private reminder naming the expectation.",
+                        "Logical consequence connected to the behavior."
+                    ],
+                    "scripts": {
+                        "redirect_template": "Please show me you're ready to learn by following our class rule: {behavior_focus}.",
+                        "choice_template": "You can choose to follow the expectation now or we will make up the time later."
+                    },
+                    "differentiation": {
+                        "support": [
+                            "Use a visual timer to support transitions.",
+                            "Provide planned movement breaks for students who need them."
+                        ]
+                    }
                 },
                 "prompt_definition": {
                     "description": "Generate a comprehensive classroom management plan suitable for international schools with: Classroom Rules, Daily Routines, Reinforcement Strategies, Tiered Interventions, and Parent Communication Note. Ensure the plan is culturally sensitive, promotes positive behavior, and uses evidence-based strategies. Include tiered intervention approaches that respect diverse student needs and cultural backgrounds.",
@@ -413,7 +1124,7 @@ def get_template_data() -> list[Dict[str, Any]]:
             }
         },
         {
-            # TEMPLATE 8: English Skills Builder (Reading/Writing)
+            # TEMPLATE 9: English Skills Builder (Reading/Writing)
             "template": {
                 "slug": "english_task",
                 "name": "English Skills Builder (Reading/Writing)",
@@ -426,26 +1137,170 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "grade": get_base_input_schema()["properties"]["grade"],
-                        "grade_band": get_base_input_schema()["properties"]["grade_band"],
-                        "topic": get_base_input_schema()["properties"]["topic"],
-                        "learning_objective": get_base_input_schema()["properties"]["learning_objective"],
+                        "grade": {"type": "integer", "minimum": 0, "maximum": 12, "title": "Grade"},
                         "focus": {
                             "type": "string",
-                            "enum": ["writing", "reading", "vocabulary"],
-                            "title": "ELA Focus Area",
-                            "description": "Select the primary English Language Arts skill focus. Writing: Composition, grammar, and written expression aligned with international literacy standards (CCSS, UK National Curriculum, IB). Reading: Comprehension, analysis, and interpretation of texts (close reading, literary analysis). Vocabulary: Word knowledge, etymology, and language development (academic vocabulary, word roots). Choose based on your learning objectives and international curriculum alignment needs."
+                            "enum": ["reading", "writing", "vocabulary"],
+                            "title": "Focus"
                         },
-                        "bloom_level": get_base_input_schema()["properties"]["bloom_level"],
-                        "standard": get_base_input_schema()["properties"]["standard"],
-                        "standards_framework": get_base_input_schema()["properties"]["standards_framework"],
-                        "output_language": get_base_input_schema()["properties"]["output_language"],
-                        "language": get_base_input_schema()["properties"]["language"],
-                        "differentiation_needs": get_base_input_schema()["properties"]["differentiation_needs"],
-                        "differentiation_notes": get_base_input_schema()["properties"]["differentiation_notes"],
-                        "materials": get_base_input_schema()["properties"]["materials"]
+                        "topic": {"type": "string", "title": "Topic"},
+                        "learning_objective": {"type": "string", "title": "Learning Objective"},
+                        "time_duration_minutes": {"type": "integer", "minimum": 5, "maximum": 480, "title": "Time (minutes)"},
+                        "bloom_level": {"type": "string", "title": "Bloom Level"},
+                        "standards_framework": {"type": "string", "title": "Standards Framework (optional)"},
+                        "standard": {"type": "string", "title": "Standard code (optional)"},
+                        "differentiation_needs": {"type": "boolean", "title": "Differentiation on/off"},
+                        "differentiation_notes": {"type": "string", "title": "Differentiation notes (optional)"},
+                        "materials": {"type": "string", "title": "Materials (optional)"},
+                        "constraints": {"type": "string", "title": "Constraints (optional)"},
+                        "output_language": {"type": "string", "title": "Output language (optional)"},
+                        "language": {"type": "string", "title": "Custom language if Other (optional)"}
                     },
-                    "required": ["grade", "topic", "focus", "bloom_level"]
+                    "required": ["grade", "focus", "topic", "learning_objective", "time_duration_minutes", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "EnglishSkillsBuilderOutput",
+                    "required": [
+                        "title",
+                        "overview",
+                        "learning_objectives",
+                        "success_criteria",
+                        "mini_lesson",
+                        "guided_practice",
+                        "independent_task",
+                        "assessment",
+                        "differentiation",
+                        "bloom_alignment",
+                        "teacher_notes"
+                    ],
+                    "properties": {
+                        "title": {"type": "string", "title": "Title"},
+                        "overview": {"type": "string", "title": "Overview / Skill focus"},
+                        "learning_objectives": {"type": "array", "title": "Learning objectives", "items": {"type": "string"}},
+                        "success_criteria": {"type": "array", "title": "Success criteria", "items": {"type": "string"}},
+                        "mini_lesson": {
+                            "type": "object",
+                            "title": "Mini-lesson",
+                            "properties": {
+                                "teacher_model": {"type": "string", "title": "Teacher script / model"},
+                                "key_point": {"type": "string", "title": "Key point"}
+                            },
+                            "required": ["teacher_model", "key_point"]
+                        },
+                        "guided_practice": {
+                            "type": "object",
+                            "title": "Guided practice",
+                            "properties": {
+                                "activity": {"type": "string", "title": "Activity"},
+                                "teacher_prompts": {"type": "array", "title": "Teacher prompts", "items": {"type": "string"}}
+                            },
+                            "required": ["activity", "teacher_prompts"]
+                        },
+                        "independent_task": {
+                            "type": "object",
+                            "title": "Independent task",
+                            "properties": {
+                                "task": {"type": "string", "title": "Task"},
+                                "expected_answer_format": {"type": "string", "title": "Expected answer format"}
+                            },
+                            "required": ["task", "expected_answer_format"]
+                        },
+                        "assessment": {
+                            "type": "object",
+                            "title": "Assessment",
+                            "properties": {
+                                "type": {"type": "string", "title": "Type"},
+                                "criteria": {"type": "array", "title": "Criteria", "items": {"type": "string"}}
+                            },
+                            "required": ["type", "criteria"]
+                        },
+                        "differentiation": {
+                            "type": "object",
+                            "title": "Differentiation",
+                            "properties": {
+                                "support": {"type": "array", "title": "Support", "items": {"type": "string"}},
+                                "extension": {"type": "array", "title": "Extension", "items": {"type": "string"}}
+                            },
+                            "required": ["support", "extension"]
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom alignment",
+                            "properties": {"level": {"type": "string"}, "note": {"type": "string"}},
+                            "required": ["level", "note"]
+                        },
+                        "standards_alignment": {
+                            "type": "object",
+                            "title": "Standards alignment (if provided)",
+                            "properties": {
+                                "framework": {"type": "string"},
+                                "code": {"type": "string"},
+                                "note": {"type": "string"}
+                            }
+                        },
+                        "teacher_notes": {"type": "array", "title": "Teacher notes", "items": {"type": "string"}}
+                    }
+                },
+                "stub_config": {
+                    "title_template": "Tracking Character Change With Evidence",
+                    "overview_template": "Students read a short story excerpt and analyze how a main character changes from the beginning to the end for {topic}.",
+                    "learning_objectives_template": [
+                        "Identify key events that influence the character",
+                        "Explain how the character changes over time",
+                        "Support analysis with at least 2 direct quotes"
+                    ],
+                    "success_criteria": [
+                        "I can describe the character at the beginning and end",
+                        "I can include 2 accurate quotes",
+                        "I can explain how the quotes show change"
+                    ],
+                    "mini_lesson": {
+                        "teacher_model_template": "Read a short paragraph aloud and model thinking: 'At first, Jamal avoids responsibility... Later, he volunteers to help—this shows growth.' Focus on {topic}.",
+                        "key_point_template": "Character change is shown through actions, choices, and responses to conflict."
+                    },
+                    "guided_practice": {
+                        "activity_template": "Whole class completes a 'Beginning vs End' chart for the first half of the story.",
+                        "teacher_prompts": [
+                            "What action shows who the character is right now?",
+                            "Which event pressures the character to change?"
+                        ]
+                    },
+                    "independent_task": {
+                        "task_template": "Complete the chart for the ending. Add 2 quotes (one from early, one from late) and write a 6–8 sentence explanation of the change.",
+                        "expected_answer_format": "Chart + paragraph with evidence"
+                    },
+                    "assessment": {
+                        "type": "quick_rubric",
+                        "criteria": [
+                            "Evidence is accurate and relevant",
+                            "Explanation connects evidence to change",
+                            "Writing is clear and mostly complete"
+                        ]
+                    },
+                    "differentiation": {
+                        "support": [
+                            "Provide sentence starters: 'At the beginning, _ because _. Later, _ which shows _.'",
+                            "Highlight 2–3 key paragraphs for ELL students"
+                        ],
+                        "extension": [
+                            "Evaluate whether the change is believable and justify with evidence",
+                            "Compare the main character's change to a secondary character"
+                        ]
+                    },
+                    "bloom_alignment": {
+                        "level": "Analyze",
+                        "note_template": "Students examine relationships between events and character behavior, supported by evidence for {topic}."
+                    },
+                    "standards_alignment": {
+                        "framework_template": "{standards_framework}",
+                        "code_template": "{standard}",
+                        "note_template": "Students analyze character development and cite textual evidence."
+                    },
+                    "teacher_notes": [
+                        "Watch for summaries that don't explain change—require evidence + reasoning.",
+                        "Common error: students pick quotes but don't connect them to character traits."
+                    ]
                 },
                 "prompt_definition": {
                     "description": "Generate a rigorous English/ELA task aligned with international standards (CCSS, UK National Curriculum, IB, etc.) with: Mini-Lesson Goal, Skill Practice Activity, Guided Examples, Sentence Starters, Student Task, and Assessment Criteria. Ensure the task develops reading, writing, speaking, and listening skills. Include authentic texts and real-world applications. Provide clear assessment criteria that measure genuine literacy skills.",
@@ -454,7 +1309,7 @@ def get_template_data() -> list[Dict[str, Any]]:
             }
         },
         {
-            # TEMPLATE 9: Math Problem / Activity Builder
+            # TEMPLATE 10: Math Problem / Activity Builder
             "template": {
                 "slug": "math_task",
                 "name": "Math Problem / Activity Builder",
@@ -467,26 +1322,87 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "grade": get_base_input_schema()["properties"]["grade"],
-                        "grade_band": get_base_input_schema()["properties"]["grade_band"],
-                        "topic": get_base_input_schema()["properties"]["topic"],
-                        "learning_objective": get_base_input_schema()["properties"]["learning_objective"],
+                        "grade": {"type": "integer", "minimum": 0, "maximum": 12, "title": "Grade"},
+                        "topic": {"type": "string", "title": "Topic"},
                         "problem_type": {
                             "type": "string",
                             "enum": ["real_world", "game", "visual"],
-                            "title": "Math Problem Type",
-                            "description": "Select the type of mathematical problem or activity. Real World: Authentic, contextual problems that connect math to everyday situations (promotes application and relevance, aligns with international problem-solving standards). Game: Interactive, rule-based mathematical challenges (promotes engagement and strategic thinking). Visual: Problems involving diagrams, graphs, or spatial reasoning (promotes visual-spatial intelligence and geometric thinking). Choose based on your learning objectives and alignment with international mathematics standards (CCSS, UK National Curriculum, IB, Singapore Math, etc.)."
+                            "title": "Problem Type"
                         },
-                        "bloom_level": get_base_input_schema()["properties"]["bloom_level"],
-                        "standard": get_base_input_schema()["properties"]["standard"],
-                        "standards_framework": get_base_input_schema()["properties"]["standards_framework"],
-                        "output_language": get_base_input_schema()["properties"]["output_language"],
-                        "language": get_base_input_schema()["properties"]["language"],
-                        "differentiation_needs": get_base_input_schema()["properties"]["differentiation_needs"],
-                        "differentiation_notes": get_base_input_schema()["properties"]["differentiation_notes"],
-                        "materials": get_base_input_schema()["properties"]["materials"]
+                        "bloom_level": {"type": "string", "title": "Bloom Level"},
+                        "problem_count": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 50,
+                            "title": "Problem Count"
+                        },
+                        "include_worked_solutions": {
+                            "type": "boolean",
+                            "title": "Include Worked Solutions"
+                        }
                     },
-                    "required": ["grade", "topic", "problem_type", "bloom_level"]
+                    "required": ["grade", "topic", "problem_type", "bloom_level", "problem_count"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "MathTaskOutput",
+                    "required": ["overview", "problems", "answer_key", "bloom_alignment"],
+                    "properties": {
+                        "overview": {"type": "string", "title": "Overview"},
+                        "problems": {
+                            "type": "array",
+                            "title": "Problems",
+                            "items": {
+                                "type": "object",
+                                "title": "MathProblem",
+                                "required": ["question"],
+                                "properties": {
+                                    "question": {"type": "string", "title": "Question"},
+                                    "expected_answer": {"type": "string", "title": "Expected Answer"},
+                                    "worked_solution": {"type": "string", "title": "Worked Solution"}
+                                }
+                            }
+                        },
+                        "answer_key": {
+                            "type": "array",
+                            "title": "Answer Key",
+                            "items": {
+                                "type": "object",
+                                "title": "AnswerKeyItem",
+                                "required": ["problem", "answer"],
+                                "properties": {
+                                    "problem": {"type": "integer", "title": "Problem Number"},
+                                    "answer": {"type": "string", "title": "Answer"}
+                                }
+                            }
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom Alignment",
+                            "required": ["level", "note"],
+                            "properties": {
+                                "level": {"type": "string", "title": "Level"},
+                                "note": {"type": "string", "title": "Note"}
+                            }
+                        }
+                    }
+                },
+                "stub_config": {
+                    "overview_template": "Practice solving proportional relationship problems for topic: {topic}.",
+                    "problems": [
+                        {
+                            "question": "If 3 apples cost $6, how much do 5 apples cost?",
+                            "expected_answer": "$10",
+                            "worked_solution": "3/6 = 5/x → x = 10"
+                        }
+                    ],
+                    "answer_key": [
+                        {"problem": 1, "answer": "$10"}
+                    ],
+                    "bloom_alignment": {
+                        "level": "Apply",
+                        "note": "Students solve proportional equations correctly."
+                    }
                 },
                 "prompt_definition": {
                     "description": "Generate a rigorous math problem/activity aligned with international standards (CCSS, UK National Curriculum, IB, etc.) with: Problem/Activity Title, Student Task, Steps / Game Instructions, Worked Example, and Extension Task. Ensure problems promote mathematical reasoning, problem-solving, and conceptual understanding. Include real-world applications and multiple solution strategies. Provide clear worked examples that demonstrate mathematical thinking processes.",
@@ -495,7 +1411,7 @@ def get_template_data() -> list[Dict[str, Any]]:
             }
         },
         {
-            # TEMPLATE 10: Science Experiment / Observation
+            # TEMPLATE 11: Science Experiment / Observation
             "template": {
                 "slug": "science_investigation",
                 "name": "Science Experiment / Observation",
@@ -508,26 +1424,105 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "grade": get_base_input_schema()["properties"]["grade"],
-                        "grade_band": get_base_input_schema()["properties"]["grade_band"],
-                        "topic": get_base_input_schema()["properties"]["topic"],
-                        "learning_objective": get_base_input_schema()["properties"]["learning_objective"],
+                        "grade": {"type": "integer", "minimum": 0, "maximum": 12, "title": "Grade Level", "description": "Enter the grade level (0 for Kindergarten/K, 1-12 for grades 1-12). This ensures content is age-appropriate and aligns with international grade-level expectations (e.g., USA Common Core, UK National Curriculum, IB PYP/MYP/DP)."},
+                        "grade_band": {"type": "string", "enum": ["K-2", "3-5", "6-8", "9-12"], "title": "Grade Band (Optional)", "description": "Optional: Select a grade band for broader age-group alignment. Useful for multi-grade classrooms or when targeting developmental stages rather than specific grades."},
+                        "topic": {"type": "string", "title": "Topic or Learning Theme", "description": "Enter the specific topic, concept, or theme for this lesson/activity. Be specific and clear (e.g., 'Fractions and Decimals', 'The Water Cycle', 'Persuasive Writing', 'World War II'). This will be the central focus of the generated content."},
+                        "learning_objective": {"type": "string", "title": "Learning Objective", "description": "State the learning objective using SMART criteria (Specific, Measurable, Achievable, Relevant, Time-bound). Example: 'Students will be able to solve multi-step word problems involving fractions and decimals with 80% accuracy.' This should align with international curriculum standards and Bloom's Taxonomy levels."},
                         "materials": {
                             "type": "array",
                             "items": {"type": "string"},
                             "title": "Required Materials",
                             "description": "List all materials, equipment, and resources needed for this science experiment or observation. Be specific and include quantities where relevant (e.g., 'Beakers (250ml) - 6', 'Safety goggles - 12 pairs', 'pH test strips - 1 pack', 'Digital microscope', 'Bunsen burner with safety equipment'). Include safety equipment and any special considerations for international school laboratory contexts. Ensure all materials meet international safety standards."
                         },
-                        "bloom_level": get_base_input_schema()["properties"]["bloom_level"],
-                        "standard": get_base_input_schema()["properties"]["standard"],
-                        "standards_framework": get_base_input_schema()["properties"]["standards_framework"],
-                        "output_language": get_base_input_schema()["properties"]["output_language"],
-                        "language": get_base_input_schema()["properties"]["language"],
-                        "time_duration": get_base_input_schema()["properties"]["time_duration"],
-                        "time_duration_minutes": get_base_input_schema()["properties"]["time_duration_minutes"],
-                        "constraints": get_base_input_schema()["properties"]["constraints"]
+                        "bloom_level": {"type": "string", "enum": ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create", "Understand → Apply", "Analyze → Evaluate"], "title": "Bloom's Taxonomy Level", "description": "Select the cognitive level(s) from Bloom's Taxonomy that students will engage with. This ensures the content promotes appropriate levels of thinking: Remember (recall facts), Understand (comprehend meaning), Apply (use in new situations), Analyze (examine relationships), Evaluate (make judgments), Create (produce new work). You can select a progression (e.g., 'Understand → Apply') for lessons that build complexity."},
+                        "standard": {"type": "string", "title": "Educational Standard (Optional)", "description": "Optional: Enter specific educational standards to align with (e.g., 'CCSS.MATH.CONTENT.6.EE.A.2', 'UK National Curriculum Year 7', 'IB MYP Criterion A', 'NGSS MS-LS1-1'). This ensures the generated content aligns with recognized international curriculum frameworks."},
+                        "standards_framework": {"type": "string", "enum": ["CCSS", "UK_NATIONAL", "IB", "NGSS", "CAMBRIDGE", "EDEXCEL", "AQA", "AUSTRALIAN", "CANADIAN", "SINGAPORE", "OTHER"], "title": "Standards Framework (Optional)", "description": "Optional: Select the primary educational standards framework. This helps ensure content aligns with the appropriate international curriculum system (Common Core State Standards, UK National Curriculum, International Baccalaureate, Next Generation Science Standards, etc.)."},
+                        "output_language": {"type": "string", "enum": ["English", "Spanish", "French", "German", "Italian", "Portuguese", "Chinese", "Japanese", "Korean", "Russian", "Arabic", "Hindi", "Urdu", "Other"], "title": "Output Language", "description": "Select the language for the generated content. All headings, instructions, and content will be generated in this language. Choose 'Other' if you need a language not listed and specify it in the 'Language' field below."},
+                        "language": {"type": "string", "title": "Custom Language (if 'Other' selected)", "description": "If you selected 'Other' for Output Language, specify the language here. The system will attempt to generate content in this language."},
+                        "time_duration": {"type": "string", "title": "Time Duration", "description": "Specify the duration for this lesson/activity. Use clear formats like '45 minutes', '1 hour', '2 weeks', '90 minutes'. This helps ensure the generated content is appropriately paced for the available time."},
+                        "time_duration_minutes": {"type": "integer", "minimum": 5, "maximum": 480, "title": "Duration in Minutes (Optional)", "description": "Optional: Enter the duration in minutes for more precise time allocation. This helps generate content with accurate time estimates for each section."},
+                        "constraints": {"type": "string", "title": "Constraints or Special Considerations (Optional)", "description": "Optional: Note any constraints, limitations, or special considerations for this lesson (e.g., 'No internet access', 'Limited space', 'Students must work in pairs', 'Cultural sensitivity required for diverse backgrounds'). This helps generate content that is practical and appropriate for your specific context."}
                     },
                     "required": ["grade", "topic", "materials", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "UniversalTemplateOutput",
+                    "required": ["overview", "learning_goals", "materials", "steps"],
+                    "properties": {
+                        "overview": {"type": "string", "title": "Overview"},
+                        "learning_goals": {"type": "array", "title": "Learning Goals", "items": {"type": "string"}},
+                        "materials": {"type": "array", "title": "Materials", "items": {"type": "string"}},
+                        "steps": {
+                            "type": "array",
+                            "title": "Steps",
+                            "items": {
+                                "type": "object",
+                                "title": "LessonStep",
+                                "required": ["title", "description"],
+                                "properties": {"title": {"type": "string", "title": "Title"}, "description": {"type": "string", "title": "Description"}},
+                            },
+                        },
+                        "differentiation": {"type": "array", "title": "Differentiation", "items": {"type": "string"}},
+                        "assessment": {
+                            "type": ["object", "null"],
+                            "title": "AssessmentSection",
+                            "properties": {
+                                "checks_for_understanding": {"type": "array", "items": {"type": "string"}},
+                                "rubric": {"type": ["object", "null"]},
+                            },
+                            "required": ["checks_for_understanding"],
+                        },
+                        "teacher_notes": {"type": "array", "title": "Teacher Notes", "items": {"type": "string"}},
+                        "bloom_alignment": {
+                            "type": "array",
+                            "title": "Bloom Alignment",
+                            "items": {
+                                "type": "object",
+                                "title": "BloomAlignmentItem",
+                                "required": ["level", "description"],
+                                "properties": {
+                                    "level": {"type": "string", "enum": ["remember", "understand", "apply", "analyze", "evaluate", "create"]},
+                                    "description": {"type": "string", "title": "Description"},
+                                },
+                            },
+                        },
+                        "questions": {
+                            "type": ["array", "null"],
+                            "title": "Questions",
+                            "items": {
+                                "type": "object",
+                                "title": "AssessmentQuestion",
+                                "required": ["question_text", "type"],
+                                "properties": {
+                                    "question_text": {"type": "string", "title": "Question Text"},
+                                    "type": {"type": "string", "title": "Type"},
+                                    "answer_key": {"type": ["string", "null"]},
+                                    "difficulty": {"type": ["string", "null"]},
+                                },
+                            },
+                        },
+                        "communication": {
+                            "type": ["object", "null"],
+                            "title": "CommunicationSection",
+                            "properties": {
+                                "subject_line": {"type": ["string", "null"]},
+                                "message_body": {"type": ["string", "null"]},
+                                "key_details": {"type": ["array", "null"], "items": {"type": "string"}},
+                                "call_to_action": {"type": ["string", "null"]},
+                            },
+                        },
+                    },
+                },
+                "stub_config": {
+                    "overview_template": "{template_name} for {subject}: {topic}",
+                    "learning_goals_template": ["{learning_objective}", "Help students engage deeply with {topic}."],
+                    "materials": ["Whiteboard or digital board", "Student notebooks or devices"],
+                    "step_titles": ["Introduction & Activation of Prior Knowledge", "Guided Practice", "Independent or Small-Group Practice"],
+                    "step_descriptions_template": "Briefly introduce {topic} and ask students what they already know.",
+                    "differentiation": ["Offer sentence stems or visual supports for students who need additional scaffolding.", "Provide extension tasks for students who are ready for enrichment."],
+                    "teacher_notes": ["Adjust pacing based on student responses and check-ins.", "Capture examples of strong student thinking to highlight during debrief."],
+                    "assessment_checks": ["Cold-call a few students to explain the concept.", "Use exit tickets asking students to solve a short problem or respond to a prompt."],
                 },
                 "prompt_definition": {
                     "description": "Generate a rigorous science experiment/observation aligned with international standards (NGSS, UK National Curriculum, IB, etc.) with: Experiment Title, Aim, Hypothesis, Materials, Procedure, Observation Table, Conclusion Prompt, and Safety Notes. Ensure the experiment promotes scientific inquiry, critical thinking, and authentic scientific practices. Include clear safety considerations and opportunities for students to develop scientific reasoning skills.",
@@ -536,7 +1531,7 @@ def get_template_data() -> list[Dict[str, Any]]:
             }
         },
         {
-            # TEMPLATE 11: STEAM Maker Activity
+            # TEMPLATE 12: STEAM Maker Activity
             "template": {
                 "slug": "steam_project",
                 "name": "STEAM Maker Activity",
@@ -549,28 +1544,94 @@ def get_template_data() -> list[Dict[str, Any]]:
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "grade": get_base_input_schema()["properties"]["grade"],
-                        "grade_band": get_base_input_schema()["properties"]["grade_band"],
-                        "topic": get_base_input_schema()["properties"]["topic"],
-                        "learning_objective": get_base_input_schema()["properties"]["learning_objective"],
+                        "grade": {"type": "integer", "minimum": 0, "maximum": 12, "title": "Grade"},
+                        "topic": {"type": "string", "title": "Challenge Topic"},
                         "materials": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "title": "Available Materials",
-                            "description": "List the materials, tools, and resources available for this STEAM maker activity. Be specific about quantities and capabilities (e.g., 'Cardboard sheets - 20', 'Hot glue guns - 4', 'Arduino kits - 6', '3D printer access', 'Craft supplies assortment', 'Microcontrollers', 'Sensors and actuators'). This ensures the generated challenge is realistic and achievable with your available resources in international school maker spaces, fab labs, or innovation centers."
+                            "title": "Materials"
                         },
-                        "bloom_level": get_base_input_schema()["properties"]["bloom_level"],
-                        "standard": get_base_input_schema()["properties"]["standard"],
-                        "standards_framework": get_base_input_schema()["properties"]["standards_framework"],
-                        "output_language": get_base_input_schema()["properties"]["output_language"],
-                        "language": get_base_input_schema()["properties"]["language"],
-                        "time_duration": get_base_input_schema()["properties"]["time_duration"],
-                        "time_duration_minutes": get_base_input_schema()["properties"]["time_duration_minutes"],
-                        "differentiation_needs": get_base_input_schema()["properties"]["differentiation_needs"],
-                        "differentiation_notes": get_base_input_schema()["properties"]["differentiation_notes"],
-                        "constraints": get_base_input_schema()["properties"]["constraints"]
+                        "time_duration_minutes": {
+                            "type": "integer",
+                            "minimum": 5,
+                            "maximum": 480,
+                            "title": "Duration (minutes)"
+                        },
+                        "bloom_level": {"type": "string", "title": "Bloom Level"},
+                        "constraints": {"type": "string", "title": "Constraints"}
                     },
-                    "required": ["grade", "topic", "materials", "bloom_level"]
+                    "required": ["grade", "topic", "materials", "time_duration_minutes", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SteamMakerActivityOutput",
+                    "required": [
+                        "challenge_title",
+                        "challenge_brief",
+                        "success_criteria",
+                        "constraints",
+                        "design_process",
+                        "assessment",
+                        "bloom_alignment"
+                    ],
+                    "properties": {
+                        "challenge_title": {"type": "string", "title": "Challenge Title"},
+                        "challenge_brief": {"type": "string", "title": "Challenge Brief"},
+                        "success_criteria": {"type": "string", "title": "Success Criteria"},
+                        "constraints": {
+                            "type": "array",
+                            "title": "Constraints",
+                            "items": {"type": "string"}
+                        },
+                        "design_process": {
+                            "type": "array",
+                            "title": "Design Process",
+                            "items": {"type": "string"}
+                        },
+                        "assessment": {
+                            "type": "object",
+                            "title": "Assessment",
+                            "properties": {
+                                "rubric": {
+                                    "type": "array",
+                                    "title": "Rubric",
+                                    "items": {"type": "string"}
+                                }
+                            },
+                            "required": ["rubric"]
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom Alignment",
+                            "properties": {
+                                "level": {"type": "string", "title": "Level"},
+                                "note": {"type": "string", "title": "Note"}
+                            },
+                            "required": ["level", "note"]
+                        }
+                    }
+                },
+                "stub_config": {
+                    "challenge_title_template": "Bridge Engineering Challenge",
+                    "challenge_brief_template": "Design a bridge that holds the most coins.",
+                    "success_criteria_template": "Holds at least 10 coins for 10 seconds.",
+                    "constraints": ["Max 20 sticks"],
+                    "design_process": [
+                        "Sketch design",
+                        "Build prototype",
+                        "Test with coins",
+                        "Improve design"
+                    ],
+                    "assessment": {
+                        "rubric": [
+                            "Meets constraints",
+                            "Improves after testing"
+                        ]
+                    },
+                    "bloom_alignment": {
+                        "level": "Create",
+                        "note": "Students design, test, and refine a solution."
+                    }
                 },
                 "prompt_definition": {
                     "description": "Generate a rigorous STEAM maker activity suitable for international schools with: Challenge Statement, Build Instructions, Constraints, Testing Method, and Reflection. Ensure the activity integrates Science, Technology, Engineering, Arts, and Mathematics authentically. Promote design thinking, creativity, problem-solving, and collaboration. Include clear success criteria and opportunities for iterative improvement.",
@@ -579,7 +1640,712 @@ def get_template_data() -> list[Dict[str, Any]]:
             }
         },
         {
-            # TEMPLATE 12: Communication Generator
+            # TEMPLATE 13: Engineering Activity Suggestions
+            "template": {
+                "slug": "engineering_activity",
+                "name": "Engineering Activity Suggestions",
+                "description": "Create engineering-focused activities with challenge brief, build/test/iterate steps, and NGSS engineering practices alignment.",
+                "category": "subject_specific",
+                "subject_default": "steam",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade": {"type": "integer", "minimum": 0, "maximum": 12, "title": "Grade"},
+                        "topic": {"type": "string", "title": "Engineering concept (topic)"},
+                        "learning_objective": {"type": "string", "title": "Learning objective"},
+                        "time_duration_minutes": {"type": "integer", "minimum": 5, "maximum": 480, "title": "Time (minutes)"},
+                        "materials": {"type": "string", "title": "Materials available"},
+                        "constraints": {"type": "string", "title": "Constraints (safety, time, space)"},
+                        "bloom_level": {"type": "string", "title": "Bloom level", "description": "Often Apply or Create"},
+                        "standards_framework": {"type": "string", "title": "Standards framework (optional)"},
+                        "standard": {"type": "string", "title": "Standard code (optional)"},
+                        "differentiation_needs": {"type": "boolean", "title": "Differentiation toggle"},
+                        "differentiation_notes": {"type": "string", "title": "Differentiation notes (optional)"}
+                    },
+                    "required": ["grade", "topic", "time_duration_minutes", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "EngineeringActivityOutput",
+                    "required": [
+                        "title",
+                        "concept_focus",
+                        "challenge_brief",
+                        "success_criteria",
+                        "materials",
+                        "steps",
+                        "assessment",
+                        "differentiation",
+                        "bloom_alignment",
+                        "teacher_notes"
+                    ],
+                    "properties": {
+                        "title": {"type": "string", "title": "Activity title"},
+                        "concept_focus": {"type": "string", "title": "Concept focus"},
+                        "challenge_brief": {"type": "string", "title": "Challenge brief"},
+                        "success_criteria": {"type": "array", "title": "Success criteria", "items": {"type": "string"}},
+                        "materials": {"type": "array", "title": "Materials", "items": {"type": "string"}},
+                        "steps": {"type": "array", "title": "Steps (build/test/iterate)", "items": {"type": "string"}},
+                        "assessment": {
+                            "type": "object",
+                            "title": "Assessment rubric",
+                            "properties": {
+                                "type": {"type": "string", "title": "Type"},
+                                "criteria": {"type": "array", "title": "Criteria", "items": {"type": "string"}}
+                            },
+                            "required": ["type", "criteria"]
+                        },
+                        "differentiation": {
+                            "type": "object",
+                            "title": "Differentiation",
+                            "properties": {
+                                "support": {"type": "array", "items": {"type": "string"}},
+                                "extension": {"type": "array", "items": {"type": "string"}}
+                            },
+                            "required": ["support", "extension"]
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom alignment",
+                            "properties": {"level": {"type": "string"}, "note": {"type": "string"}},
+                            "required": ["level", "note"]
+                        },
+                        "standards_alignment": {
+                            "type": "object",
+                            "title": "Standards alignment (optional)",
+                            "properties": {
+                                "framework": {"type": "string"},
+                                "code": {"type": "string"},
+                                "note": {"type": "string"}
+                            }
+                        },
+                        "teacher_notes": {"type": "array", "title": "Teacher notes", "items": {"type": "string"}}
+                    }
+                },
+                "stub_config": {
+                    "title_template": "Paper Truss Bridge Challenge",
+                    "concept_focus_template": "Forces, load distribution, and structural stability using truss patterns for {topic}.",
+                    "challenge_brief_template": "Build a paper bridge that spans 20 cm and holds the most coins before collapsing.",
+                    "success_criteria": [
+                        "Spans 20 cm without support in the middle",
+                        "Holds coins for 10 seconds",
+                        "Includes at least one truss pattern (triangle-based)"
+                    ],
+                    "materials": ["Paper", "Tape", "Scissors", "Coins"],
+                    "steps": [
+                        "Show 2 example truss patterns (simple triangles).",
+                        "Teams sketch 2 designs and choose one with a reason.",
+                        "Build prototype (15 minutes).",
+                        "Test by adding coins one-by-one; record max load.",
+                        "Improve ONE variable (add triangles, change width, reinforce joints).",
+                        "Retest and compare results."
+                    ],
+                    "assessment": {
+                        "type": "mini_rubric",
+                        "criteria": [
+                            "Meets constraints",
+                            "Uses evidence from testing to improve design",
+                            "Explains why the change increased/decreased strength"
+                        ]
+                    },
+                    "differentiation": {
+                        "support": [
+                            "Provide a pre-made truss template students can fold",
+                            "Assign clear roles (builder, recorder, tester)"
+                        ],
+                        "extension": [
+                            "Optimize strength-to-material ratio (use less tape)",
+                            "Explain failure points using force vocabulary (compression/tension)"
+                        ]
+                    },
+                    "bloom_alignment": {
+                        "level": "Create",
+                        "note_template": "Students design, test, and iterate to produce an improved structure for {topic}."
+                    },
+                    "standards_alignment": {
+                        "framework_template": "{standards_framework}",
+                        "code_template": "{standard}",
+                        "note_template": "Students evaluate solutions using systematic testing and constraints."
+                    },
+                    "teacher_notes": [
+                        "Iteration is required—don't stop after one test.",
+                        "Ensure groups record results to justify improvements."
+                    ]
+                },
+                "prompt_definition": {
+                    "description": "Generate an engineering-focused activity with: Activity title, Concept focus, Challenge brief, Success criteria, Materials, Steps (build/test/iterate), Assessment rubric, Differentiation, and Bloom/standards alignment. Align with NGSS engineering practices or local framework where provided.",
+                    "context": "This engineering activity will be used in international schools. It must promote design thinking, safe testing, and iterative improvement with clear constraints."
+                }
+            }
+        },
+        {
+            # TEMPLATE 14: Art Exploration
+            "template": {
+                "slug": "art_exploration",
+                "name": "Art Exploration",
+                "description": "Create art activities with theme, medium, warm-up → create → share/reflect steps, and optional artist reference.",
+                "category": "subject_specific",
+                "subject_default": "other",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade": {"type": "integer", "minimum": 0, "maximum": 12, "title": "Grade"},
+                        "topic": {"type": "string", "title": "Art theme/topic"},
+                        "learning_objective": {"type": "string", "title": "Learning objective"},
+                        "medium": {
+                            "type": "string",
+                            "enum": ["drawing", "painting", "collage", "digital"],
+                            "title": "Medium (optional)"
+                        },
+                        "time_duration_minutes": {"type": "integer", "minimum": 5, "maximum": 480, "title": "Time (minutes)"},
+                        "bloom_level": {"type": "string", "title": "Bloom level", "description": "Understand/Create common; Evaluate optional for critique"},
+                        "materials": {"type": "string", "title": "Materials"},
+                        "constraints": {"type": "string", "title": "Constraints (mess, limited materials)"},
+                        "differentiation_needs": {"type": "boolean", "title": "Differentiation toggle"},
+                        "differentiation_notes": {"type": "string", "title": "Differentiation notes (optional)"},
+                        "standards_framework": {"type": "string", "title": "Standards framework (optional)"},
+                        "standard": {"type": "string", "title": "Standard code (optional)"}
+                    },
+                    "required": ["grade", "topic", "time_duration_minutes", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ArtExplorationOutput",
+                    "required": [
+                        "title",
+                        "overview",
+                        "learning_goals",
+                        "materials",
+                        "steps",
+                        "assessment",
+                        "differentiation",
+                        "bloom_alignment",
+                        "teacher_notes"
+                    ],
+                    "properties": {
+                        "title": {"type": "string", "title": "Activity title"},
+                        "overview": {"type": "string", "title": "Theme + artist reference (optional)"},
+                        "learning_goals": {"type": "array", "title": "Learning goals", "items": {"type": "string"}},
+                        "materials": {"type": "array", "title": "Materials", "items": {"type": "string"}},
+                        "steps": {"type": "array", "title": "Steps (warm-up → create → share/reflect)", "items": {"type": "string"}},
+                        "assessment": {
+                            "type": "object",
+                            "title": "Assessment (rubric or checklist)",
+                            "properties": {
+                                "type": {"type": "string", "title": "Type"},
+                                "criteria": {"type": "array", "title": "Criteria", "items": {"type": "string"}}
+                            },
+                            "required": ["type", "criteria"]
+                        },
+                        "differentiation": {
+                            "type": "object",
+                            "title": "Differentiation",
+                            "properties": {
+                                "support": {"type": "array", "items": {"type": "string"}},
+                                "extension": {"type": "array", "items": {"type": "string"}}
+                            },
+                            "required": ["support", "extension"]
+                        },
+                        "bloom_alignment": {
+                            "type": "object",
+                            "title": "Bloom alignment",
+                            "properties": {"level": {"type": "string"}, "note": {"type": "string"}},
+                            "required": ["level", "note"]
+                        },
+                        "standards_alignment": {
+                            "type": "object",
+                            "title": "Standards alignment (if provided)",
+                            "properties": {
+                                "framework": {"type": "string"},
+                                "code": {"type": "string"},
+                                "note": {"type": "string"}
+                            }
+                        },
+                        "teacher_notes": {"type": "array", "title": "Teacher notes", "items": {"type": "string"}}
+                    }
+                },
+                "stub_config": {
+                    "title_template": "Mood Landscapes: Warm vs Cool Colors",
+                    "overview_template": "Students explore how color temperature affects mood by creating a simple landscape using warm or cool palettes for {topic}.",
+                    "learning_goals": [
+                        "Identify warm and cool colors",
+                        "Choose colors intentionally to communicate mood",
+                        "Explain artistic choices using art vocabulary"
+                    ],
+                    "materials": ["Crayons or colored pencils", "Paper"],
+                    "steps": [
+                        "Warm-up (5 min): Sort example colors into warm vs cool; discuss mood words (calm, excited, lonely, joyful).",
+                        "Mini-demo (5 min): Teacher draws a simple landscape and shows how changing palette changes feeling.",
+                        "Create (20 min): Students draw a landscape (real or imaginary) using mostly warm OR mostly cool colors to show a chosen mood.",
+                        "Artist statement (5 min): Students write 3–4 sentences explaining mood + color choices.",
+                        "Share (5 min): Gallery walk with 1 compliment + 1 question per artwork."
+                    ],
+                    "assessment": {
+                        "type": "checklist",
+                        "criteria": [
+                            "Artwork uses mostly warm or mostly cool colors",
+                            "Mood is clear",
+                            "Artist statement explains choices"
+                        ]
+                    },
+                    "differentiation": {
+                        "support": [
+                            "Provide landscape templates (horizon line + simple shapes)",
+                            "Allow larger tools (thicker crayons) and reduced detail expectations"
+                        ],
+                        "extension": [
+                            "Blend both palettes intentionally to show mood change",
+                            "Add a short critique: what works best and why (using evidence from the piece)"
+                        ]
+                    },
+                    "bloom_alignment": {
+                        "level": "Create",
+                        "note_template": "Students produce original artwork and justify choices using art vocabulary for {topic}."
+                    },
+                    "standards_alignment": {
+                        "framework_template": "{standards_framework}",
+                        "code_template": "{standard}",
+                        "note_template": "Students apply color as an element of art to convey mood and explain intent."
+                    },
+                    "teacher_notes": [
+                        "Keep vocabulary simple: warm/cool, mood, contrast.",
+                        "Don't grade artistic talent—grade intentional choices and explanation."
+                    ]
+                },
+                "prompt_definition": {
+                    "description": "Generate an art exploration activity with: Activity title, Theme (optional artist reference), Learning goals, Materials, Steps (warm-up → create → share/reflect), Assessment (rubric or checklist), Differentiation, and Bloom/standards alignment. Support optional IB/UK/local arts standards when provided.",
+                    "context": "This art activity will be used in international schools. It must be inclusive, respect constraints (mess, materials), and focus on intentional choices and explanation rather than artistic talent alone."
+                }
+            }
+        },
+        {
+            # TEMPLATE 15: Sustainability Systems Thinking Lesson Builder
+            "template": {
+                "slug": "sustainability_systems_lesson",
+                "name": "Sustainability Systems Thinking Lesson Builder",
+                "description": "Build lessons on complex environmental systems (climate, biodiversity, water cycles) using systems mapping and causal reasoning.",
+                "category": "subject_specific",
+                "subject_default": "science",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {"type": "string", "title": "Grade level", "description": "e.g. Year 9, Grade 7"},
+                        "topic": {"type": "string", "title": "Topic", "description": "e.g. Urban Heat Islands, biodiversity, water cycles"},
+                        "bloom_level": {"type": "string", "title": "Bloom level", "description": "e.g. Analyze, Evaluate, Analyze / Evaluate"},
+                        "lesson_duration": {"type": "string", "title": "Lesson duration", "description": "e.g. 60 minutes"},
+                        "local_context": {"type": "string", "title": "Local context (optional)", "description": "e.g. Perth, Western Australia"},
+                        "standards_framework": {"type": "string", "title": "Standards framework (optional)", "description": "e.g. Australian Curriculum Science"}
+                    },
+                    "required": ["grade_level", "topic", "bloom_level", "lesson_duration"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SustainabilitySystemsLessonOutput",
+                    "required": [
+                        "learning_objectives",
+                        "systems_map_activity",
+                        "guided_inquiry_questions",
+                        "mini_case_study",
+                        "assessment_rubric"
+                    ],
+                    "properties": {
+                        "learning_objectives": {"type": "array", "title": "Learning objectives", "items": {"type": "string"}},
+                        "systems_map_activity": {
+                            "type": "object",
+                            "title": "Systems map activity",
+                            "properties": {
+                                "description": {"type": "string", "title": "Activity description"},
+                                "cause_effect_elements": {"type": "array", "title": "Cause-effect loop elements", "items": {"type": "string"}}
+                            },
+                            "required": ["description", "cause_effect_elements"]
+                        },
+                        "guided_inquiry_questions": {"type": "array", "title": "Guided inquiry questions", "items": {"type": "string"}},
+                        "mini_case_study": {"type": "string", "title": "Mini-case study (localized)"},
+                        "assessment_rubric": {
+                            "type": "object",
+                            "title": "Assessment rubric (aligned with Bloom)",
+                            "properties": {
+                                "type": {"type": "string", "title": "Type"},
+                                "criteria": {"type": "array", "title": "Criteria", "items": {"type": "string"}}
+                            },
+                            "required": ["type", "criteria"]
+                        }
+                    }
+                },
+                "stub_config": {
+                    "learning_objectives_template": [
+                        "Analyze how urban materials affect temperature absorption.",
+                        "Evaluate mitigation strategies for urban heat."
+                    ],
+                    "systems_map_activity": {
+                        "description_template": "Students create a cause-effect loop diagram for {topic} including the following components and their relationships.",
+                        "cause_effect_elements": [
+                            "Concrete surfaces",
+                            "Reduced vegetation",
+                            "Heat absorption",
+                            "Air temperature",
+                            "Energy consumption"
+                        ]
+                    },
+                    "guided_inquiry_questions": [
+                        "How does replacing trees with asphalt affect thermal dynamics?",
+                        "Which feedback loops amplify heat?"
+                    ],
+                    "mini_case_study_template": "Perth summer temperature data (provided). Localized context: {local_context}. Use this to ground the lesson in {topic}.",
+                    "assessment_rubric": {
+                        "type": "bloom_aligned",
+                        "criteria": [
+                            "Identifies system components (Analyze)",
+                            "Explains feedback loops (Analyze)",
+                            "Proposes justified intervention (Evaluate)"
+                        ]
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a sustainability systems thinking lesson with: Learning objectives (Analyze/Evaluate), Systems map activity (cause-effect loop diagram with key components), Guided inquiry questions, Mini-case study localized to the given context, and Assessment rubric aligned with Bloom's level.",
+                    "context": "This lesson will be used to teach complex environmental systems (climate, biodiversity, water cycles) using systems mapping and causal reasoning. Support optional curriculum standards when provided."
+                }
+            }
+        },
+        {
+            # TEMPLATE 16: Field Investigation Planner (Outdoor / Environmental Study)
+            "template": {
+                "slug": "field_investigation_planner",
+                "name": "Field Investigation Planner (Outdoor / Environmental Study)",
+                "description": "Streamlines preparation for field-based ecological studies with protocol, data table, and reflection.",
+                "category": "subject_specific",
+                "subject_default": "science",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {"type": "string", "title": "Grade level", "description": "e.g. Year 7"},
+                        "ecosystem_type": {"type": "string", "title": "Ecosystem type", "description": "e.g. Wetland, Forest"},
+                        "investigation_focus": {"type": "string", "title": "Investigation focus", "description": "e.g. Water Quality, Biodiversity"},
+                        "tools_available": {"type": "array", "items": {"type": "string"}, "title": "Tools available"},
+                        "bloom_level": {"type": "string", "title": "Bloom level", "description": "e.g. Apply, Analyze"},
+                        "risk_level": {"type": "string", "title": "Risk level", "description": "e.g. Low, Medium"}
+                    },
+                    "required": ["grade_level", "ecosystem_type", "investigation_focus", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "FieldInvestigationPlannerOutput",
+                    "required": [
+                        "fieldwork_objective",
+                        "step_by_step_protocol",
+                        "data_collection_table",
+                        "data_analysis_prompts",
+                        "reflection_systems_link"
+                    ],
+                    "properties": {
+                        "fieldwork_objective": {"type": "string", "title": "Fieldwork objective"},
+                        "step_by_step_protocol": {"type": "array", "title": "Step-by-step field protocol", "items": {"type": "string"}},
+                        "data_collection_table": {
+                            "type": "object",
+                            "title": "Data collection table (printable)",
+                            "properties": {
+                                "headers": {"type": "array", "title": "Column headers", "items": {"type": "string"}},
+                                "description": {"type": "string", "title": "Table description"}
+                            },
+                            "required": ["headers", "description"]
+                        },
+                        "data_analysis_prompts": {"type": "array", "title": "Data analysis prompts", "items": {"type": "string"}},
+                        "reflection_systems_link": {"type": "string", "title": "Reflection + systems link"}
+                    }
+                },
+                "stub_config": {
+                    "fieldwork_objective_template": "Students measure abiotic factors and interpret ecosystem health for {ecosystem_type} ({investigation_focus}).",
+                    "step_by_step_protocol": [
+                        "Measure water temperature.",
+                        "Test pH levels.",
+                        "Record visible biodiversity."
+                    ],
+                    "data_collection_table": {
+                        "headers": ["Sample Point", "Temp (°C)", "pH", "Observations"],
+                        "description_template": "Printable data collection table for {investigation_focus} in {ecosystem_type}."
+                    },
+                    "data_analysis_prompts": [
+                        "What patterns emerge across sample points?",
+                        "Does pH suggest ecological stress?"
+                    ],
+                    "reflection_systems_link_template": "How might urban runoff impact this {ecosystem_type}?"
+                },
+                "prompt_definition": {
+                    "description": "Generate a field investigation plan with: Fieldwork objective, Step-by-step field protocol, Printable data collection table, Data analysis prompts, and Reflection linking to systems (e.g. human impact). Tailor to ecosystem type, investigation focus, and tools available.",
+                    "context": "This planner supports outdoor/environmental studies. Ensure protocol is safe for the given risk level and appropriate for the grade and tools available."
+                }
+            }
+        },
+        {
+            # TEMPLATE 17: Climate Data Literacy Activity Generator
+            "template": {
+                "slug": "climate_data_literacy",
+                "name": "Climate Data Literacy Activity Generator",
+                "description": "Teaches students to interpret real climate or environmental datasets with graph interpretation, critical thinking, and evidence-based writing.",
+                "category": "subject_specific",
+                "subject_default": "science",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {"type": "string", "title": "Grade level", "description": "e.g. Year 10"},
+                        "dataset_type": {"type": "string", "title": "Dataset type", "description": "e.g. Temperature Trends, Precipitation"},
+                        "location": {"type": "string", "title": "Location", "description": "e.g. Western Australia"},
+                        "years_range": {"type": "string", "title": "Years range", "description": "e.g. 1980-2020"},
+                        "bloom_level": {"type": "string", "title": "Bloom level", "description": "e.g. Analyze, Evaluate"},
+                        "assessment_type": {"type": "string", "title": "Assessment type", "description": "e.g. Short Report, Essay"}
+                    },
+                    "required": ["grade_level", "dataset_type", "location", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "ClimateDataLiteracyOutput",
+                    "required": [
+                        "dataset_summary",
+                        "graph_interpretation_questions",
+                        "critical_thinking_prompts",
+                        "writing_task",
+                        "rubric"
+                    ],
+                    "properties": {
+                        "dataset_summary": {"type": "string", "title": "Dataset summary (auto-generated)"},
+                        "graph_interpretation_questions": {"type": "array", "title": "Graph interpretation questions", "items": {"type": "string"}},
+                        "critical_thinking_prompts": {"type": "array", "title": "Critical thinking prompts", "items": {"type": "string"}},
+                        "writing_task": {"type": "string", "title": "Writing task"},
+                        "rubric": {
+                            "type": "object",
+                            "title": "Rubric",
+                            "properties": {
+                                "criteria": {"type": "array", "title": "Criteria", "items": {"type": "string"}}
+                            },
+                            "required": ["criteria"]
+                        }
+                    }
+                },
+                "stub_config": {
+                    "dataset_summary_template": "Overview of long-term temperature increase for {dataset_type} in {location} ({years_range}).",
+                    "graph_interpretation_questions": [
+                        "Identify the trend.",
+                        "Calculate average increase per decade."
+                    ],
+                    "critical_thinking_prompts": [
+                        "What factors might explain anomalies?",
+                        "Is correlation equal to causation?"
+                    ],
+                    "writing_task_template": "Write a 400-word evidence-based analysis evaluating climate trends for {dataset_type} in {location}.",
+                    "rubric": {
+                        "criteria": [
+                            "Accurate data interpretation",
+                            "Logical reasoning",
+                            "Evidence-based conclusion"
+                        ]
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a climate data literacy activity with: Dataset summary (overview of the data), Graph interpretation questions, Critical thinking prompts (e.g. causation vs correlation), Writing task (evidence-based analysis), and Rubric. Tailor to dataset type, location, years range, and assessment type.",
+                    "context": "This activity teaches students to interpret real climate or environmental datasets. Ensure questions and task align with Bloom level and assessment type."
+                }
+            }
+        },
+        {
+            # TEMPLATE 18: Sustainability Design Challenge (Engineering + Environmental)
+            "template": {
+                "slug": "sustainability_design_challenge",
+                "name": "Sustainability Design Challenge (Engineering + Environmental)",
+                "description": "Project-based learning integrating science and engineering with design thinking stages and sustainability constraints.",
+                "category": "subject_specific",
+                "subject_default": "steam",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {"type": "string", "title": "Grade level", "description": "e.g. Year 8"},
+                        "challenge_theme": {"type": "string", "title": "Challenge theme", "description": "e.g. Reduce Plastic Waste"},
+                        "constraints": {"type": "array", "items": {"type": "string"}, "title": "Constraints"},
+                        "duration": {"type": "string", "title": "Duration", "description": "e.g. 2 weeks"},
+                        "bloom_level": {"type": "string", "title": "Bloom level", "description": "e.g. Create"},
+                        "team_size": {"type": "integer", "minimum": 1, "maximum": 20, "title": "Team size"}
+                    },
+                    "required": ["grade_level", "challenge_theme", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "SustainabilityDesignChallengeOutput",
+                    "required": [
+                        "challenge_brief",
+                        "design_thinking_stages",
+                        "engineering_constraints",
+                        "deliverables",
+                        "evaluation_rubric"
+                    ],
+                    "properties": {
+                        "challenge_brief": {"type": "string", "title": "Challenge brief"},
+                        "design_thinking_stages": {
+                            "type": "array",
+                            "title": "Design thinking stages",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "stage": {"type": "string", "title": "Stage"},
+                                    "description": {"type": "string", "title": "Description"}
+                                },
+                                "required": ["stage", "description"]
+                            }
+                        },
+                        "engineering_constraints": {"type": "array", "title": "Engineering constraints", "items": {"type": "string"}},
+                        "deliverables": {"type": "array", "title": "Deliverables", "items": {"type": "string"}},
+                        "evaluation_rubric": {
+                            "type": "object",
+                            "title": "Evaluation rubric (creation level)",
+                            "properties": {
+                                "criteria": {"type": "array", "title": "Criteria", "items": {"type": "string"}}
+                            },
+                            "required": ["criteria"]
+                        }
+                    }
+                },
+                "stub_config": {
+                    "challenge_brief_template": "Design a school-based solution to reduce single-use plastics for {challenge_theme}.",
+                    "design_thinking_stages": [
+                        {"stage": "Empathize", "description": "Survey students."},
+                        {"stage": "Define", "description": "Identify biggest waste sources."},
+                        {"stage": "Ideate", "description": "Brainstorm 10 ideas."},
+                        {"stage": "Prototype", "description": "Model or presentation."},
+                        {"stage": "Test", "description": "Peer feedback."}
+                    ],
+                    "engineering_constraints": [
+                        "Budget under $100",
+                        "Must be sustainable"
+                    ],
+                    "deliverables": [
+                        "Proposal document",
+                        "Prototype",
+                        "5-minute pitch"
+                    ],
+                    "evaluation_rubric": {
+                        "criteria": [
+                            "Innovation",
+                            "Feasibility",
+                            "Environmental impact reasoning"
+                        ]
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a sustainability design challenge with: Challenge brief, Design thinking stages (Empathize, Define, Ideate, Prototype, Test), Engineering constraints, Deliverables, and Evaluation rubric at Create level. Integrate science and engineering for project-based learning.",
+                    "context": "This challenge is for project-based learning integrating science and engineering. Tailor to challenge theme, constraints, duration, and team size."
+                }
+            }
+        },
+        {
+            # TEMPLATE 19: Biodiversity Impact Simulation & Role Play
+            "template": {
+                "slug": "biodiversity_role_play",
+                "name": "Biodiversity Impact Simulation & Role Play",
+                "description": "Helps students understand environmental trade-offs via role-play debate with stakeholder roles and structured debate format.",
+                "category": "subject_specific",
+                "subject_default": "science",
+                "grade_bands_supported": ["K-2", "3-5", "6-8", "9-12"],
+            },
+            "version": {
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "grade_level": {"type": "string", "title": "Grade level", "description": "e.g. Year 9"},
+                        "issue": {"type": "string", "title": "Issue", "description": "e.g. Coastal Development vs Marine Protection"},
+                        "roles": {"type": "array", "items": {"type": "string"}, "title": "Roles", "description": "Stakeholder roles for the debate"},
+                        "bloom_level": {"type": "string", "title": "Bloom level", "description": "e.g. Evaluate"},
+                        "format": {"type": "string", "title": "Format", "description": "e.g. Structured Debate"}
+                    },
+                    "required": ["grade_level", "issue", "bloom_level"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "BiodiversityRolePlayOutput",
+                    "required": [
+                        "background_brief",
+                        "role_assignment_sheets",
+                        "debate_structure",
+                        "reflection_prompts",
+                        "assessment"
+                    ],
+                    "properties": {
+                        "background_brief": {"type": "string", "title": "Background brief"},
+                        "role_assignment_sheets": {
+                            "type": "array",
+                            "title": "Role assignment sheets",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "role": {"type": "string", "title": "Role"},
+                                    "stakeholder_goals": {"type": "string", "title": "Stakeholder goals"},
+                                    "key_arguments": {"type": "array", "title": "Key arguments", "items": {"type": "string"}},
+                                    "data_references": {"type": "array", "title": "Data references", "items": {"type": "string"}}
+                                },
+                                "required": ["role", "stakeholder_goals", "key_arguments", "data_references"]
+                            }
+                        },
+                        "debate_structure": {"type": "array", "title": "Debate structure", "items": {"type": "string"}},
+                        "reflection_prompts": {"type": "array", "title": "Reflection prompts", "items": {"type": "string"}},
+                        "assessment": {
+                            "type": "object",
+                            "title": "Assessment",
+                            "properties": {
+                                "criteria": {"type": "array", "title": "Criteria", "items": {"type": "string"}}
+                            },
+                            "required": ["criteria"]
+                        }
+                    }
+                },
+                "stub_config": {
+                    "background_brief_template": "Overview of coastal ecosystem importance and the tension between development and protection for {issue}.",
+                    "role_assignment_sheets": [
+                        {"role": "Developer", "stakeholder_goals": "Advocate for economic development and jobs.", "key_arguments": ["Job creation", "Local revenue"], "data_references": ["Employment projections", "Tax revenue estimates"]},
+                        {"role": "Environmental Scientist", "stakeholder_goals": "Present evidence on biodiversity and ecosystem services.", "key_arguments": ["Habitat loss", "Species decline"], "data_references": ["Marine surveys", "IUCN data"]},
+                        {"role": "Local Resident", "stakeholder_goals": "Represent community quality of life and access.", "key_arguments": ["Livelihoods", "Cultural value"], "data_references": ["Community surveys"]},
+                        {"role": "Government", "stakeholder_goals": "Balance regulation and sustainable use.", "key_arguments": ["Policy options", "Compliance"], "data_references": ["Existing regulations", "Impact assessments"]}
+                    ],
+                    "debate_structure": [
+                        "Opening statements",
+                        "Rebuttals",
+                        "Evidence round",
+                        "Final vote"
+                    ],
+                    "reflection_prompts": [
+                        "What trade-offs were most difficult?",
+                        "How should policy balance economics and ecology?"
+                    ],
+                    "assessment": {
+                        "criteria": [
+                            "Reasoning",
+                            "Evidence use",
+                            "Ethical consideration"
+                        ]
+                    }
+                },
+                "prompt_definition": {
+                    "description": "Generate a biodiversity impact simulation/role play with: Background brief (ecosystem context), Role assignment sheets (stakeholder goals, key arguments, data references per role), Debate structure, Reflection prompts, and Assessment (reasoning, evidence use, ethical consideration).",
+                    "context": "This activity helps students understand environmental trade-offs via role-play debate. Tailor to the issue and roles provided; support structured debate format."
+                }
+            }
+        },
+        {
+            # TEMPLATE 20: Communication Generator
             "template": {
                 "slug": "parent_communication",
                 "name": "Communication Generator",
@@ -618,6 +2384,85 @@ def get_template_data() -> list[Dict[str, Any]]:
                         }
                     },
                     "required": ["audience", "tone", "topic", "grade"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "title": "UniversalTemplateOutput",
+                    "required": ["overview", "learning_goals", "materials", "steps"],
+                    "properties": {
+                        "overview": {"type": "string", "title": "Overview"},
+                        "learning_goals": {"type": "array", "title": "Learning Goals", "items": {"type": "string"}},
+                        "materials": {"type": "array", "title": "Materials", "items": {"type": "string"}},
+                        "steps": {
+                            "type": "array",
+                            "title": "Steps",
+                            "items": {
+                                "type": "object",
+                                "title": "LessonStep",
+                                "required": ["title", "description"],
+                                "properties": {"title": {"type": "string", "title": "Title"}, "description": {"type": "string", "title": "Description"}},
+                            },
+                        },
+                        "differentiation": {"type": "array", "title": "Differentiation", "items": {"type": "string"}},
+                        "assessment": {
+                            "type": ["object", "null"],
+                            "title": "AssessmentSection",
+                            "properties": {
+                                "checks_for_understanding": {"type": "array", "items": {"type": "string"}},
+                                "rubric": {"type": ["object", "null"]},
+                            },
+                            "required": ["checks_for_understanding"],
+                        },
+                        "teacher_notes": {"type": "array", "title": "Teacher Notes", "items": {"type": "string"}},
+                        "bloom_alignment": {
+                            "type": "array",
+                            "title": "Bloom Alignment",
+                            "items": {
+                                "type": "object",
+                                "title": "BloomAlignmentItem",
+                                "required": ["level", "description"],
+                                "properties": {
+                                    "level": {"type": "string", "enum": ["remember", "understand", "apply", "analyze", "evaluate", "create"]},
+                                    "description": {"type": "string", "title": "Description"},
+                                },
+                            },
+                        },
+                        "questions": {
+                            "type": ["array", "null"],
+                            "title": "Questions",
+                            "items": {
+                                "type": "object",
+                                "title": "AssessmentQuestion",
+                                "required": ["question_text", "type"],
+                                "properties": {
+                                    "question_text": {"type": "string", "title": "Question Text"},
+                                    "type": {"type": "string", "title": "Type"},
+                                    "answer_key": {"type": ["string", "null"]},
+                                    "difficulty": {"type": ["string", "null"]},
+                                },
+                            },
+                        },
+                        "communication": {
+                            "type": ["object", "null"],
+                            "title": "CommunicationSection",
+                            "properties": {
+                                "subject_line": {"type": ["string", "null"]},
+                                "message_body": {"type": ["string", "null"]},
+                                "key_details": {"type": ["array", "null"], "items": {"type": "string"}},
+                                "call_to_action": {"type": ["string", "null"]},
+                            },
+                        },
+                    },
+                },
+                "stub_config": {
+                    "overview_template": "{template_name} for {subject}: {topic}",
+                    "learning_goals_template": ["{learning_objective}", "Help students engage deeply with {topic}."],
+                    "materials": ["Whiteboard or digital board", "Student notebooks or devices"],
+                    "step_titles": ["Introduction & Activation of Prior Knowledge", "Guided Practice", "Independent or Small-Group Practice"],
+                    "step_descriptions_template": "Briefly introduce {topic} and ask students what they already know.",
+                    "differentiation": ["Offer sentence stems or visual supports for students who need additional scaffolding.", "Provide extension tasks for students who are ready for enrichment."],
+                    "teacher_notes": ["Adjust pacing based on student responses and check-ins.", "Capture examples of strong student thinking to highlight during debrief."],
+                    "assessment_checks": ["Cold-call a few students to explain the concept.", "Use exit tickets asking students to solve a short problem or respond to a prompt."],
                 },
                 "prompt_definition": {
                     "description": "Generate a professional, culturally-sensitive communication suitable for international school contexts with: Subject Line, Message Body, Key Details, Call to Action, and Optional Attachments note. Ensure the communication is clear, respectful, and appropriate for diverse parent/guardian populations. Use professional tone while remaining accessible. Consider cultural differences in communication styles.",
@@ -705,10 +2550,13 @@ def seed_templates(db: Session, force: bool = False) -> Dict[str, int]:
                 for key, value in version_data.items():
                     if key == "input_schema":
                         existing_version.input_schema = value
+                    elif key == "output_schema":
+                        existing_version.output_schema = value
+                    elif key == "stub_config":
+                        existing_version.stub_config = value
                     elif key == "prompt_definition":
                         existing_version.prompt_definition = value
                 existing_version.status = TemplateVersionStatus.PUBLISHED.value
-                existing_version.output_schema = get_output_schema_placeholder()
                 existing_version.model_config = get_default_model_config()
                 if not existing_version.published_at:
                     existing_version.published_at = datetime.utcnow()
@@ -722,7 +2570,8 @@ def seed_templates(db: Session, force: bool = False) -> Dict[str, int]:
                 version=1,
                 status=TemplateVersionStatus.PUBLISHED.value,
                 input_schema=version_data["input_schema"],
-                output_schema=get_output_schema_placeholder(),
+                output_schema=version_data.get("output_schema"),
+                stub_config=version_data.get("stub_config"),
                 prompt_definition=version_data["prompt_definition"],
                 model_config=get_default_model_config(),
                 published_at=datetime.utcnow()
