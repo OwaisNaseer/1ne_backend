@@ -187,6 +187,8 @@ alembic current                             # show current revision
 `app/llm/` abstracts over OpenAI, Anthropic, Google, and a Fallback (stub) provider.
 
 - `USE_REAL_LLM=false` (default) uses the stub — safe for local dev without API keys.
+- `LLM_OUTBOUND_ENABLED=false` blocks **all** paid provider traffic at `ModelRouter` (and PixGen / OpenAI embeddings). Template execution uses stubs even if `USE_REAL_LLM=true` by mistake. Set `true` only when you intend to spend tokens.
+- `LEARNING_HUB_AUTO_LLM_ENABLED=false` (default) disables the gap worker loop and personalization **inventory LLM job** enqueue/processing; Learning Hub HTTP routes stay non-LLM.
 - Set `DEFAULT_MODEL_PROVIDER` and `DEFAULT_MODEL` to control which real provider is used.
 - `FALLBACK_ENABLED=true` silently falls back to the stub when all providers fail.
 

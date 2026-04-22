@@ -50,6 +50,10 @@ class LLMSettings(BaseSettings):
     # Feature flags
     USE_REAL_LLM: bool = False
     FALLBACK_ENABLED: bool = True  # Use FallbackProvider if all providers fail
+    # When false, ModelRouter never calls OpenAI/Anthropic/Google (only FallbackProvider).
+    # Use for local/CI safety so a mis-set USE_REAL_LLM cannot burn provider tokens.
+    # PixGen image API and OpenAI embeddings also respect this flag (see model_adapter / embedding_providers).
+    LLM_OUTBOUND_ENABLED: bool = True
 
     # Caching
     CACHE_ENABLED: bool = True

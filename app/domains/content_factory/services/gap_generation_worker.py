@@ -15,6 +15,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
+from app.core.config import settings
 from app.db.session import SessionLocal
 from app.domains.content_factory.enums import JobStatus
 from app.domains.content_factory.models import ContentGenerationJob
@@ -87,6 +88,10 @@ class GapGenerationWorker:
         Stale recovery + next-job lookup run in a thread pool so the asyncio event loop
         can still serve HTTP (demo / production stability).
         """
+        if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
+            # Hub automation off: never run gap/inventory LLM jobs (defense if worker is invoked manually).
+            return None
+
         def _thread_pick_job() -> Optional[UUID]:
             db = SessionLocal()
             try:

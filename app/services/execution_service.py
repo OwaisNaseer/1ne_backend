@@ -786,7 +786,9 @@ class ExecutionService:
         Returns the persisted TemplateExecution and the output as a dict (shape from template's output_schema).
         """
         start_time = time.perf_counter()
-        use_real_llm = llm_settings.USE_REAL_LLM
+        use_real_llm = bool(
+            llm_settings.USE_REAL_LLM and getattr(llm_settings, "LLM_OUTBOUND_ENABLED", True)
+        )
         llm_response = None
 
         if use_real_llm:
@@ -811,7 +813,12 @@ class ExecutionService:
             latency_ms = llm_response.latency_ms
             cost_estimate = llm_response.cost_estimate
         else:
-            logger.info(f"Using stubbed output for template execution: {template.slug}")
+            if llm_settings.USE_REAL_LLM and not getattr(llm_settings, "LLM_OUTBOUND_ENABLED", True):
+                logger.info(
+                    f"Using stubbed output for template execution (LLM_OUTBOUND_ENABLED=false): {template.slug}"
+                )
+            else:
+                logger.info(f"Using stubbed output for template execution: {template.slug}")
             output_dict = cls._build_stub_output_dict(template, template_version, input_data)
             model_used = cls.DUMMY_MODEL_USED
             provider_used = cls.DUMMY_PROVIDER_USED
@@ -904,7 +911,9 @@ class ExecutionService:
             logger.info("stream_ev: meta")
         yield meta_ev
 
-        use_real_llm = llm_settings.USE_REAL_LLM
+        use_real_llm = bool(
+            llm_settings.USE_REAL_LLM and getattr(llm_settings, "LLM_OUTBOUND_ENABLED", True)
+        )
 
         if not use_real_llm:
             output_dict = cls._build_stub_output_dict(template, template_version, input_data)

@@ -352,6 +352,16 @@ class InventoryExpansionWorker:
         gap: SectionGap,
         profile_snapshot: dict[str, Any],
     ) -> int:
+        if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
+            logger.info(
+                "personalization.generation_enqueue_skipped",
+                extra={
+                    "user_id": str(user_id),
+                    "section": section,
+                    "reason": "LEARNING_HUB_AUTO_LLM_ENABLED=false",
+                },
+            )
+            return 0
         # Current generation pipeline is productionized for micro_course.
         # For other sections, this creates future-proof inventory jobs without blocking flow.
         count = 0
@@ -421,6 +431,8 @@ class InventoryExpansionWorker:
         """
         Process up to N pending micro-course expansion jobs immediately to reduce thin states.
         """
+        if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
+            return 0
         processed = 0
         worker = GapGenerationWorker(self.db)
         for _ in range(3):

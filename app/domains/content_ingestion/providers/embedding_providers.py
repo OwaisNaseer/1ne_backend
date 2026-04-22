@@ -94,7 +94,13 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         """
         if not self.validate_config():
             raise RuntimeError("OpenAI embedding provider not properly configured")
-        
+
+        if not getattr(llm_settings, "LLM_OUTBOUND_ENABLED", True):
+            raise RuntimeError(
+                "OpenAI embeddings are disabled because LLM_OUTBOUND_ENABLED=false. "
+                "Use EMBEDDING_PROVIDER=fake or local, or set LLM_OUTBOUND_ENABLED=true to allow embedding API calls."
+            )
+
         if not texts:
             return []
         

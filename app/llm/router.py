@@ -25,6 +25,10 @@ except ImportError:
 logger = get_logger(__name__)
 
 
+def _outbound_calls_allowed(config) -> bool:
+    return bool(getattr(config, "LLM_OUTBOUND_ENABLED", True))
+
+
 class ModelRouter:
     """Router for LLM providers with fallback chains, caching, rate limiting, and cost tracking."""
 
@@ -111,6 +115,20 @@ class ModelRouter:
             f"LLM provider selection: openai={openai_status}, fallback=always. "
             f"Config source: .env (OPENAI_API_KEY={openai_key_status}, OPENAI_BASE_URL={'set' if openai_base else 'not set'}, DEFAULT_MODEL_PROVIDER={getattr(self.config, 'DEFAULT_MODEL_PROVIDER', 'openai')})."
         )
+        if not _outbound_calls_allowed(self.config):
+            logger.warning(
+                "LLM_OUTBOUND_ENABLED=false — outbound provider calls are blocked; "
+                "ModelRouter will only use FallbackProvider (no paid API usage)."
+            )
+
+    def _apply_outbound_guard(self, providers_to_try: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Strip paid providers when LLM_OUTBOUND_ENABLED is false (defense in depth)."""
+        if _outbound_calls_allowed(self.config):
+            return providers_to_try
+        filtered = [p for p in providers_to_try if p.get("provider") == "fallback"]
+        if filtered:
+            return filtered
+        return [{"provider": "fallback", "model": "fallback"}]
 
     async def generate(
         self,
@@ -191,8 +209,14 @@ class ModelRouter:
         if add_final_fallback:
             providers_to_try.append({"provider": "fallback", "model": "fallback"})
 
+        providers_to_try = self._apply_outbound_guard(providers_to_try)
+
         # 3. If OpenAI was requested and key is set but provider is unavailable, fail fast with clear error
-        if provider == "openai" and (self.config.OPENAI_API_KEY or "").strip():
+        if (
+            _outbound_calls_allowed(self.config)
+            and provider == "openai"
+            and (self.config.OPENAI_API_KEY or "").strip()
+        ):
             if not self._provider_health.get("openai", False):
                 reason = self._provider_init_error.get("openai", "OpenAI provider init failed")
                 raise RuntimeError(
@@ -342,6 +366,8 @@ class ModelRouter:
         # When USE_REAL_LLM is True, do not use FallbackProvider (fail clearly instead of stub content).
         if self.config.FALLBACK_ENABLED and not getattr(self.config, "USE_REAL_LLM", False):
             providers_to_try.append({"provider": "fallback", "model": "fallback"})
+
+        providers_to_try = self._apply_outbound_guard(providers_to_try)
 
         # Try each provider in sequence
         last_error = None
