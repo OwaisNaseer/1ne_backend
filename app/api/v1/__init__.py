@@ -1,8 +1,9 @@
 """
 API v1 routes package.
 
-Only registers routers whose `routes` modules exist in this checkout.
-(Incomplete domain trees would otherwise break the entire app import.)
+Registers routers that exist in this checkout. Optional domains are wrapped so a
+missing or broken submodule does not prevent core APIs (auth, templates, PixGen,
+YouTube quiz, content ingestion) from loading.
 """
 from fastapi import APIRouter
 
@@ -10,31 +11,12 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-<<<<<<< HEAD
 from app.api.v1 import routes_templates, routes_demo
 from app.domains.auth import routes as auth_routes
-from app.domains.subscriptions import routes as subscription_routes
 from app.domains.chatbots import routes as chatbot_routes
 from app.domains.pixgen import routes as pixgen_routes
+from app.domains.subscriptions import routes as subscription_routes
 from app.domains.youtube_quiz import routes as youtube_quiz_routes
-=======
-try:
-    from app.api.v1 import routes_templates, routes_demo
-    from app.domains.auth import routes as auth_routes
-    from app.domains.subscriptions import routes as subscription_routes
-    from app.domains.chatbots import routes as chatbot_routes
-    from app.domains.content_ingestion import routes as content_ingestion_routes
-    from app.domains.content_ingestion.quiz_catalog_routes import router as quiz_catalog_router
-    from app.domains.external_context import routes as metadata_routes
-    from app.domains.teacher_identity import routes as teacher_identity_routes
-    from app.domains.teacher_intelligence import routes as teacher_intelligence_routes
-    from app.domains.learning_hub import routes as learning_hub_routes
-    from app.domains.content_registry import routes as content_registry_routes
-    from app.domains.content_factory import routes as content_factory_routes
-    from app.domains.learning_progress import routes as learning_progress_routes
-    from app.domains.recommendation_analytics import routes as recommendation_analytics_routes
-    from app.domains.personalization import routes as personalization_routes
->>>>>>> 1bbfddc0c16cafbd69938c796c15e577f3701719
 
 router = APIRouter()
 
@@ -42,61 +24,62 @@ router.include_router(auth_routes.router)
 router.include_router(subscription_routes.router)
 router.include_router(chatbot_routes.router)
 router.include_router(pixgen_routes.router)
-
 router.include_router(routes_templates.router)
 router.include_router(routes_demo.router)
-
-<<<<<<< HEAD
 router.include_router(youtube_quiz_routes.router)
-=======
-    # Learning Hub (Pipeline2 integration, home orchestration)
+
+try:
+    from app.domains.content_ingestion import routes as content_ingestion_routes
+    from app.domains.content_ingestion.quiz_catalog_routes import router as quiz_catalog_router
+
+    router.include_router(content_ingestion_routes.router)
+    router.include_router(quiz_catalog_router)
+    logger.info("Content ingestion and quiz catalog routes registered")
+except Exception as exc:
+    logger.warning(
+        "Content ingestion / quiz catalog routes not registered (incomplete checkout or import error): %s",
+        exc,
+    )
+
+try:
+    from app.domains.learning_hub import routes as learning_hub_routes
+
     router.include_router(learning_hub_routes.router)
+    logger.info("Learning Hub routes registered")
+except Exception as exc:
+    logger.warning("Learning Hub routes not registered: %s", exc)
 
-    # Content Registry (canonical content + recommendation mapping)
-    router.include_router(content_registry_routes.router)
+_optional_domains = [
+    ("content_registry", "app.domains.content_registry.routes", "router"),
+    ("content_factory", "app.domains.content_factory.routes", "router"),
+    ("learning_progress", "app.domains.learning_progress.routes", "router"),
+    ("recommendation_analytics", "app.domains.recommendation_analytics.routes", "router"),
+    ("external_context", "app.domains.external_context.routes", "router"),
+    ("teacher_identity", "app.domains.teacher_identity.routes", "router"),
+    ("teacher_intelligence", "app.domains.teacher_intelligence.routes", "router"),
+]
 
-    # Content Factory (agentic content generation)
-    router.include_router(content_factory_routes.router)
+for label, module_path, attr in _optional_domains:
+    try:
+        mod = __import__(module_path, fromlist=[attr])
+        sub = getattr(mod, attr, None)
+        if sub is not None:
+            router.include_router(sub)
+            logger.info("%s routes registered", label)
+    except Exception as exc:
+        logger.warning("%s routes skipped: %s", label, exc)
 
-    # Learning Progress (sessions, events, feedback)
-    router.include_router(learning_progress_routes.router)
+try:
+    from app.domains.personalization import routes as personalization_routes
 
-    # Recommendation Analytics (performance snapshots)
-    router.include_router(recommendation_analytics_routes.router)
-
-    # Personalization (persistent user personalization profile + unlock + activity)
     router.include_router(personalization_routes.router)
     router.include_router(personalization_routes.admin_router)
     router.include_router(personalization_routes.activity_router)
     router.include_router(personalization_routes.content_router)
+    logger.info("Personalization routes registered")
+except Exception as exc:
+    logger.warning("Personalization routes not registered: %s", exc)
 
-    # Subscription routes
-    router.include_router(subscription_routes.router)
-    
-    # Chatbot routes
-    router.include_router(chatbot_routes.router)
-    
-    # Content Ingestion routes
-    try:
-        router.include_router(content_ingestion_routes.router)
-        logger.info("Content ingestion routes registered successfully")
-    except Exception as e:
-        logger.error(f"Failed to register content ingestion routes: {e}", exc_info=True)
-        raise
-
-    # Quiz Catalog routes
-    router.include_router(quiz_catalog_router)
-    
-    # Core template routes
-    router.include_router(routes_templates.router)
-    
-    # Demo routes
-    router.include_router(routes_demo.router)
-    
-    logger.info("All API v1 routes registered successfully")
-except Exception as e:
-    logger.error(f"Error registering API v1 routes: {e}", exc_info=True)
-    raise
->>>>>>> 1bbfddc0c16cafbd69938c796c15e577f3701719
-
-logger.info("API v1 routes registered (auth, subscriptions, chatbots, pixgen, templates, demo, youtube-quiz)")
+logger.info(
+    "API v1 routes registered (core + optional domains where available)"
+)

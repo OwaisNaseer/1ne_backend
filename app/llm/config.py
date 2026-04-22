@@ -1,10 +1,15 @@
 """
 LLM configuration for provider keys, default models, pricing, rate limits, and caching.
 """
+from pathlib import Path
 from typing import Optional, Dict, Any
 from decimal import Decimal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# 1ne_backend/.env — same root as app.core.config (USE_REAL_LLM, OPENAI_API_KEY, etc.)
+_LLM_CONFIG_ROOT = Path(__file__).resolve().parent.parent.parent
+_LLM_ENV_FILE = _LLM_CONFIG_ROOT / ".env"
 
 
 # Default pricing per 1K tokens (input, output)
@@ -64,7 +69,7 @@ class LLMSettings(BaseSettings):
     MODEL_PRICING: Optional[Dict[str, Any]] = None  # Override pricing if needed
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(_LLM_ENV_FILE),
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",

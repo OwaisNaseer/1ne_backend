@@ -20,6 +20,16 @@ ASPECT_RATIO_TO_SIZE = {
     "2:3 Portrait": "1024x1536",
 }
 
+# dall-e-2 only supports 256x256, 512x512, 1024x1024 (square). Map all presets to one of these.
+DALL_E2_SIZE = "1024x1024"
+
+
+def _image_size_for_model(model_name: str, aspect_ratio: str) -> str:
+    lower = (model_name or "").lower()
+    if lower.startswith("dall-e-2") or lower == "dall-e-2":
+        return DALL_E2_SIZE
+    return ASPECT_RATIO_TO_SIZE.get(aspect_ratio, "1024x1024")
+
 
 def _build_provider_prompt(prompt: str, style_preset: str, aspect_ratio: str) -> str:
     """Compose a model-friendly prompt for consistent style and framing."""
@@ -44,7 +54,7 @@ def generate_image_with_model(params: Dict[str, Any]) -> Dict[str, Any]:
     style_preset = params["stylePreset"]
     aspect_ratio = params["aspectRatio"]
     model_name = params.get("model") or llm_settings.OPENAI_IMAGE_MODEL
-    size = ASPECT_RATIO_TO_SIZE.get(aspect_ratio, "1024x1024")
+    size = _image_size_for_model(model_name, aspect_ratio)
 
     client = OpenAI(api_key=llm_settings.OPENAI_API_KEY, base_url=llm_settings.OPENAI_BASE_URL)
     provider_prompt = _build_provider_prompt(prompt=prompt, style_preset=style_preset, aspect_ratio=aspect_ratio)

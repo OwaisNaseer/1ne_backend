@@ -23,7 +23,6 @@ from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.domains.content_factory.enums import ContentGenerationStrategy, JobStatus
 from app.domains.content_factory.models import ContentGenerationJob
-from app.domains.content_factory.services.gap_generation_worker import GapGenerationWorker
 from app.domains.content_registry.models import ContentRegistryItem
 from app.domains.learning_hub.route_resolver import resolve_learning_hub_route
 from app.domains.auth.models import User
@@ -421,6 +420,8 @@ class InventoryExpansionWorker:
         """
         Process up to N pending micro-course expansion jobs immediately to reduce thin states.
         """
+        from app.domains.content_factory.services.gap_generation_worker import GapGenerationWorker
+
         processed = 0
         worker = GapGenerationWorker(self.db)
         for _ in range(3):

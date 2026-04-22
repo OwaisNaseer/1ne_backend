@@ -185,6 +185,66 @@ def require_role(role_name: str):
     return role_checker
 
 
+def require_any_role(*role_names: str):
+    """
+    Factory function to create a dependency that requires any one of several roles.
+
+    Usage:
+        @router.get("/admin/reports")
+        async def reports(
+            current_user: User = Depends(require_any_role("org_admin", "teacher")),
+            ...
+        ):
+            ...
+    """
+    if not role_names:
+        raise ValueError("require_any_role requires at least one role name")
+
+    def role_checker(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> User:
+        from app.domains.auth.models import UserRole, Role, RoleName
+        from sqlalchemy import or_
+
+        branches = []
+        for role_name in role_names:
+            role_filter = Role.name == role_name
+            if role_name == "institution_admin":
+                role_filter = or_(
+                    Role.name == RoleName.INSTITUTION_ADMIN,
+                    Role.name == RoleName.SCHOOL_ADMIN,
+                )
+            elif role_name == "school_admin":
+                role_filter = or_(
+                    Role.name == RoleName.INSTITUTION_ADMIN,
+                    Role.name == RoleName.SCHOOL_ADMIN,
+                )
+            branches.append(role_filter)
+
+        combined = or_(*branches) if len(branches) > 1 else branches[0]
+
+        user_role = (
+            db.query(UserRole)
+            .join(Role)
+            .filter(
+                UserRole.user_id == current_user.id,
+                UserRole.tenant_id == current_user.tenant_id,
+                combined,
+            )
+            .first()
+        )
+
+        if not user_role:
+            raise AuthorizationError(
+                f"One of these roles required: {', '.join(role_names)}"
+            )
+
+        return current_user
+
+    return role_checker
+
+
 def get_current_tenant(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

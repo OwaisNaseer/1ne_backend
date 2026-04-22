@@ -1,9 +1,14 @@
 """
 Application configuration using Pydantic BaseSettings.
 """
+from pathlib import Path
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+
+# 1ne_backend/.env (stable regardless of process cwd; main.py also pre-loads with load_dotenv)
+_CONFIG_ROOT = Path(__file__).resolve().parent.parent.parent
+_ENV_FILE = _CONFIG_ROOT / ".env"
 
 
 class Settings(BaseSettings):
@@ -66,8 +71,6 @@ class Settings(BaseSettings):
     SUPER_ADMIN_FIRST_NAME: str = "Super"
     SUPER_ADMIN_LAST_NAME: str = "Admin"
 
-<<<<<<< HEAD
-=======
     # Content Ingestion Configuration
     OCR_ENGINE: str = "tesseract"  # tesseract | easyocr | mathpix
     OCR_PROVIDER: str = "tesseract"  # tesseract | azure | google | mathpix
@@ -159,9 +162,8 @@ class Settings(BaseSettings):
     # until you set LEARNING_HUB_AUTO_LLM_ENABLED=true (e.g. after OPENAI_API_KEY is set).
     LEARNING_HUB_AUTO_LLM_ENABLED: bool = False
 
->>>>>>> 1bbfddc0c16cafbd69938c796c15e577f3701719
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",

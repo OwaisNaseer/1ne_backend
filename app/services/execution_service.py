@@ -1082,10 +1082,11 @@ class ExecutionService:
             for k, v in list(output_dict.items()):
                 if isinstance(v, str) and _looks_like_json_or_object_fragment(v):
                     output_dict[k] = _normalize_section_content_for_streaming(v)
-            stub_dict = cls._build_stub_output_dict(template, template_version, input_data) if section_keys else {}
-            merged_output = {}
+            # Do not backfill with stub_config — that looks like "example" / fake content
+            # when the LLM only partially filled the schema. Persist only model output.
+            merged_output: Dict[str, Any] = {}
             for key in section_keys:
-                merged_output[key] = output_dict.get(key) if output_dict.get(key) is not None else stub_dict.get(key)
+                merged_output[key] = output_dict.get(key)
             output_dict = merged_output
 
             token_usage = {"prompt": 0, "completion": 0, "total": 0}

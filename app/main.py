@@ -1,12 +1,26 @@
 """
 FastAPI application factory and main entry point.
 """
+# Load 1ne_backend/.env *before* any `app` imports so os.environ and USE_REAL_LLM
+# / OPENAI_API_KEY are visible to LLMSettings and other BaseSettings.
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+_backend_dir = Path(__file__).resolve().parent.parent
+_env_path = _backend_dir / ".env"
+if _env_path.is_file():
+    load_dotenv(_env_path, override=True)
+else:
+    load_dotenv(override=True)
+
+import asyncio
+
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
 from pydantic import ValidationError
 
@@ -24,8 +38,6 @@ from app.core.exceptions import (
     PasswordValidationError,
     InvalidCredentialsError,
 )
-from dotenv import load_dotenv
-load_dotenv()
 from app.api.v1 import router as v1_router
 
 # Setup logging before creating the app
@@ -91,20 +103,22 @@ app.add_middleware(
 
 # ========== Global Exception Handlers ==========
 
-<<<<<<< HEAD
-=======
-# Gap-detection background processor
-#
-# The learning hub personalization flow enqueues gap jobs, but the repository
-# includes a dedicated worker class that must be actively processed for jobs
-# to turn into published `content_registry` items.
-#
-# We run a conservative loop that processes at most one pending job at a time.
+# Gap-detection background processor (optional: requires content_factory worker module)
 @app.on_event("startup")
 async def _start_gap_generation_worker() -> None:
     if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
         logger.info(
             "GapGenerationWorker not started (LEARNING_HUB_AUTO_LLM_ENABLED is false)"
+        )
+        return
+    try:
+        from app.domains.content_factory.services.gap_generation_worker import (
+            GapGenerationWorker,
+        )
+    except ImportError as exc:
+        logger.warning(
+            "GapGenerationWorker not started (import failed: %s)",
+            exc,
         )
         return
 
@@ -139,7 +153,7 @@ async def _stop_gap_generation_worker() -> None:
         except asyncio.CancelledError:
             pass
 
->>>>>>> 1bbfddc0c16cafbd69938c796c15e577f3701719
+
 @app.exception_handler(AuthenticationError)
 async def authentication_error_handler(request: Request, exc: AuthenticationError):
     """Handle authentication errors."""
@@ -374,7 +388,6 @@ async def test_endpoint():
 app.include_router(v1_router)
 
 # Mount static files for profile pictures
-from app.core.config import settings
 profile_pictures_dir = Path(settings.PROFILE_PICTURES_DIR)
 profile_pictures_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/static/profile_pictures", StaticFiles(directory=str(profile_pictures_dir)), name="profile_pictures")
