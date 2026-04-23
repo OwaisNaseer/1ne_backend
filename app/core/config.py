@@ -73,6 +73,15 @@ class Settings(BaseSettings):
     OCR_MODE: str = "local"  # local = never call external APIs; api = allow API engines if keys present
     OCR_ENGINE_DEFAULT: str = "tesseract"  # default when pack has ocr_policy=auto
     OCR_FALLBACK_ENGINE: str = "tesseract"  # fallback when API keys missing
+    # API OCR controls (applies to google_document_ai / future API engines)
+    OCR_API_TIMEOUT_SECONDS: int = 90
+    OCR_API_MAX_RETRIES: int = 2
+    # Google Document AI credentials/configuration
+    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
+    DOCUMENT_AI_API_KEY: Optional[str] = None
+    DOCUMENT_AI_PROJECT_ID: Optional[str] = None
+    DOCUMENT_AI_LOCATION: str = "us"
+    DOCUMENT_AI_PROCESSOR_ID: Optional[str] = None
     TEXT_EXTRACTOR_PROVIDER: str = "pdfplumber"  # pdfplumber | pymupdf | ...
     EMBEDDING_PROVIDER: str = "fake"  # fake | local | openai (free mode: fake or local)
     VECTOR_STORE: str = "pgvector"  # pgvector | qdrant | pinecone

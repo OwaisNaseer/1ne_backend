@@ -5,6 +5,7 @@ Provider-driven; checkpoints and observability; free mode supported.
 import os
 import hashlib
 import time
+import re
 from typing import Optional, Dict, Any, List, Tuple
 from uuid import UUID
 from pathlib import Path
@@ -121,11 +122,78 @@ class IngestionService:
             self.math_provider = BaselineMathExtractionProvider()
 
     @staticmethod
+    def _slugify_topic_id(value: str) -> str:
+        """Build stable ASCII-like IDs for inferred topic labels."""
+        s = (value or "").strip().lower()
+        s = re.sub(r"[^a-z0-9]+", "-", s)
+        s = re.sub(r"-{2,}", "-", s).strip("-")
+        return s or "topic"
+
+    @staticmethod
+    def _infer_page_topic_labels(pages: List[Any], document: Document) -> Dict[int, str]:
+        """
+        Infer page-level topic labels from the first meaningful line on each page.
+
+        This is used only when chapter_map / PDF outline metadata is unavailable.
+        It keeps the existing page-bin fallback as a safety net for weak headings.
+        """
+        if not pages:
+            return {}
+
+        doc_base = normalize_topic_label((document.title or os.path.splitext(document.filename or "")[0]), max_len=200)
+        page_to_topic: Dict[int, str] = {}
+        carry_topic: Optional[str] = None
+
+        for p in pages:
+            page_no = int(getattr(p, "page_no", 0) or 0)
+            text = str(getattr(p, "text", "") or "").replace("\u0000", "")
+            if page_no <= 0 or not text.strip():
+                continue
+
+            lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+            candidate = ""
+            for ln in lines[:8]:
+                clean = normalize_topic_label(ln, max_len=120)
+                if len(clean) < 4:
+                    continue
+                if len(clean) > 90:
+                    continue
+                # Skip obvious paragraph-like lines; headings are usually short and low punctuation.
+                punct = clean.count(".") + clean.count(",") + clean.count(";") + clean.count(":")
+                if punct > 1:
+                    continue
+                candidate = clean
+                break
+
+            if not candidate:
+                if carry_topic:
+                    page_to_topic[page_no] = carry_topic
+                continue
+
+            # Ignore generic "Page X" style labels.
+            lower = candidate.lower()
+            if re.fullmatch(r"page\s+\d+(\s+of\s+\d+)?", lower):
+                if carry_topic:
+                    page_to_topic[page_no] = carry_topic
+                continue
+
+            if doc_base and lower == doc_base.lower():
+                if carry_topic:
+                    page_to_topic[page_no] = carry_topic
+                continue
+
+            carry_topic = candidate
+            page_to_topic[page_no] = candidate
+
+        return page_to_topic
+
+    @staticmethod
     def _ensure_chunk_topic_fallback_labels(
         chunks: List[Any],
         document: Document,
         *,
         page_count: int,
+        page_topic_map: Optional[Dict[int, str]] = None,
     ) -> Tuple[str, str, int]:
         """
         Label chunks the chapter map did not cover using page windows.
@@ -154,6 +222,24 @@ class IngestionService:
                 continue
             ps = int(getattr(ch, "page_start", None) or 1)
             pe = int(getattr(ch, "page_end", None) or ps)
+
+            # Prefer inferred page headings when available and consistent for this chunk span.
+            inferred = None
+            if page_topic_map:
+                span = range(min(ps, pe), max(ps, pe) + 1)
+                labels = {page_topic_map.get(pn) for pn in span if page_topic_map.get(pn)}
+                if len(labels) == 1:
+                    inferred = labels.pop()
+                elif len(labels) > 1:
+                    # If multiple labels occur in one chunk, use chunk start-page label.
+                    inferred = page_topic_map.get(ps)
+            if inferred:
+                label = normalize_topic_label(inferred, max_len=500)
+                ch.topic_title = label
+                ch.topic_id = f"scope:topic-{IngestionService._slugify_topic_id(label)}"
+                filled += 1
+                continue
+
             mid = max(1, (ps + pe) // 2)
             bin_id = max(0, (mid - 1) // page_bin)
             p_lo = bin_id * page_bin + 1
@@ -171,6 +257,8 @@ class IngestionService:
             meta = document.processing_metadata or {}
             if meta.get("toc_source") == "pdf_outline_auto":
                 mode = "pdf_outline_plus_page_bins" if filled else "pdf_outline_only"
+            elif page_topic_map:
+                mode = "inferred_page_headings_plus_page_bins" if filled else "page_bins_only"
             else:
                 mode = "page_bins_only"
 
@@ -381,10 +469,10 @@ class IngestionService:
                             },
                         )
                     
-                    # If OCR is required but binaries are missing, fail with actionable error
+                    # Keep preflight errors as warnings first; hard-fail decision is made
+                    # after engine resolution (API engines may proceed without local binaries).
                     if needs_ocr and preflight_result["errors"]:
-                        error_msg = "\n".join(preflight_result["errors"])
-                        raise OcrPreflightError(error_msg)
+                        ocr_warnings.extend(preflight_result["errors"])
                 except OcrPreflightError:
                     raise  # Re-raise preflight errors as-is
                 except Exception as e:
@@ -406,13 +494,27 @@ class IngestionService:
                 ocr_mode_used = ocr_decision.ocr_mode
             ocr_provider = get_ocr_provider_for_engine(ocr_engine_used or getattr(settings, "OCR_ENGINE_DEFAULT", "tesseract")) if needs_ocr else self.ocr_provider
             ocr_provider_ok = ocr_provider.validate_config() if needs_ocr else False
+            selected_engine = getattr(ocr_provider, "provider_name", "").lower()
             if needs_ocr and not ocr_provider_ok:
-                raise RuntimeError(
-                    f"OCR required for document {document_id} (scanned/low-text PDF or image) but OCR provider is not available. "
-                    "Install Tesseract and Poppler: Windows https://github.com/UB-Mannheim/tesseract/wiki, "
-                    "Linux: sudo apt-get install tesseract-ocr poppler-utils. "
-                    "Do not silently continue with empty or low-quality text."
-                )
+                if selected_engine in ("google_document_ai", "mathpix"):
+                    fallback_provider = get_ocr_provider_for_engine(getattr(settings, "OCR_FALLBACK_ENGINE", "tesseract"))
+                    if fallback_provider.validate_config():
+                        ocr_provider = fallback_provider
+                        ocr_provider_ok = True
+                        ocr_warnings.append(f"fallback_used:{selected_engine}->{getattr(fallback_provider, 'provider_name', 'tesseract')}")
+                        ocr_warnings.append("fallback_reason:selected_api_provider_not_configured")
+                        ocr_engine_used = getattr(fallback_provider, "provider_name", ocr_engine_used)
+                    else:
+                        raise RuntimeError(
+                            f"OCR required for document {document_id}, selected API OCR provider '{selected_engine}' is not configured and fallback provider is unavailable."
+                        )
+                else:
+                    raise RuntimeError(
+                        f"OCR required for document {document_id} (scanned/low-text PDF or image) but OCR provider is not available. "
+                        "Install Tesseract and Poppler: Windows https://github.com/UB-Mannheim/tesseract/wiki, "
+                        "Linux: sudo apt-get install tesseract-ocr poppler-utils. "
+                        "Do not silently continue with empty or low-quality text."
+                    )
             ocr_attempted = False
             total_chars_before_ocr = total_chars  # Store before OCR
             if needs_ocr and ocr_provider_ok:
@@ -505,10 +607,48 @@ class IngestionService:
                     self.db.commit()
                 except Exception as ocr_error:
                     logger.error(f"OCR failed for document {document_id}: {ocr_error}", exc_info=True)
-                    raise RuntimeError(
-                        f"OCR failed: {ocr_error}. Install Tesseract and Poppler (pdf2image). "
-                        "Fail loudly; do not continue with empty pages."
-                    ) from ocr_error
+                    # API engines: graceful fallback to local tesseract when provider fails
+                    if selected_engine in ("google_document_ai", "mathpix"):
+                        try:
+                            fallback_provider = get_ocr_provider_for_engine(getattr(settings, "OCR_FALLBACK_ENGINE", "tesseract"))
+                            if not fallback_provider.validate_config():
+                                raise RuntimeError("Fallback OCR provider is not configured")
+                            ocr_warnings.append(f"fallback_used:{selected_engine}->" + getattr(fallback_provider, "provider_name", "tesseract"))
+                            ocr_warnings.append(f"fallback_reason:{type(ocr_error).__name__}:{ocr_error}")
+                            pages = await fallback_provider.run_ocr(document.file_path, language="eng")
+                            ocr_engine_used = getattr(fallback_provider, "provider_name", "tesseract")
+                            ocr_mode_used = ocr_mode_used or getattr(settings, "OCR_MODE", "local")
+                            total_chars = sum(p.char_count for p in pages)
+                            meta = dict(document.processing_metadata or {})
+                            meta["ocr_used"] = True
+                            meta["ocr_engine_used"] = ocr_engine_used
+                            meta["ocr_mode"] = ocr_mode_used
+                            meta["ocr_decision_reason"] = ocr_decision_reason
+                            meta["ocr_fallback_used"] = True
+                            meta["ocr_fallback_from_engine"] = selected_engine
+                            meta["ocr_fallback_to_engine"] = ocr_engine_used
+                            if ocr_warnings:
+                                meta["ocr_warnings"] = ocr_warnings
+                            document.processing_metadata = meta
+                            self.db.commit()
+                            logger.warning(
+                                "ocr_fallback_success",
+                                extra={
+                                    "document_id": str(document_id),
+                                    "from_engine": selected_engine,
+                                    "to_engine": ocr_engine_used,
+                                    "total_chars_after_fallback": total_chars,
+                                },
+                            )
+                        except Exception as fallback_error:
+                            raise RuntimeError(
+                                f"OCR failed on engine '{selected_engine}' and fallback also failed: {fallback_error}"
+                            ) from fallback_error
+                    else:
+                        raise RuntimeError(
+                            f"OCR failed: {ocr_error}. Install Tesseract and Poppler (pdf2image). "
+                            "Fail loudly; do not continue with empty pages."
+                        ) from ocr_error
             else:
                 # No OCR used — store decision metadata
                 meta = dict(document.processing_metadata or {})
@@ -659,9 +799,17 @@ class IngestionService:
                 raise ValueError(
                     f"Chunking checkpoint failed: chunks=0. pages={len(normalized_pages)}, non_empty_pages={non_empty}, sample_snippet={sample!r}"
                 )
+            page_topic_map = None
+            if not document.chapter_map:
+                meta_now = dict(document.processing_metadata or {})
+                if meta_now.get("toc_source") != "pdf_outline_auto":
+                    page_topic_map = self._infer_page_topic_labels(normalized_pages, document)
             topic_scope_mode, primary_topic_label, topic_fallback_fill_count = (
                 self._ensure_chunk_topic_fallback_labels(
-                    chunks, document, page_count=len(normalized_pages)
+                    chunks,
+                    document,
+                    page_count=len(normalized_pages),
+                    page_topic_map=page_topic_map,
                 )
             )
             # Role tagging: assign chunk.metadata from structure_map or auto-heuristics

@@ -4,10 +4,13 @@ OCR provider implementations.
 import os
 import shutil
 import platform
+import asyncio
+import json
 from typing import List, Optional
 from pathlib import Path
 
 from app.core.logging import get_logger
+from app.core.config import settings
 from app.domains.content_ingestion.providers.base import OCRProvider, PageText
 from app.domains.content_ingestion.providers.ocr_preflight import OcrPreflight
 
@@ -404,11 +407,33 @@ class GoogleDocumentAIOCRProvider(OCRProvider):
     provider_name = "google_document_ai"
     
     def __init__(self):
-        self._credentials = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        self._api_key = os.getenv("DOCUMENT_AI_API_KEY")
+        self._credentials = getattr(settings, "GOOGLE_APPLICATION_CREDENTIALS", None) or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        self._api_key = getattr(settings, "DOCUMENT_AI_API_KEY", None) or os.getenv("DOCUMENT_AI_API_KEY")
+        self._project_id = getattr(settings, "DOCUMENT_AI_PROJECT_ID", None) or os.getenv("DOCUMENT_AI_PROJECT_ID")
+        self._location = getattr(settings, "DOCUMENT_AI_LOCATION", "us") or os.getenv("DOCUMENT_AI_LOCATION", "us")
+        self._processor_id = getattr(settings, "DOCUMENT_AI_PROCESSOR_ID", None) or os.getenv("DOCUMENT_AI_PROCESSOR_ID")
     
     def validate_config(self) -> bool:
-        return bool(self._credentials or self._api_key)
+        # We currently support service-account flow for Document AI.
+        # API key-only mode is not enough for processor invocation.
+        if not self._credentials:
+            return False
+        if not os.path.exists(self._credentials):
+            return False
+        return bool(self._processor_id)
+
+    @staticmethod
+    def _extract_text_from_layout(layout, full_text: str) -> str:
+        text_segments = []
+        text_anchor = getattr(layout, "text_anchor", None)
+        if not text_anchor:
+            return ""
+        for seg in getattr(text_anchor, "text_segments", []) or []:
+            start = int(getattr(seg, "start_index", 0) or 0)
+            end = int(getattr(seg, "end_index", 0) or 0)
+            if end > start:
+                text_segments.append(full_text[start:end])
+        return "".join(text_segments).strip()
     
     async def run_ocr(
         self,
@@ -416,8 +441,95 @@ class GoogleDocumentAIOCRProvider(OCRProvider):
         language: str = "eng",
         **kwargs
     ) -> List[PageText]:
-        """Run OCR via Google Document AI. Stub: not implemented; use Tesseract fallback."""
-        raise NotImplementedError(
-            "Google Document AI OCR is not implemented. "
-            "Set OCR_FALLBACK_ENGINE=tesseract or use another engine."
+        """Run OCR via Google Document AI processor."""
+        if not self.validate_config():
+            raise RuntimeError(
+                "Google Document AI OCR not configured. "
+                "Set GOOGLE_APPLICATION_CREDENTIALS and DOCUMENT_AI_PROCESSOR_ID."
+            )
+        if not os.path.exists(pdf_path):
+            raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+
+        try:
+            from google.cloud import documentai
+        except Exception as e:
+            raise RuntimeError(
+                f"google-cloud-documentai not installed/importable: {e}"
+            ) from e
+
+        # Resolve project id (env override, else from credential JSON)
+        project_id = self._project_id
+        if not project_id:
+            try:
+                with open(self._credentials, "r", encoding="utf-8") as f:
+                    project_id = json.load(f).get("project_id")
+            except Exception:
+                project_id = None
+        if not project_id:
+            raise RuntimeError("DOCUMENT_AI_PROJECT_ID is required (or project_id in service account JSON)")
+
+        first_page = kwargs.get("first_page")
+        last_page = kwargs.get("last_page")
+        timeout_s = int(kwargs.get("timeout_seconds") or os.getenv("OCR_API_TIMEOUT_SECONDS", "90"))
+        max_retries = int(kwargs.get("max_retries") or os.getenv("OCR_API_MAX_RETRIES", "2"))
+
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self._credentials
+        endpoint = f"{self._location}-documentai.googleapis.com"
+        client = documentai.DocumentProcessorServiceClient(
+            client_options={"api_endpoint": endpoint}
         )
+        name = client.processor_path(project_id, self._location, self._processor_id)
+
+        with open(pdf_path, "rb") as f:
+            raw_bytes = f.read()
+        raw_doc = documentai.RawDocument(content=raw_bytes, mime_type="application/pdf")
+
+        process_options = None
+        if first_page is not None or last_page is not None:
+            p0 = int(first_page or 1)
+            p1 = int(last_page or p0)
+            process_options = documentai.ProcessOptions(
+                individual_page_selector=documentai.ProcessOptions.IndividualPageSelector(
+                    pages=list(range(p0, p1 + 1))
+                )
+            )
+
+        request = documentai.ProcessRequest(
+            name=name,
+            raw_document=raw_doc,
+            process_options=process_options,
+        )
+
+        last_error = None
+        for attempt in range(1, max_retries + 2):
+            try:
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(client.process_document, request=request, timeout=timeout_s),
+                    timeout=timeout_s + 10,
+                )
+                doc = result.document
+                full_text = getattr(doc, "text", "") or ""
+                pages = []
+                for i, page in enumerate(getattr(doc, "pages", []) or [], start=1):
+                    page_text = self._extract_text_from_layout(getattr(page, "layout", None), full_text)
+                    if not page_text and full_text:
+                        # Safe fallback when layout anchors are empty
+                        page_text = full_text.strip()
+                    pages.append(
+                        PageText(
+                            page_no=i,
+                            text=page_text,
+                            char_count=len(page_text.strip()),
+                            ocr_engine=self.provider_name,
+                        )
+                    )
+                if not pages:
+                    raise RuntimeError("Document AI returned no pages")
+                return pages
+            except Exception as e:
+                last_error = e
+                if attempt > max_retries:
+                    break
+                await asyncio.sleep(min(3, attempt))
+
+        raise RuntimeError(f"Google Document AI OCR failed after retries: {last_error}")
