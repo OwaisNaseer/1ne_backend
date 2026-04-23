@@ -116,10 +116,12 @@ def bootstrap_retry(
     from app.core.config import settings
     from app.domains.personalization.services.inventory_expansion_worker import InventoryExpansionWorker
 
-    if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
+    generation_mode = str(getattr(settings, "LEARNING_HUB_GENERATION_MODE", "dummy") or "dummy").strip().lower()
+    llm_enabled = generation_mode == "llm" and settings.LEARNING_HUB_AUTO_LLM_ENABLED
+    if generation_mode == "llm" and not llm_enabled:
         return {
             "status": "disabled",
-            "message": "Learning Hub auto LLM is off. Set LEARNING_HUB_AUTO_LLM_ENABLED=true after your API key is configured.",
+            "message": "Learning Hub generation is in llm mode but LLM automation is disabled. Enable LEARNING_HUB_AUTO_LLM_ENABLED=true or switch LEARNING_HUB_GENERATION_MODE=dummy.",
             "user_id": str(current_user.id),
             "trigger": "bootstrap_retry",
         }
@@ -864,14 +866,41 @@ def get_home(
         profile = profile_svc.get(current_user.id)
         teacher_ctx = db.query(TeacherProfileContext).filter(TeacherProfileContext.user_id == current_user.id).first()
 
-        from app.domains.learning_hub.services.learning_hub_home_service import _compute_profile_completeness
+        from app.domains.learning_hub.services.learning_hub_home_service import (
+            _compute_profile_completeness,
+            get_profile_completion_status,
+        )
 
         hub_profile_completeness = _compute_profile_completeness(db, current_user.id).model_dump()
+        profile_completion_status = get_profile_completion_status(db, current_user.id)
+        profile_ready_for_personalization = bool(
+            profile_completion_status.is_sufficient
+            and profile_completion_status.teaching_context_complete
+            and profile_completion_status.has_identity_record
+        )
+
+        # Strict first-time gate: if profile is not yet complete, return no_profile so
+        # frontend shows the completion message instead of Growth Hub hero content.
+        if (not profile or not profile.personalization_started_at) and not profile_ready_for_personalization:
+            return {
+                "mode": "no_profile",
+                "personalization_version": 0,
+                "sections": None,
+                "last_recomputed_at": None,
+                "profile_completeness": hub_profile_completeness,
+                "page_readiness_state": None,
+                "minimum_ready_sections": [],
+                "hero_ready": False,
+                "global_generation_stage": None,
+                "global_progress_percent": 0,
+                "hub_bootstrap": None,
+                "orchestration": None,
+            }
 
         # Auto-start: create a minimal profile record immediately, then run full orchestration in background
         if not profile or not profile.personalization_started_at:
             ctx = db.query(TeacherProfileContext).filter(TeacherProfileContext.user_id == current_user.id).first()
-            if ctx and ctx.country and ctx.subjects and ctx.grade_band:
+            if profile_ready_for_personalization and ctx and ctx.country and ctx.subjects and ctx.grade_band:
                 try:
                     # Create a lightweight profile row now (fast — no content allocation yet)
                     from app.domains.personalization.models import UserPersonalizationProfile

@@ -286,8 +286,11 @@ def preflight_profile_change(
         db, current_user.id, current_snapshot, proposed_snapshot
     )
 
-    # Build user-facing copy
-    requires_confirmation = severity_str == ProfileChangeSeverity.MAJOR_RESET.value
+    # Confirm only for true reset operations (not first-time start/cold-start).
+    requires_confirmation = (
+        operation == "reset"
+        and severity_str == ProfileChangeSeverity.MAJOR_RESET.value
+    )
     if requires_confirmation:
         user_display_title = "This change resets your personalization"
         user_display_body = (

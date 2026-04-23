@@ -37,6 +37,8 @@ from app.domains.personalization.models import PersonalizedContentAssignment, Us
 
 logger = get_logger(__name__)
 FASTTRACK_TEST_EMAILS = {"test1@gmail.com"}
+_INFLIGHT_USERS_LOCK = threading.Lock()
+_INFLIGHT_EXPANSION_USERS: set[str] = set()
 
 
 @dataclass
@@ -59,6 +61,14 @@ class InventoryExpansionWorker:
         self.snapshot_svc = PersonalizationSnapshotService(db)
         self.slate_svc = SlateService(db)
         self.readiness_svc = SectionReadinessService(db)
+
+    @staticmethod
+    def _generation_mode() -> str:
+        return str(getattr(settings, "LEARNING_HUB_GENERATION_MODE", "dummy") or "dummy").strip().lower()
+
+    @classmethod
+    def _llm_enabled(cls) -> bool:
+        return cls._generation_mode() == "llm" and settings.LEARNING_HUB_AUTO_LLM_ENABLED
 
     def _get_section_gap(self, user_id: uuid.UUID, version: int, section: str) -> SectionGap:
         inv = self.assignment_svc._get_inventory(section)  # intentionally using centralized inventory config
@@ -323,6 +333,7 @@ class InventoryExpansionWorker:
 
     def _existing_open_generation_job(
         self,
+        user_id: uuid.UUID,
         section: str,
         topic: str,
         grade_band: str | None,
@@ -330,6 +341,7 @@ class InventoryExpansionWorker:
         q = (
             self.db.query(ContentGenerationJob)
             .filter(
+                ContentGenerationJob.requested_by_user_id == user_id,
                 ContentGenerationJob.source.in_(["inventory_expansion", "gap_detection"]),
                 ContentGenerationJob.status.in_(
                     [
@@ -352,13 +364,13 @@ class InventoryExpansionWorker:
         gap: SectionGap,
         profile_snapshot: dict[str, Any],
     ) -> int:
-        if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
+        if self._generation_mode() == "llm" and not self._llm_enabled():
             logger.info(
                 "personalization.generation_enqueue_skipped",
                 extra={
                     "user_id": str(user_id),
                     "section": section,
-                    "reason": "LEARNING_HUB_AUTO_LLM_ENABLED=false",
+                    "reason": "llm_mode_disabled",
                 },
             )
             return 0
@@ -402,9 +414,8 @@ class InventoryExpansionWorker:
                 content_type = "learning_path"
                 topic = f"Specialist deep dive in {subj.replace('_', ' ')} (slot {slot})"
 
-            if self._existing_open_generation_job(section, topic, grade_band):
+            if self._existing_open_generation_job(user_id, section, topic, grade_band):
                 continue
-
             source = "gap_detection" if section == SectionKey.MICRO_COURSES.value else "inventory_expansion"
             job = ContentGenerationJob(
                 requested_by_user_id=user_id,
@@ -431,7 +442,7 @@ class InventoryExpansionWorker:
         """
         Process up to N pending micro-course expansion jobs immediately to reduce thin states.
         """
-        if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
+        if self._generation_mode() == "llm" and not self._llm_enabled():
             return 0
         processed = 0
         worker = GapGenerationWorker(self.db)
@@ -557,18 +568,27 @@ class InventoryExpansionWorker:
         """
         Fire-and-forget background expansion run with isolated DB session.
         """
-        if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
+        if cls._generation_mode() == "llm" and not cls._llm_enabled():
             logger.info(
                 "personalization.inventory_expansion_skipped",
                 extra={
                     "user_id": str(user_id),
                     "trigger": trigger,
-                    "reason": "LEARNING_HUB_AUTO_LLM_ENABLED=false",
+                    "reason": "llm_mode_disabled",
                 },
             )
             return
 
         def _runner() -> None:
+            user_key = str(user_id)
+            with _INFLIGHT_USERS_LOCK:
+                if user_key in _INFLIGHT_EXPANSION_USERS:
+                    logger.info(
+                        "personalization.inventory_expansion_dedup_skipped",
+                        extra={"user_id": user_key, "trigger": trigger},
+                    )
+                    return
+                _INFLIGHT_EXPANSION_USERS.add(user_key)
             db = SessionLocal()
             try:
                 svc = cls(db)
@@ -591,5 +611,7 @@ class InventoryExpansionWorker:
                 logger.error("personalization.inventory_expansion_failed", extra={"user_id": str(user_id), "error": str(exc)})
             finally:
                 db.close()
+                with _INFLIGHT_USERS_LOCK:
+                    _INFLIGHT_EXPANSION_USERS.discard(user_key)
 
         threading.Thread(target=_runner, daemon=True).start()

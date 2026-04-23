@@ -88,8 +88,10 @@ class GapGenerationWorker:
         Stale recovery + next-job lookup run in a thread pool so the asyncio event loop
         can still serve HTTP (demo / production stability).
         """
-        if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
-            # Hub automation off: never run gap/inventory LLM jobs (defense if worker is invoked manually).
+        mode = str(getattr(settings, "LEARNING_HUB_GENERATION_MODE", "dummy") or "dummy").strip().lower()
+        llm_enabled = mode == "llm" and settings.LEARNING_HUB_AUTO_LLM_ENABLED
+        if mode == "llm" and not llm_enabled:
+            # LLM mode requested but automation gate is off.
             return None
 
         def _thread_pick_job() -> Optional[UUID]:

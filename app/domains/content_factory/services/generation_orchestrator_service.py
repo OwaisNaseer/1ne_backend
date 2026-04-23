@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
+from app.core.config import settings
 from app.llm.router import ModelRouter
 
 from app.domains.content_factory.enums import JobStatus
@@ -40,6 +41,14 @@ class GenerationOrchestratorService:
 
     def _get_job(self, job_id: UUID) -> Optional[ContentGenerationJob]:
         return self.db.query(ContentGenerationJob).filter(ContentGenerationJob.id == job_id).first()
+
+    @staticmethod
+    def _generation_mode() -> str:
+        return str(getattr(settings, "LEARNING_HUB_GENERATION_MODE", "dummy") or "dummy").strip().lower()
+
+    @classmethod
+    def _is_dummy_mode(cls) -> bool:
+        return cls._generation_mode() != "llm"
 
     def _build_generic_payload(self, job: ContentGenerationJob) -> dict[str, Any]:
         topic = (job.topic or "").strip()
@@ -229,6 +238,64 @@ class GenerationOrchestratorService:
         self.db.commit()
         self.db.refresh(job)
         logger.info("Workflow status change job_id=%s status=running", job_id)
+
+        # Testing-safe path: keep orchestration/job lifecycle but skip LLM calls.
+        if self._is_dummy_mode() or not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
+            try:
+                payload = self._build_generic_payload(job)
+                errors = self._validation.validate_generic_content(
+                    content_type=job.content_type,
+                    title=payload["title"],
+                    summary=payload["summary"],
+                    estimated_duration_min=payload["estimated_duration_min"],
+                )
+                if errors:
+                    job.status = JobStatus.FAILED.value
+                    job.error_message = "; ".join(errors)[:2000]
+                    job.completed_at = datetime.now(timezone.utc)
+                    self.db.commit()
+                    self.db.refresh(job)
+                    return job
+
+                job.status = JobStatus.PUBLISHING.value
+                job.current_step = "publishing"
+                job.quality_score = 0.82
+                self.db.commit()
+                self.db.refresh(job)
+
+                content_id = self._publishing.publish_generated_content(
+                    content_type=job.content_type,
+                    topic=payload["title"],
+                    subject=job.subject,
+                    grade_band=job.grade_band,
+                    difficulty=job.difficulty,
+                    locale=job.locale,
+                    job_id=job.id,
+                    generated_blob=payload["json_blob"],
+                    summary=payload["summary"],
+                    subtitle=payload["subtitle"],
+                    estimated_duration_min=payload["estimated_duration_min"],
+                    tags={
+                        "job_type": job.job_type,
+                        "source": job.source or "content_factory",
+                        "generation_mode": self._generation_mode(),
+                    },
+                )
+                job.status = JobStatus.COMPLETED.value
+                job.current_step = "completed"
+                job.result_content_id = content_id
+                job.completed_at = datetime.now(timezone.utc)
+                self.db.commit()
+                self.db.refresh(job)
+                return job
+            except Exception as e:
+                job.status = JobStatus.FAILED.value
+                job.error_message = str(e)[:2000]
+                job.completed_at = datetime.now(timezone.utc)
+                self.db.commit()
+                self.db.refresh(job)
+                logger.exception("Job %s failed: %s", job_id, e)
+                return job
 
         try:
             full_content, quality_output = await run_micro_course_pipeline(

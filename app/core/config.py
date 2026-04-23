@@ -153,8 +153,13 @@ class Settings(BaseSettings):
     # Learning Hub / recommendations
     ENABLE_RECOMMENDATION_DEBUG: bool = False
     MIN_CONTENT_PER_LOCALE: int = 6
+    # Generation mode for Learning Hub personalization:
+    # - dummy: run full orchestration with deterministic static content payloads (testing-safe, no LLM usage)
+    # - llm: run real LLM-backed generation pipeline
+    LEARNING_HUB_GENERATION_MODE: str = "dummy"
     # Default off: no gap worker loop and no InventoryExpansionWorker background runs
     # until you set LEARNING_HUB_AUTO_LLM_ENABLED=true (e.g. after OPENAI_API_KEY is set).
+    # Legacy gate retained for compatibility with existing deployments.
     LEARNING_HUB_AUTO_LLM_ENABLED: bool = False
 
     model_config = SettingsConfigDict(
