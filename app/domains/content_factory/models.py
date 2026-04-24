@@ -4,7 +4,7 @@ Content Factory domain models.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, String, Text, Integer, Float, DateTime, ForeignKey, Index
+from sqlalchemy import Column, String, Text, Integer, Float, DateTime, ForeignKey, Index, text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.db.base import Base
@@ -79,6 +79,22 @@ class ContentGenerationJob(Base):
             f"<ContentGenerationJob(id={self.id}, status={self.status}, "
             f"content_type={self.content_type}, topic={self.topic})>"
         )
+
+    __table_args__ = (
+        # Hard idempotency for open generation jobs:
+        # prevents duplicate enqueues for same user/section/topic/grade while job is active.
+        Index(
+            "uq_cgj_open_user_section_topic_grade",
+            "requested_by_user_id",
+            "job_type",
+            "topic",
+            "grade_band",
+            unique=True,
+            postgresql_where=text(
+                "status IN ('pending', 'running', 'awaiting_human_approval', 'publishing')"
+            ),
+        ),
+    )
 
 
 class ContentGenerationReview(Base):

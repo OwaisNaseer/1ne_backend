@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from dataclasses import dataclass
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -432,10 +433,14 @@ class InventoryExpansionWorker:
                 priority=20,
                 source=source,
             )
-            self.db.add(job)
-            count += 1
-        if count:
-            self.db.flush()
+            try:
+                with self.db.begin_nested():
+                    self.db.add(job)
+                    self.db.flush()
+                count += 1
+            except IntegrityError:
+                # DB open-job uniqueness guard skipped duplicate enqueue.
+                continue
         return count
 
     async def _process_micro_generation_jobs_once(self) -> int:

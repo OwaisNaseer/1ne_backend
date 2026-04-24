@@ -161,6 +161,9 @@ class Settings(BaseSettings):
     # until you set LEARNING_HUB_AUTO_LLM_ENABLED=true (e.g. after OPENAI_API_KEY is set).
     # Legacy gate retained for compatibility with existing deployments.
     LEARNING_HUB_AUTO_LLM_ENABLED: bool = False
+    # Minimum number of sections that must meet entry-ready criteria before hub unlock.
+    # Default 4 preserves current behavior while making threshold configurable.
+    LEARNING_HUB_MIN_READY_SECTIONS: int = 4
 
     model_config = SettingsConfigDict(
         env_file=".env",

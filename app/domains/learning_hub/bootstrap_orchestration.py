@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.domains.auth.models import TeacherProfileContext
 from app.domains.content_factory.models import ContentGenerationJob
+from app.core.config import settings
 from app.domains.personalization.models import PersonalizationJob, UserActivityEvent
 from app.domains.personalization.services.assignment_service import AssignmentService
 from app.domains.personalization.services.personalization_profile_service import PersonalizationProfileService
@@ -352,8 +353,26 @@ def compute_bootstrap_status(db: Session, user_id: uuid.UUID) -> Dict[str, Any]:
     specialist_ready = specialist_counts["visible"] >= SPECIALIST_VISIBLE
 
     # Progressive minimum viable readiness:
-    # enter as soon as core sections have at least one visible item.
-    minimum_viable_ready = bool(micro_ready and tutorials_ready and research_ready and specialist_ready)
+    # count ready sections dynamically and unlock when configurable threshold is met.
+    ready_for_entry_count = sum(
+        1
+        for is_ready in [
+            micro_ready,
+            tutorials_ready,
+            research_ready,
+            specialist_ready,
+            growth_inventory_ready,
+        ]
+        if is_ready
+    )
+    min_ready_sections = max(
+        1,
+        min(
+            5,
+            int(getattr(settings, "LEARNING_HUB_MIN_READY_SECTIONS", 4) or 4),
+        ),
+    )
+    minimum_viable_ready = ready_for_entry_count >= min_ready_sections
     hard_timeout_reached = elapsed >= HARD_TIMEOUT_AFTER_SECONDS
     # Never-stuck guarantee: force entry once timeout is reached, then continue
     # section generation progressively inside the hub.
