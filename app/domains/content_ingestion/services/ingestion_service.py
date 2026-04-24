@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
 from app.core.config import settings
+from app.llm.config import llm_settings
 from app.domains.content_ingestion.models import (
     Document, PageText, Chunk, DocumentProcessingRun, ContentPack
 )
@@ -120,6 +121,29 @@ class IngestionService:
             self.math_provider = BaselineMathExtractionProvider()
         else:
             self.math_provider = BaselineMathExtractionProvider()
+
+    def _select_embedding_provider_for_document(self, document: Document):
+        """
+        Select embedding provider for this document run.
+        If OCR_EMBEDDINGS_ONLY is enabled, OpenAI embeddings are restricted to OCR-processed docs.
+        """
+        emb = (settings.EMBEDDING_PROVIDER or "fake").lower()
+        ocr_used = bool((document.processing_metadata or {}).get("ocr_used"))
+        ocr_only = bool(getattr(settings, "OCR_EMBEDDINGS_ONLY", True))
+        has_openai_key = bool((getattr(llm_settings, "OPENAI_API_KEY", None) or "").strip())
+
+        # Safe default: for OCR-processed documents, prefer real OpenAI embeddings when key is present.
+        # This keeps document ingestion high quality without enabling OpenAI for other modules.
+        if ocr_used and has_openai_key:
+            return OpenAIEmbeddingProvider()
+
+        if emb == "openai" and ocr_only and not ocr_used:
+            return FakeEmbeddingProvider()
+        if emb == "openai":
+            return OpenAIEmbeddingProvider()
+        if emb == "local":
+            return LocalSentenceTransformersEmbeddingProvider()
+        return FakeEmbeddingProvider()
 
     @staticmethod
     def _slugify_topic_id(value: str) -> str:
@@ -859,6 +883,7 @@ class IngestionService:
             # Step 5: Embedding
             t0 = time.perf_counter()
             await self._update_status(document_id, DocumentStatus.EMBEDDING.value, processing_run)
+            self.embedding_provider = self._select_embedding_provider_for_document(document)
             chunk_texts = [chunk.text for chunk in chunks]
             try:
                 embeddings = await self.embedding_provider.embed(chunk_texts)
@@ -912,20 +937,18 @@ class IngestionService:
             qa_service = QAService(self.db)
             qa_validation = qa_service.run_qa_validation(document_id)
             
-            # Step 8: Verify chunks and embeddings were saved (embedding_v for fake/local)
+            # Step 8: Verify chunks and embeddings were saved.
+            # Primary store is embedding_v for all active providers in this pipeline.
+            # Keep legacy embedding as fallback for backward compatibility.
             from app.domains.content_ingestion.models import Chunk
             active_provider = self.embedding_provider.provider_name
-            if active_provider in ("fake", "local"):
-                chunks_with_embeddings = self.db.query(Chunk).filter(
-                    Chunk.document_id == document_id,
-                    Chunk.embedding_v.isnot(None),
-                    Chunk.embedding_model == active_provider
-                ).count()
-            else:
-                chunks_with_embeddings = self.db.query(Chunk).filter(
-                    Chunk.document_id == document_id,
-                    Chunk.embedding.isnot(None)
-                ).count()
+            chunks_with_embeddings = self.db.query(Chunk).filter(
+                Chunk.document_id == document_id,
+                (
+                    Chunk.embedding_v.isnot(None)
+                    | Chunk.embedding.isnot(None)
+                )
+            ).count()
             
             if chunks_with_embeddings == 0:
                 error_msg = f"No chunks with embeddings found. Expected chunks but found 0. Document cannot be published."
@@ -958,18 +981,14 @@ class IngestionService:
                              f"embedding_completeness={qa_validation.embedding_completeness_check}, "
                              f"vector_retrieval={qa_validation.vector_retrieval_check}")
             
-            # Verify again before publishing (embedding_v for fake/local)
-            if active_provider in ("fake", "local"):
-                final_chunk_count = self.db.query(Chunk).filter(
-                    Chunk.document_id == document_id,
-                    Chunk.embedding_v.isnot(None),
-                    Chunk.embedding_model == active_provider
-                ).count()
-            else:
-                final_chunk_count = self.db.query(Chunk).filter(
-                    Chunk.document_id == document_id,
-                    Chunk.embedding.isnot(None)
-                ).count()
+            # Verify again before publishing (embedding_v primary, legacy embedding fallback)
+            final_chunk_count = self.db.query(Chunk).filter(
+                Chunk.document_id == document_id,
+                (
+                    Chunk.embedding_v.isnot(None)
+                    | Chunk.embedding.isnot(None)
+                )
+            ).count()
             
             if final_chunk_count == 0:
                 error_msg = f"Chunks verification failed before publishing. Found 0 chunks with embeddings."

@@ -1,0 +1,42 @@
+{
+  "timestamp": "2026-04-24T22:07:04.164631",
+  "base_url": "http://127.0.0.1:8000",
+  "pdf_path": "..\\test_pipeline_pdf.pdf",
+  "dry_run": false,
+  "document_id": "69930079-99cb-48a3-8d3e-a54f40fe2fa7",
+  "statuses_seen": [
+    "OCR_RUNNING",
+    "NORMALIZING",
+    "CHUNKING",
+    "EMBEDDING",
+    "INDEXING",
+    "QA_VALIDATION",
+    "PUBLISHED"
+  ],
+  "error_code": null,
+  "error_message": null,
+  "chunk_count": 3,
+  "sample_chunk": {
+    "chunk_id": "chunk_000000",
+    "text": "Introduction to Artificial Intelligence\nArtificial Intelligence (Al) refers to the simulation of human intelligence in machines.\nAl is used in healthcare, education, finance, and transportation.\nThe goal is augmentation, not just automation.\n\nKey Concepts in Al\nMachine Learning (ML): Systems learn f",
+    "topic_id": "ch1",
+    "topic_title": "Introduction to Artificial Intelligence",
+    "metadata_json": {
+      "role": "concept",
+      "auto_role": "concept",
+      "role_source": "auto",
+      "auto_confidence": 0.85
+    },
+    "page_start_pdf": 1,
+    "page_end_pdf": 5
+  },
+  "checks": {
+    "upload": "PASS",
+    "ocr": "PASS",
+    "chunking": "PASS",
+    "embedding": "PASS",
+    "indexing": "PASS",
+    "vector_db": "PASS",
+    "overall": "PASS"
+  }
+}

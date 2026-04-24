@@ -26,6 +26,10 @@ class OpenAIProvider(BaseProvider):
 
     def __init__(self):
         """Initialize OpenAI provider with API key from settings."""
+        if getattr(llm_settings, "OPENAI_EMBEDDINGS_ONLY_MODE", False):
+            raise ValueError(
+                "OpenAI non-embedding usage is disabled (OPENAI_EMBEDDINGS_ONLY_MODE=true)."
+            )
         if not llm_settings.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY not set in environment variables")
         

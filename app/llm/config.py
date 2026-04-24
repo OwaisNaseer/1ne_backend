@@ -54,6 +54,12 @@ class LLMSettings(BaseSettings):
     # Use for local/CI safety so a mis-set USE_REAL_LLM cannot burn provider tokens.
     # PixGen image API and OpenAI embeddings also respect this flag (see model_adapter / embedding_providers).
     LLM_OUTBOUND_ENABLED: bool = True
+    # Safety mode: when enabled, OPENAI_API_KEY is reserved for ingestion embeddings only.
+    # OpenAI chat/template/pixgen paths are blocked unless this is explicitly disabled.
+    OPENAI_EMBEDDINGS_ONLY_MODE: bool = True
+    # Separate switch for embedding API calls. Keep true to allow embeddings even when
+    # LLM_OUTBOUND_ENABLED=false (blocks chatbot/templates/pixgen outbound calls).
+    EMBEDDING_OUTBOUND_ENABLED: bool = True
 
     # Caching
     CACHE_ENABLED: bool = True
