@@ -702,15 +702,25 @@ async def retry_document_processing(
 
     retryable = {
         DocumentStatus.FAILED.value,
-        DocumentStatus.TEXT_EXTRACTING.value,
-        DocumentStatus.OCR_RUNNING.value,
-        DocumentStatus.NORMALIZING.value,
-        DocumentStatus.CHUNKING.value,
-        DocumentStatus.EMBEDDING.value,
-        DocumentStatus.INDEXING.value,
-        DocumentStatus.QA_VALIDATION.value,
     }
     if document.status not in retryable:
+        in_progress = {
+            DocumentStatus.TEXT_EXTRACTING.value,
+            DocumentStatus.OCR_RUNNING.value,
+            DocumentStatus.NORMALIZING.value,
+            DocumentStatus.CHUNKING.value,
+            DocumentStatus.EMBEDDING.value,
+            DocumentStatus.INDEXING.value,
+            DocumentStatus.QA_VALIDATION.value,
+        }
+        if document.status in in_progress:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Document is currently processing ({document.status}). "
+                    "Do not retry yet; wait for completion or failure."
+                ),
+            )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot retry document with status: {document.status}",

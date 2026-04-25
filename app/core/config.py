@@ -57,7 +57,6 @@ class Settings(BaseSettings):
     # File Upload Configuration
     UPLOAD_DIR: str = "uploads"
     PROFILE_PICTURES_DIR: str = "uploads/profile_pictures"
-    MAX_FILE_SIZE_MB: int = 5
     ALLOWED_IMAGE_EXTENSIONS: list[str] = [".jpg", ".jpeg", ".png", ".webp"]
 
     # Super Admin Setup (for first-time initialization)
@@ -76,6 +75,13 @@ class Settings(BaseSettings):
     # API OCR controls (applies to google_document_ai / future API engines)
     OCR_API_TIMEOUT_SECONDS: int = 90
     OCR_API_MAX_RETRIES: int = 2
+    # Strict provider controls: fail fast when required external providers are unavailable.
+    # When True, OCR-required documents must run on Google Document AI (no local fallback).
+    OCR_STRICT_GOOGLE_ONLY: bool = True
+    # When True, OCR-used documents must use OpenAI embeddings (no fake/local fallback).
+    OCR_STRICT_OPENAI_EMBEDDINGS: bool = True
+    # Hard timeout for the full background ingestion job so UI status cannot remain "processing" forever.
+    INGESTION_JOB_TIMEOUT_SECONDS: int = 21600
     # Google Document AI credentials/configuration
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
     DOCUMENT_AI_API_KEY: Optional[str] = None

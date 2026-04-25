@@ -1,10 +1,11 @@
 {
-  "timestamp": "2026-04-24T22:07:04.164631",
+  "timestamp": "2026-04-25T11:05:51.234951",
   "base_url": "http://127.0.0.1:8000",
-  "pdf_path": "..\\test_pipeline_pdf.pdf",
+  "pdf_path": "c:\\Users\\Dell\\Downloads\\Physics 9.pdf",
   "dry_run": false,
-  "document_id": "69930079-99cb-48a3-8d3e-a54f40fe2fa7",
+  "document_id": "10e4e2d9-c546-4232-9613-35e4821c2412",
   "statuses_seen": [
+    "TEXT_EXTRACTING",
     "OCR_RUNNING",
     "NORMALIZING",
     "CHUNKING",
@@ -15,20 +16,20 @@
   ],
   "error_code": null,
   "error_message": null,
-  "chunk_count": 3,
+  "chunk_count": 891,
   "sample_chunk": {
     "chunk_id": "chunk_000000",
-    "text": "Introduction to Artificial Intelligence\nArtificial Intelligence (Al) refers to the simulation of human intelligence in machines.\nAl is used in healthcare, education, finance, and transportation.\nThe goal is augmentation, not just automation.\n\nKey Concepts in Al\nMachine Learning (ML): Systems learn f",
-    "topic_id": "ch1",
-    "topic_title": "Introduction to Artificial Intelligence",
+    "text": "Unit 1 Physical Quantities and Measurement STUDENT'S LEARNING OUTCOMES After studying this unit, the students will be able to: describe the crucial role of Physics in Science, Technology and Society. explain with examples that Science is based on physical quantities which consist of numerical magnit",
+    "topic_id": "outline-1",
+    "topic_title": "Chapter 1",
     "metadata_json": {
-      "role": "concept",
-      "auto_role": "concept",
+      "role": "exercise_prompt",
+      "auto_role": "exercise_prompt",
       "role_source": "auto",
-      "auto_confidence": 0.85
+      "auto_confidence": 0.5
     },
     "page_start_pdf": 1,
-    "page_end_pdf": 5
+    "page_end_pdf": 1
   },
   "checks": {
     "upload": "PASS",

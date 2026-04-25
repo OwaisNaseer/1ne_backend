@@ -500,6 +500,32 @@ class GoogleDocumentAIOCRProvider(OCRProvider):
             process_options=process_options,
         )
 
+        def _fmt_error(err: Exception) -> str:
+            """Build a readable error string for gRPC/API exceptions."""
+            parts = []
+            base = str(err).strip()
+            if base:
+                parts.append(base)
+            details_fn = getattr(err, "details", None)
+            if callable(details_fn):
+                try:
+                    details = str(details_fn() or "").strip()
+                    if details and details not in parts:
+                        parts.append(f"details={details}")
+                except Exception:
+                    pass
+            code_fn = getattr(err, "code", None)
+            if callable(code_fn):
+                try:
+                    code = code_fn()
+                    if code is not None:
+                        parts.append(f"code={code}")
+                except Exception:
+                    pass
+            if not parts:
+                parts.append(repr(err))
+            return " | ".join(parts)
+
         last_error = None
         for attempt in range(1, max_retries + 2):
             try:
@@ -527,7 +553,16 @@ class GoogleDocumentAIOCRProvider(OCRProvider):
                     raise RuntimeError("Document AI returned no pages")
                 return pages
             except Exception as e:
-                last_error = e
+                last_error = _fmt_error(e)
+                logger.warning(
+                    "google_document_ai_attempt_failed",
+                    extra={
+                        "attempt": attempt,
+                        "max_retries": max_retries,
+                        "error": last_error,
+                        "pdf_path": pdf_path,
+                    },
+                )
                 if attempt > max_retries:
                     break
                 await asyncio.sleep(min(3, attempt))

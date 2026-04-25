@@ -3,6 +3,7 @@ Self-healing PDF ingestion pipeline test script.
 
 Usage:
     python test_pipeline.py --pdf test_pipeline_pdf.pdf
+    python test_pipeline.py --pdf "My Book.pdf" --skip-chapter-map
     python test_pipeline.py --pdf test_pipeline_pdf.pdf --dry-run
 """
 
@@ -113,12 +114,14 @@ class PipelineTester:
         cli_password: str = "",
         cli_token: str = "",
         cli_pack_id: str = "",
+        skip_chapter_map: bool = False,
     ) -> None:
         if load_dotenv:
             load_dotenv()
 
         self.pdf_path = pdf_path
         self.dry_run = dry_run
+        self.skip_chapter_map = skip_chapter_map
         self.base_url = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         # Priority: CLI args > dedicated API_* envs > common fallback env names.
         self.api_email = (
@@ -230,6 +233,8 @@ class PipelineTester:
         if self.pdf_path.stat().st_size == 0:
             raise ValueError(f"PDF is empty: {self.pdf_path}")
 
+        if self.skip_chapter_map:
+            return
         if not isinstance(self.toc_metadata.get("toc"), list) or not self.toc_metadata["toc"]:
             raise ValueError("TOC metadata is invalid: 'toc' must be a non-empty list")
         for item in self.toc_metadata["toc"]:
@@ -281,23 +286,37 @@ class PipelineTester:
         auth_headers: Dict[str, str],
         pack_id: str,
     ) -> str:
-        chapter_map = to_chapter_map(self.toc_metadata)
         url = f"{self.base_url}/api/v1/admin/documents"
-        form_data = {
+        title = (self.toc_metadata.get("title") or "").strip() or self.pdf_path.stem
+        author = (self.toc_metadata.get("author") or "").strip() or "unknown"
+        form_data: Dict[str, Any] = {
             "pack_id": pack_id,
-            "title": self.toc_metadata["title"],
-            "author": self.toc_metadata["author"],
-            "chapter_map": json.dumps(chapter_map),
+            "title": title,
+            "author": author,
             "force_ocr": str(self.force_ocr).lower(),
         }
+        if not self.skip_chapter_map:
+            form_data["chapter_map"] = json.dumps(to_chapter_map(self.toc_metadata))
 
+        size_mb = self.pdf_path.stat().st_size / (1024 * 1024)
+        upload_timeout = self.request_timeout
+        if size_mb > 8:
+            upload_timeout = max(
+                self.request_timeout,
+                int(os.getenv("PIPELINE_LARGE_UPLOAD_TIMEOUT_SECONDS", "900")),
+            )
         try:
             with self.pdf_path.open("rb") as fp:
                 files = {
                     "file": (self.pdf_path.name, fp, "application/pdf"),
                 }
                 response = self._request(
-                    "POST", url, headers=auth_headers, data=form_data, files=files
+                    "POST",
+                    url,
+                    headers=auth_headers,
+                    data=form_data,
+                    files=files,
+                    timeout=upload_timeout,
                 )
         except Exception as exc:
             raise RuntimeError(f"Upload request failed: {exc}") from exc
@@ -520,6 +539,23 @@ class PipelineTester:
             self._save_report()
             return 0
 
+        try:
+            from pypdf import PdfReader
+
+            n_pages = len(PdfReader(str(self.pdf_path)).pages)
+        except Exception:
+            n_pages = 0
+        if n_pages > 30:
+            per_page = int(os.getenv("PIPELINE_TIMEOUT_SECONDS_PER_PAGE", "45"))
+            max_auto = int(os.getenv("PIPELINE_MAX_AUTO_TIMEOUT_SECONDS", str(6 * 3600)))
+            min_deadline = min(max_auto, 600 + n_pages * per_page)
+            if self.timeout_seconds < min_deadline:
+                print_status(
+                    f"[{now_str()}] Large PDF (~{n_pages} pages): extending poll deadline "
+                    f"{self.timeout_seconds}s -> {min_deadline}s (set PIPELINE_TIMEOUT_SECONDS to override)."
+                )
+                self.timeout_seconds = min_deadline
+
         self._check_backend_health()
         token = self.get_access_token()
         auth_headers = {"Authorization": f"Bearer {token}"}
@@ -536,7 +572,18 @@ class PipelineTester:
             return 1
 
         code_retry_count = 0
+        outer_cycles = 0
+        max_outer_cycles = 50
         while True:
+            outer_cycles += 1
+            if outer_cycles > max_outer_cycles:
+                print_status(
+                    f"🛑 Safety stop: exceeded {max_outer_cycles} processing cycles "
+                    "(check backend logs; increase max_outer_cycles if intentional)."
+                )
+                self.summary.error_code = "LOOP_GUARD"
+                self.summary.error_message = "Too many terminal poll cycles"
+                break
             try:
                 final_data = self.poll_until_terminal(auth_headers, document_id)
             except TimeoutError as exc:
@@ -596,6 +643,7 @@ class PipelineTester:
                     print_status(f"Retry failed immediately: {exc}")
                     if code_retry_count >= MAX_CODE_RETRIES:
                         print_status(f"🛑 Repeated failure in {step}. Stopping. Check logs above.")
+                        break
                     continue
 
             break
@@ -617,6 +665,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Validate inputs and metadata without making API calls",
     )
+    parser.add_argument(
+        "--skip-chapter-map",
+        action="store_true",
+        help="Omit chapter_map (matches UI upload without TOC); backend uses PDF outline when available.",
+    )
     return parser.parse_args()
 
 
@@ -629,6 +682,7 @@ def main() -> int:
         cli_password=args.password,
         cli_token=args.token,
         cli_pack_id=args.pack_id,
+        skip_chapter_map=args.skip_chapter_map,
     )
     return tester.run()
 

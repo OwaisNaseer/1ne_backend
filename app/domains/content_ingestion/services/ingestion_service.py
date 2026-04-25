@@ -11,6 +11,8 @@ from uuid import UUID
 from pathlib import Path
 
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
+from sqlalchemy.exc import PendingRollbackError
 
 from app.core.logging import get_logger
 from app.core.config import settings
@@ -516,10 +518,22 @@ class IngestionService:
             if ocr_decision:
                 ocr_engine_used = ocr_decision.engine_resolved
                 ocr_mode_used = ocr_decision.ocr_mode
+            strict_google_only = bool(getattr(settings, "OCR_STRICT_GOOGLE_ONLY", False))
             ocr_provider = get_ocr_provider_for_engine(ocr_engine_used or getattr(settings, "OCR_ENGINE_DEFAULT", "tesseract")) if needs_ocr else self.ocr_provider
             ocr_provider_ok = ocr_provider.validate_config() if needs_ocr else False
             selected_engine = getattr(ocr_provider, "provider_name", "").lower()
+            if needs_ocr and strict_google_only and selected_engine != "google_document_ai":
+                raise RuntimeError(
+                    "Strict OCR mode is enabled (OCR_STRICT_GOOGLE_ONLY=true): "
+                    f"resolved OCR engine is '{selected_engine or 'unknown'}', expected 'google_document_ai'. "
+                    "Set content pack ocr_policy=auto|math (not non_math) and configure Google Document AI credentials."
+                )
             if needs_ocr and not ocr_provider_ok:
+                if strict_google_only:
+                    raise RuntimeError(
+                        "Strict OCR mode is enabled (OCR_STRICT_GOOGLE_ONLY=true) but Google Document AI is not configured. "
+                        "Set GOOGLE_APPLICATION_CREDENTIALS, DOCUMENT_AI_PROJECT_ID, and DOCUMENT_AI_PROCESSOR_ID."
+                    )
                 if selected_engine in ("google_document_ai", "mathpix"):
                     fallback_provider = get_ocr_provider_for_engine(getattr(settings, "OCR_FALLBACK_ENGINE", "tesseract"))
                     if fallback_provider.validate_config():
@@ -633,6 +647,11 @@ class IngestionService:
                     logger.error(f"OCR failed for document {document_id}: {ocr_error}", exc_info=True)
                     # API engines: graceful fallback to local tesseract when provider fails
                     if selected_engine in ("google_document_ai", "mathpix"):
+                        if strict_google_only:
+                            raise RuntimeError(
+                                "Strict OCR mode is enabled (OCR_STRICT_GOOGLE_ONLY=true): "
+                                f"Google OCR failed and local fallback is disabled. Root error: {ocr_error}"
+                            ) from ocr_error
                         try:
                             fallback_provider = get_ocr_provider_for_engine(getattr(settings, "OCR_FALLBACK_ENGINE", "tesseract"))
                             if not fallback_provider.validate_config():
@@ -884,6 +903,14 @@ class IngestionService:
             t0 = time.perf_counter()
             await self._update_status(document_id, DocumentStatus.EMBEDDING.value, processing_run)
             self.embedding_provider = self._select_embedding_provider_for_document(document)
+            strict_openai_embeddings = bool(getattr(settings, "OCR_STRICT_OPENAI_EMBEDDINGS", False))
+            ocr_used_for_doc = bool((document.processing_metadata or {}).get("ocr_used"))
+            if strict_openai_embeddings and ocr_used_for_doc and getattr(self.embedding_provider, "provider_name", "") != "openai":
+                raise RuntimeError(
+                    "Strict embedding mode is enabled (OCR_STRICT_OPENAI_EMBEDDINGS=true): "
+                    f"OCR document resolved embedding provider '{getattr(self.embedding_provider, 'provider_name', 'unknown')}', expected 'openai'. "
+                    "Set EMBEDDING_PROVIDER=openai and configure OPENAI_API_KEY."
+                )
             chunk_texts = [chunk.text for chunk in chunks]
             try:
                 embeddings = await self.embedding_provider.embed(chunk_texts)
@@ -896,6 +923,11 @@ class IngestionService:
                     and "billing" not in low
                 ):
                     raise
+                if strict_openai_embeddings and ocr_used_for_doc:
+                    raise RuntimeError(
+                        "Strict embedding mode is enabled (OCR_STRICT_OPENAI_EMBEDDINGS=true): "
+                        f"OpenAI embedding failed and fake fallback is disabled. Root error: {embed_err}"
+                    ) from embed_err
                 logger.warning(
                     "embedding_provider_quota_fallback_fake",
                     extra={"document_id": str(document_id), "error": str(embed_err)},
@@ -1018,6 +1050,11 @@ class IngestionService:
             
         except Exception as e:
             logger.error(f"Ingestion failed for document {document_id}: {e}", exc_info=True)
+            # Reset failed transaction state before any additional DB access in this handler.
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
             
             # Provide more detailed error messages based on error type
             error_str = str(e)
@@ -1320,7 +1357,11 @@ class IngestionService:
         remediation_hint: Optional[str] = None
     ):
         """Update document and processing run status."""
-        document = self.db.query(Document).filter(Document.id == document_id).first()
+        try:
+            document = self.db.query(Document).filter(Document.id == document_id).first()
+        except PendingRollbackError:
+            self.db.rollback()
+            document = self.db.query(Document).filter(Document.id == document_id).first()
         if document:
             document.status = status
             if error_code:
@@ -1354,7 +1395,66 @@ class IngestionService:
         }
         processing_run.progress_percentage = status_progress.get(status, 0)
         
-        self.db.commit()
+        try:
+            self.db.commit()
+        except PendingRollbackError:
+            # Recover from invalid transaction state and retry status update once.
+            self.db.rollback()
+            fresh_document = self.db.query(Document).filter(Document.id == document_id).first()
+            if fresh_document:
+                fresh_document.status = status
+                if error_code:
+                    fresh_document.error_code = error_code
+                if error_message:
+                    fresh_document.error_message = error_message
+                if remediation_hint:
+                    fresh_document.remediation_hint = remediation_hint
+
+            fresh_run = self.db.query(DocumentProcessingRun).filter(
+                DocumentProcessingRun.id == processing_run.id
+            ).first()
+            if fresh_run:
+                fresh_run.status = status
+                fresh_run.current_step = status
+                fresh_run.progress_percentage = status_progress.get(status, 0)
+                if error_code:
+                    fresh_run.error_code = error_code
+                if error_message:
+                    fresh_run.error_message = error_message
+                if remediation_hint:
+                    fresh_run.remediation_hint = remediation_hint
+            self.db.commit()
+        except StaleDataError:
+            # Can happen if a retry/reset removed processing rows while an old worker is still running.
+            self.db.rollback()
+            fresh_document = self.db.query(Document).filter(Document.id == document_id).first()
+            if fresh_document:
+                fresh_document.status = status
+                if error_code:
+                    fresh_document.error_code = error_code
+                if error_message:
+                    fresh_document.error_message = error_message
+                if remediation_hint:
+                    fresh_document.remediation_hint = remediation_hint
+
+            fresh_run = self.db.query(DocumentProcessingRun).filter(
+                DocumentProcessingRun.id == processing_run.id
+            ).first()
+            if fresh_run:
+                fresh_run.status = status
+                fresh_run.current_step = status
+                fresh_run.progress_percentage = status_progress.get(status, 0)
+                if error_code:
+                    fresh_run.error_code = error_code
+                if error_message:
+                    fresh_run.error_message = error_message
+                if remediation_hint:
+                    fresh_run.remediation_hint = remediation_hint
+            self.db.commit()
+            logger.warning(
+                "status_update_recovered_after_stale_data",
+                extra={"document_id": str(document_id), "status": status},
+            )
         logger.info(f"Updated document {document_id} status to {status}")
 
     def apply_structure_map_to_chunks(self, document_id: UUID) -> int:
