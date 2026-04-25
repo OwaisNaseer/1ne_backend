@@ -19,7 +19,10 @@ from typing import Any
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app.core.config import (
+    get_learning_hub_generation_mode,
+    is_learning_hub_llm_enabled,
+)
 from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.domains.content_factory.enums import ContentGenerationStrategy, JobStatus
@@ -65,11 +68,11 @@ class InventoryExpansionWorker:
 
     @staticmethod
     def _generation_mode() -> str:
-        return str(getattr(settings, "LEARNING_HUB_GENERATION_MODE", "dummy") or "dummy").strip().lower()
+        return get_learning_hub_generation_mode()
 
     @classmethod
     def _llm_enabled(cls) -> bool:
-        return cls._generation_mode() == "llm" and settings.LEARNING_HUB_AUTO_LLM_ENABLED
+        return is_learning_hub_llm_enabled()
 
     def _get_section_gap(self, user_id: uuid.UUID, version: int, section: str) -> SectionGap:
         inv = self.assignment_svc._get_inventory(section)  # intentionally using centralized inventory config
@@ -443,17 +446,18 @@ class InventoryExpansionWorker:
                 continue
         return count
 
-    async def _process_micro_generation_jobs_once(self) -> int:
+    async def _process_generation_jobs_once(self) -> int:
         """
-        Process up to N pending micro-course expansion jobs immediately to reduce thin states.
+        Process up to N pending expansion jobs immediately to reduce thin states.
         """
         if self._generation_mode() == "llm" and not self._llm_enabled():
             return 0
         processed = 0
         worker = GapGenerationWorker(self.db)
-        for _ in range(3):
-            # GapGenerationWorker processes source=gap_detection jobs.
-            # We intentionally process only those to avoid running unsupported types.
+        for _ in range(6):
+            # GapGenerationWorker handles both gap_detection and inventory_expansion
+            # pending jobs. Running several immediate passes shortens the empty-state
+            # window for specialist tracks and growth recommendations.
             job = await worker.process_once()
             if not job:
                 break
@@ -525,7 +529,14 @@ class InventoryExpansionWorker:
                     )
                     < 1
                 )
-            if should_refill and not minimum_viable_ready:
+            keep_fast_refill_sections = {
+                SectionKey.SPECIALIST_TRACKS,
+                SectionKey.GROWTH_RECOMMENDATIONS,
+            }
+            should_enqueue_now = should_refill and (
+                not minimum_viable_ready or section_key in keep_fast_refill_sections
+            )
+            if should_enqueue_now:
                 queued = self._enqueue_generation_jobs(user_id, section, new_gap, profile_snapshot)
                 jobs_enqueued += queued
 
@@ -600,7 +611,7 @@ class InventoryExpansionWorker:
                 svc.expand_user_inventory(user_id=user_id, trigger=trigger)
                 # best-effort immediate micro generation pass
                 try:
-                    asyncio.run(svc._process_micro_generation_jobs_once())
+                    asyncio.run(svc._process_generation_jobs_once())
                 except Exception:
                     pass
                 # Reconcile after gap jobs publish into content_registry.

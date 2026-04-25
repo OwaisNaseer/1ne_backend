@@ -11,7 +11,7 @@ from pathlib import Path
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
 from pydantic import ValidationError
 
-from app.core.config import settings
+from app.core.config import settings, is_learning_hub_dummy_mode, is_learning_hub_llm_enabled
 from app.core.logging import setup_logging, get_logger
 from app.core.middleware import TimeoutMiddleware
 from app.core.exceptions import (
@@ -103,9 +103,9 @@ app.add_middleware(
 # We run a conservative loop that processes at most one pending job at a time.
 @app.on_event("startup")
 async def _start_gap_generation_worker() -> None:
-    if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
+    if not (is_learning_hub_dummy_mode() or is_learning_hub_llm_enabled()):
         logger.info(
-            "GapGenerationWorker not started (LEARNING_HUB_AUTO_LLM_ENABLED is false)"
+            "GapGenerationWorker not started (generation mode is llm but automation is disabled)"
         )
         return
 

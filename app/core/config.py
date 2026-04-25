@@ -182,3 +182,20 @@ def get_settings() -> Settings:
 # Global settings instance
 settings = get_settings()
 
+
+def get_learning_hub_generation_mode() -> str:
+    """Normalized Learning Hub generation mode."""
+    return str(getattr(settings, "LEARNING_HUB_GENERATION_MODE", "dummy") or "dummy").strip().lower()
+
+
+def is_learning_hub_dummy_mode() -> bool:
+    """True when Learning Hub should use deterministic dummy generation."""
+    return get_learning_hub_generation_mode() != "llm"
+
+
+def is_learning_hub_llm_enabled() -> bool:
+    """True only when LLM mode is selected and automation is enabled."""
+    return get_learning_hub_generation_mode() == "llm" and bool(
+        getattr(settings, "LEARNING_HUB_AUTO_LLM_ENABLED", False)
+    )
+

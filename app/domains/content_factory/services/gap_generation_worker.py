@@ -15,7 +15,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
-from app.core.config import settings
+from app.core.config import get_learning_hub_generation_mode, is_learning_hub_llm_enabled
 from app.db.session import SessionLocal
 from app.domains.content_factory.enums import JobStatus
 from app.domains.content_factory.models import ContentGenerationJob
@@ -36,13 +36,14 @@ class GapGenerationWorker:
     def _recover_stale_running_jobs(self, stale_after_hours: int = 2) -> int:
         """
         Mark stale running gap jobs as failed so they don't block future generation.
-        A stale job is source=gap_detection, status=running, updated_at older than threshold.
+        A stale job is source in (gap_detection, inventory_expansion), status=running,
+        updated_at older than threshold.
         """
         threshold = datetime.now(timezone.utc) - timedelta(hours=stale_after_hours)
         stale = (
             self.db.query(ContentGenerationJob)
             .filter(
-                ContentGenerationJob.source == "gap_detection",
+                ContentGenerationJob.source.in_(["gap_detection", "inventory_expansion"]),
                 ContentGenerationJob.status == JobStatus.RUNNING.value,
                 ContentGenerationJob.updated_at < threshold,
             )
@@ -88,8 +89,8 @@ class GapGenerationWorker:
         Stale recovery + next-job lookup run in a thread pool so the asyncio event loop
         can still serve HTTP (demo / production stability).
         """
-        mode = str(getattr(settings, "LEARNING_HUB_GENERATION_MODE", "dummy") or "dummy").strip().lower()
-        llm_enabled = mode == "llm" and settings.LEARNING_HUB_AUTO_LLM_ENABLED
+        mode = get_learning_hub_generation_mode()
+        llm_enabled = is_learning_hub_llm_enabled()
         if mode == "llm" and not llm_enabled:
             # LLM mode requested but automation gate is off.
             return None

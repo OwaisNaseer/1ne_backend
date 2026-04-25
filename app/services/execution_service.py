@@ -192,7 +192,8 @@ def _normalize_section_content_for_streaming(text: str) -> str:
                     parts = line.split(":", 1)
                     if len(parts) == 2:
                         key = parts[0].strip().strip('"').replace("_", " ").title()
-                        lines.append(f"{key}: {parts[1].strip().strip('"')}")
+                        value = parts[1].strip().strip('"')
+                        lines.append(f"{key}: {value}")
                     else:
                         lines.append(line)
                 else:

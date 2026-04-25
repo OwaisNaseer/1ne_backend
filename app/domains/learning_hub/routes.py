@@ -15,6 +15,11 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, s
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
+from app.core.config import (
+    get_learning_hub_generation_mode,
+    is_learning_hub_dummy_mode,
+    is_learning_hub_llm_enabled,
+)
 from app.db.session import get_db
 from app.domains.auth.dependencies import get_current_user
 from app.domains.auth.models import User
@@ -91,7 +96,7 @@ def stream_bootstrap_status(
             while time.time() - start < 180:
                 status = compute_bootstrap_status(db, user_id)
                 yield f"data: {json.dumps(status)}\n\n"
-                if status.get("can_enter_hub"):
+                if status.get("can_enter_hub") or status.get("timeout_state") in {"soft_unlock", "stalled"}:
                     break
                 time.sleep(2.5)
         finally:
@@ -113,17 +118,19 @@ def bootstrap_retry(
     Retry Learning Hub bootstrapping for the authenticated user.
     This is a production-safe recovery action (idempotent background expansion).
     """
-    from app.core.config import settings
     from app.domains.personalization.services.inventory_expansion_worker import InventoryExpansionWorker
 
-    generation_mode = str(getattr(settings, "LEARNING_HUB_GENERATION_MODE", "dummy") or "dummy").strip().lower()
-    llm_enabled = generation_mode == "llm" and settings.LEARNING_HUB_AUTO_LLM_ENABLED
+    generation_mode = get_learning_hub_generation_mode()
+    llm_enabled = is_learning_hub_llm_enabled()
     if generation_mode == "llm" and not llm_enabled:
         return {
             "status": "disabled",
             "message": "Learning Hub generation is in llm mode but LLM automation is disabled. Enable LEARNING_HUB_AUTO_LLM_ENABLED=true or switch LEARNING_HUB_GENERATION_MODE=dummy.",
             "user_id": str(current_user.id),
             "trigger": "bootstrap_retry",
+            "generation_mode": generation_mode,
+            "llm_enabled": llm_enabled,
+            "guard_reason": "llm_disabled",
         }
 
     InventoryExpansionWorker.run_in_background(current_user.id, trigger="bootstrap_retry")
@@ -131,6 +138,9 @@ def bootstrap_retry(
         "status": "started",
         "user_id": str(current_user.id),
         "trigger": "bootstrap_retry",
+        "generation_mode": generation_mode,
+        "llm_enabled": llm_enabled,
+        "guard_reason": "none",
     }
 
 
@@ -1017,6 +1027,9 @@ def get_home(
                     # The section will surface a generating/preparing state instead.
                     if _is_placeholder_title(enriched_title):
                         sections[sec]["_had_placeholder_items"] = True
+                        sections[sec]["_filtered_placeholder_count"] = (
+                            sections[sec].get("_filtered_placeholder_count", 0) + 1
+                        )
                         continue
                     norm_title = (enriched_title or "").strip().lower()
                     if item.content_id in sec_seen_ids:
@@ -1061,6 +1074,9 @@ def get_home(
                     }
                     # Never expose starter seed/demo items to production user surfaces.
                     if _raw_source == "starter_seed":
+                        sections[sec]["_filtered_seed_count"] = (
+                            sections[sec].get("_filtered_seed_count", 0) + 1
+                        )
                         continue
                     if item.bucket == "visible":
                         sections[sec]["visible_items"].append(card)
@@ -1072,6 +1088,8 @@ def get_home(
                     sec.pop("_seen_ids", None)
                     sec.pop("_seen_titles", None)
                     had_placeholders = sec.pop("_had_placeholder_items", False)
+                    filtered_placeholders = int(sec.pop("_filtered_placeholder_count", 0) or 0)
+                    filtered_seed = int(sec.pop("_filtered_seed_count", 0) or 0)
                     readiness = sec.get("readiness")
                     if readiness in (SectionReadinessStatus.PREPARING, SectionReadinessStatus.NOT_STARTED):
                         sec["message"] = "We are preparing this section for your profile."
@@ -1082,6 +1100,10 @@ def get_home(
                     if had_placeholders and not sec["visible_items"]:
                         sec["message"] = "Generating personalized content for this section."
                         sec["preparing_reason"] = "content_generating"
+                    sec["filtering"] = {
+                        "placeholder_filtered_count": filtered_placeholders,
+                        "starter_seed_filtered_count": filtered_seed,
+                    }
 
                 # Enforce response-level inventory caps to prevent stale slate over-exposure.
                 # Assignment service enforces caps at creation time; this guards against
@@ -1459,7 +1481,7 @@ def get_section(
         assignments = [a for a in assignments if a.bucket in ("visible", "locked_preview", "reserve")]
         bucket_rank = {"visible": 0, "locked_preview": 1, "reserve": 2}
         assignments = sorted(assignments, key=lambda a: (bucket_rank.get(a.bucket, 99), a.position))
-        total = len(assignments)
+        total_assigned = len(assignments)
         paginated = assignments[(page - 1) * page_size: page * page_size]
 
         # Enrich section cards from registry for production-quality View All rendering.
@@ -1528,15 +1550,21 @@ def get_section(
         visible_items = [i for i in items if i["bucket"] == "visible"]
         locked_preview_items = [i for i in items if i["bucket"] == "locked_preview"]
         reserve_items = [i for i in items if i["bucket"] == "reserve"]
+        total_exposed = len(items)
         return {
             "section": section,
             "visible_items": visible_items,
             "locked_preview_items": locked_preview_items,
             "reserve_items": reserve_items,
             "items": items,  # backward-compat
-            "total": total,
+            "total": total_exposed,
+            "total_assigned": total_assigned,
+            "total_exposed": total_exposed,
             "page": page,
             "page_size": page_size,
+            "generation_mode": get_learning_hub_generation_mode(),
+            "llm_enabled": is_learning_hub_llm_enabled(),
+            "dummy_mode": is_learning_hub_dummy_mode(),
         }
     except Exception as exc:
         logger.error("learning_hub.sections_error", extra={"section": section, "error": str(exc)})

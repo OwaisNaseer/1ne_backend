@@ -12,7 +12,11 @@ from sqlalchemy.orm import Session
 
 from app.domains.auth.models import TeacherProfileContext
 from app.domains.content_factory.models import ContentGenerationJob
-from app.core.config import settings
+from app.core.config import (
+    settings,
+    get_learning_hub_generation_mode,
+    is_learning_hub_llm_enabled,
+)
 from app.domains.personalization.models import PersonalizationJob, UserActivityEvent
 from app.domains.personalization.services.assignment_service import AssignmentService
 from app.domains.personalization.services.personalization_profile_service import PersonalizationProfileService
@@ -327,6 +331,9 @@ def compute_bootstrap_status(db: Session, user_id: uuid.UUID) -> Dict[str, Any]:
             "has_ready_inventory": False,
             "generation_inflight": False,
             "orchestration_session_id": None,
+            "generation_mode": get_learning_hub_generation_mode(),
+            "llm_enabled": is_learning_hub_llm_enabled(),
+            "guard_reason": "profile_not_started",
         }
 
     ver = profile.personalization_version
@@ -522,7 +529,7 @@ def compute_bootstrap_status(db: Session, user_id: uuid.UUID) -> Dict[str, Any]:
         "started_at": started_at,
         "updated_at": updated_at,
         "last_recomputed_at": last_recomputed,
-        "minimum_ready_sections_met": ready_sections,
+        "minimum_ready_sections_met": minimum_ready_sections_met,
         "blocking_sections": blocking,
         "ready_sections": ready_sections,
         "failed_sections": failed_job_types,
@@ -541,4 +548,11 @@ def compute_bootstrap_status(db: Session, user_id: uuid.UUID) -> Dict[str, Any]:
         "generation_inflight": generation_inflight,
         "orchestration_session_id": orchestration_session_id,
         "correlation_id": correlation_id,
+        "generation_mode": get_learning_hub_generation_mode(),
+        "llm_enabled": is_learning_hub_llm_enabled(),
+        "guard_reason": (
+            "llm_disabled"
+            if get_learning_hub_generation_mode() == "llm" and not is_learning_hub_llm_enabled()
+            else "none"
+        ),
     }

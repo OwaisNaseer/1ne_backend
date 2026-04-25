@@ -403,6 +403,7 @@ def complete_content(
         )
 
     newly_unlocked_ids: list[uuid.UUID] = []
+    refill_triggered = False
 
     if assignment:
         assignment_svc.mark_completed(assignment)
@@ -449,6 +450,7 @@ def complete_content(
 
         # Proactive refill trigger if inventory is getting thin.
         if assignment_svc.needs_refill(current_user.id, section, profile.personalization_version):
+            refill_triggered = True
             def _refill():
                 try:
                     snapshot = _build_profile_snapshot(current_user.id, db)
@@ -472,7 +474,15 @@ def complete_content(
         assignment_id=assignment.id if assignment else None,
         status="completed",
         newly_unlocked=newly_unlocked_ids,
-        message="Completion recorded." + (f" {len(newly_unlocked_ids)} new items unlocked." if newly_unlocked_ids else ""),
+        message=(
+            "Completion recorded."
+            + (f" {len(newly_unlocked_ids)} new items unlocked." if newly_unlocked_ids else "")
+            + (
+                " More courses are now being generated to refill your hub inventory."
+                if refill_triggered
+                else ""
+            )
+        ),
     )
 
 

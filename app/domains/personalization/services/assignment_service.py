@@ -280,6 +280,9 @@ class AssignmentService:
     def mark_completed(self, assignment: PersonalizedContentAssignment) -> PersonalizedContentAssignment:
         assignment.status = "completed"
         assignment.completed_at = datetime.now(timezone.utc)
+        # Remove completed item from active inventory so rebalance/refill can promote
+        # the next locked/reserve items and trigger top-up generation when needed.
+        assignment.is_active = False
         assignment.updated_at = datetime.now(timezone.utc)
         self.db.flush()
         return assignment
