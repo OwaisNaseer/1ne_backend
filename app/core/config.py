@@ -90,6 +90,9 @@ class Settings(BaseSettings):
     DOCUMENT_AI_PROCESSOR_ID: Optional[str] = None
     TEXT_EXTRACTOR_PROVIDER: str = "pdfplumber"  # pdfplumber | pymupdf | ...
     EMBEDDING_PROVIDER: str = "fake"  # fake | local | openai (free mode: fake or local)
+    # When True, OpenAI embeddings are only used for OCR-processed docs (cost guard).
+    # Set False to enable real embeddings for ALL docs including digital PDFs.
+    OCR_EMBEDDINGS_ONLY: bool = True
     VECTOR_STORE: str = "pgvector"  # pgvector | qdrant | pinecone
     MATH_PROVIDER: str = "baseline"  # baseline | mathpix (mathpix later)
     # Chunking profiles

@@ -167,9 +167,11 @@ class QAService:
                 Chunk.embedding_model == active
             ).count()
         else:
+            # openai and other real providers may store in embedding_v (variable-dim)
+            # or the legacy fixed-dim embedding column — count either.
             chunks_with_embeddings = self.db.query(Chunk).filter(
                 Chunk.document_id == document_id,
-                Chunk.embedding.isnot(None)
+                (Chunk.embedding_v.isnot(None)) | (Chunk.embedding.isnot(None))
             ).count()
         completeness = chunks_with_embeddings / total_chunks if total_chunks > 0 else 0.0
         return completeness >= min_completeness
@@ -278,7 +280,10 @@ class QAService:
         if active and active in ("fake", "local"):
             chunks_with_embeddings = sum(1 for c in chunks if getattr(c, "embedding_v", None) is not None and c.embedding_model == active)
         else:
-            chunks_with_embeddings = sum(1 for c in chunks if c.embedding is not None)
+            # openai and real providers may use embedding_v (variable-dim) or legacy embedding
+            chunks_with_embeddings = sum(
+                1 for c in chunks if getattr(c, "embedding_v", None) is not None or c.embedding is not None
+            )
         embedding_completeness = chunks_with_embeddings / len(chunks) if chunks else 0.0
         
         return {

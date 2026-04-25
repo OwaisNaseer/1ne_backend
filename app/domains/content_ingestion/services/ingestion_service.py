@@ -131,7 +131,7 @@ class IngestionService:
         """
         emb = (settings.EMBEDDING_PROVIDER or "fake").lower()
         ocr_used = bool((document.processing_metadata or {}).get("ocr_used"))
-        ocr_only = bool(getattr(settings, "OCR_EMBEDDINGS_ONLY", True))
+        ocr_only = bool(settings.OCR_EMBEDDINGS_ONLY)
         has_openai_key = bool((getattr(llm_settings, "OPENAI_API_KEY", None) or "").strip())
 
         # Safe default: for OCR-processed documents, prefer real OpenAI embeddings when key is present.
@@ -370,6 +370,16 @@ class IngestionService:
             )
             self.db.commit()
             claimed = rows == 1
+            if claimed:
+                # Purge any partial artifacts from the failed run so retry starts clean
+                # (prevents duplicate chunks / vectors on re-processing)
+                self.db.query(Chunk).filter(Chunk.document_id == document_id).delete(synchronize_session=False)
+                self.db.query(PageText).filter(PageText.document_id == document_id).delete(synchronize_session=False)
+                self.db.commit()
+                logger.info(
+                    "ingestion_retry_purge",
+                    extra={"document_id": str(document_id), "action": "purged chunks+pages for clean retry"},
+                )
         else:
             raise ValueError(
                 f"Cannot ingest document {document_id} from status '{document.status}' "
@@ -972,7 +982,6 @@ class IngestionService:
             # Step 8: Verify chunks and embeddings were saved.
             # Primary store is embedding_v for all active providers in this pipeline.
             # Keep legacy embedding as fallback for backward compatibility.
-            from app.domains.content_ingestion.models import Chunk
             active_provider = self.embedding_provider.provider_name
             chunks_with_embeddings = self.db.query(Chunk).filter(
                 Chunk.document_id == document_id,

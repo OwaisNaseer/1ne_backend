@@ -3,7 +3,11 @@
 Run full content-ingestion pipeline for a PDF on disk (same DB + DOCUMENTS_DIR as the API).
 
 Usage (from 1ne_backend):
-  python tools/ingest_local_pdf.py "c:/path/to/file.pdf" [max_hours]
+  python tools/ingest_local_pdf.py "c:/path/to/file.pdf" [max_hours] [toc.json]
+
+  toc.json  Optional path to a JSON file containing the chapter map array
+            (list of {id, title, level, parent_id, start_page_pdf, end_page_pdf, keywords}).
+            When provided, overrides any TOC auto-detected from the PDF outline.
 
 Loads `.env` then forces `EMBEDDING_PROVIDER=fake` for **this process only** so large PDFs
 complete without OpenAI quota (override: set env `INGEST_LOCAL_RESPECT_EMBEDDING=1` before running).
@@ -16,6 +20,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 from uuid import UUID
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -74,7 +79,27 @@ def _get_or_create_pack(db: Session, tenant_id: UUID) -> ContentPack:
     return pack
 
 
-def _create_document(db: Session, pack_id: UUID, tenant_id: UUID, pdf_path: Path) -> Document:
+def _load_toc_json(toc_path: Optional[Path]) -> Optional[list]:
+    """Load and return chapter map from a JSON file, or None if not provided."""
+    if not toc_path:
+        return None
+    if not toc_path.exists():
+        raise FileNotFoundError(f"TOC file not found: {toc_path}")
+    import json
+    data = json.loads(toc_path.read_text(encoding="utf-8"))
+    if not isinstance(data, list):
+        raise ValueError(f"TOC JSON must be a list of chapter objects, got {type(data).__name__}")
+    print(f"[toc] loaded {len(data)} chapters from {toc_path.name}", flush=True)
+    return data
+
+
+def _create_document(
+    db: Session,
+    pack_id: UUID,
+    tenant_id: UUID,
+    pdf_path: Path,
+    chapter_map: Optional[list] = None,
+) -> Document:
     import hashlib
     import uuid
     from datetime import datetime
@@ -106,7 +131,7 @@ def _create_document(db: Session, pack_id: UUID, tenant_id: UUID, pdf_path: Path
         uploaded_by=None,
         title=pdf_path.stem,
         author=None,
-        chapter_map=None,
+        chapter_map=chapter_map,
         document_hash=file_hash,
     )
     return doc
@@ -151,12 +176,13 @@ async def _run_ingest_with_deadline(db: Session, document_id: UUID, deadline: fl
     return await asyncio.wait_for(ing.ingest_document(document_id), timeout=max(1.0, deadline - time.time()))
 
 
-async def _main_async(pdf_path: Path, max_wait_hours: float) -> int:
+async def _main_async(pdf_path: Path, max_wait_hours: float, toc_path: Optional[Path] = None) -> int:
+    chapter_map = _load_toc_json(toc_path)
     db = SessionLocal()
     try:
         tenant = _get_or_create_tenant(db)
         pack = _get_or_create_pack(db, tenant.id)
-        doc = _create_document(db, pack.id, tenant.id, pdf_path)
+        doc = _create_document(db, pack.id, tenant.id, pdf_path, chapter_map=chapter_map)
         print(f"document_id={doc.id} file={pdf_path.name}", flush=True)
 
         deadline = time.time() + max_wait_hours * 3600
@@ -205,10 +231,11 @@ async def _main_async(pdf_path: Path, max_wait_hours: float) -> int:
 def main() -> int:
     pdf = Path(sys.argv[1] if len(sys.argv) > 1 else "").expanduser()
     if not pdf or not pdf.is_file():
-        print("Usage: python tools/ingest_local_pdf.py <path-to.pdf> [max_hours]", flush=True)
+        print("Usage: python tools/ingest_local_pdf.py <path-to.pdf> [max_hours] [toc.json]", flush=True)
         return 2
     hours = float(sys.argv[2]) if len(sys.argv) > 2 else 6.0
-    return asyncio.run(_main_async(pdf, hours))
+    toc_path = Path(sys.argv[3]).expanduser() if len(sys.argv) > 3 else None
+    return asyncio.run(_main_async(pdf, hours, toc_path))
 
 
 if __name__ == "__main__":
