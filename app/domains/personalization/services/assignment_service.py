@@ -83,6 +83,7 @@ class AssignmentService:
         assignments = []
         position = 0
         seen_rank_titles: set[str] = set()
+        visible_assigned = 0
 
         visible_limit = inventory["visible"]
         preview_limit = inventory["locked_preview"]
@@ -131,7 +132,9 @@ class AssignmentService:
             # Policy: starter_seed may be used as transparent fallback inventory,
             # but should not masquerade as primary visible personalized content.
             if item.get("source_type") == "starter_seed" and bucket == "visible":
-                bucket = "locked_preview"
+                # Keep at least one visible card per section when no generated item
+                # is currently available; otherwise downgrade seed to preview.
+                bucket = "visible" if visible_assigned == 0 else "locked_preview"
 
             assignment = PersonalizedContentAssignment(
                 personalization_profile_id=profile.id,
@@ -155,6 +158,8 @@ class AssignmentService:
             )
             self.db.add(assignment)
             assignments.append(assignment)
+            if bucket == "visible":
+                visible_assigned += 1
             existing_content_ids.add(content_id)
             if norm_title:
                 seen_rank_titles.add(norm_title)

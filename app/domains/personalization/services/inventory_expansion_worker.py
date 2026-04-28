@@ -222,6 +222,7 @@ class InventoryExpansionWorker:
         """
         required_sections = [
             "micro_courses",
+            "growth_recommendations",
             "tutorials",
             "research_insights",
             "specialist_tracks",
@@ -486,8 +487,6 @@ class InventoryExpansionWorker:
         jobs_enqueued = 0
         section_results: dict[str, Any] = {}
 
-        minimum_viable_ready = self._minimum_viable_satisfied(user_id, profile.personalization_version)
-
         is_fasttrack_user = self._is_fasttrack_test_user(user_id)
         if is_fasttrack_user:
             self._ensure_test_fasttrack_assignments(profile, latest_snapshot.id if latest_snapshot else None)
@@ -529,13 +528,7 @@ class InventoryExpansionWorker:
                     )
                     < 1
                 )
-            keep_fast_refill_sections = {
-                SectionKey.SPECIALIST_TRACKS,
-                SectionKey.GROWTH_RECOMMENDATIONS,
-            }
-            should_enqueue_now = should_refill and (
-                not minimum_viable_ready or section_key in keep_fast_refill_sections
-            )
+            should_enqueue_now = should_refill
             if should_enqueue_now:
                 queued = self._enqueue_generation_jobs(user_id, section, new_gap, profile_snapshot)
                 jobs_enqueued += queued

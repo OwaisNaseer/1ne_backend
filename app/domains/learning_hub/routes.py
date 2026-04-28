@@ -904,6 +904,7 @@ def get_home(
                 "global_generation_stage": None,
                 "global_progress_percent": 0,
                 "hub_bootstrap": None,
+                "section_readiness": {},
                 "orchestration": None,
             }
 
@@ -962,6 +963,7 @@ def get_home(
                     "global_generation_stage": hb0.get("stage_message"),
                     "global_progress_percent": int(hb0.get("progress_percent") or 0),
                     "hub_bootstrap": hb0,
+                    "section_readiness": hb0.get("section_readiness") or {},
                     "orchestration": {
                         "can_enter_hub": hb0.get("can_enter_hub"),
                         "current_stage": hb0.get("current_stage"),
@@ -982,6 +984,13 @@ def get_home(
             if slate:
                 items = slate_svc.get_items(slate.id)
                 sections: Dict[str, Any] = {}
+                required_sections = [
+                    "micro_courses",
+                    "growth_recommendations",
+                    "tutorials",
+                    "research_insights",
+                    "specialist_tracks",
+                ]
 
                 # Enrich titles from content registry in one batch query
                 content_ids = [i.content_id for i in items if i.content_id]
@@ -1007,6 +1016,14 @@ def get_home(
                             route_map[ri.content_id] = resolve_learning_hub_route(ri)
                     except Exception:
                         pass
+
+                for section_key in required_sections:
+                    sections[section_key] = {
+                        "readiness": readiness_map.get(section_key, SectionReadinessStatus.PREPARING),
+                        "visible_items": [],
+                        "locked_preview_items": [],
+                        "message": None,
+                    }
 
                 for item in items:
                     sec = item.section
@@ -1100,6 +1117,9 @@ def get_home(
                     if had_placeholders and not sec["visible_items"]:
                         sec["message"] = "Generating personalized content for this section."
                         sec["preparing_reason"] = "content_generating"
+                    if filtered_seed > 0 and not sec["visible_items"]:
+                        sec["message"] = sec.get("message") or "More personalized content is being prepared."
+                        sec["preparing_reason"] = sec.get("preparing_reason") or "seed_filtered_waiting_generated"
                     sec["filtering"] = {
                         "placeholder_filtered_count": filtered_placeholders,
                         "starter_seed_filtered_count": filtered_seed,
@@ -1199,6 +1219,16 @@ def get_home(
                 page_ready = orch["page_readiness_state"] == "hub_ready"
                 global_stage = str(orch.get("stage_message") or orch.get("global_generation_stage") or "")
                 global_progress = int(orch.get("progress_percent") or 0)
+                orch_section_readiness = orch.get("section_readiness") or {}
+                for sec_key, sec_payload in sections.items():
+                    sec_truth = orch_section_readiness.get(sec_key) or {}
+                    sec_payload["readiness_counts"] = sec_truth
+                    if sec_truth.get("is_preparing_more"):
+                        sec_payload["is_preparing_more"] = True
+                        if not sec_payload.get("message"):
+                            sec_payload["message"] = "More personalized content is being prepared."
+                    else:
+                        sec_payload["is_preparing_more"] = False
 
                 # Determine overall mode
                 statuses = list(readiness_map.values())
@@ -1229,6 +1259,7 @@ def get_home(
                     "hub_bootstrap": orch,
                     "personalization_version": profile.personalization_version,
                     "correlation_id": orch.get("correlation_id") or str(profile.id),
+                    "section_readiness": orch_section_readiness,
                     "sections": sections,
                     "hero_state": {
                         "mode": mode,
@@ -1256,6 +1287,7 @@ def get_home(
                     "profile_completeness": hub_profile_completeness,
                     "personalization_version": profile.personalization_version,
                     "sections": {},
+                    "section_readiness": orch_ns.get("section_readiness") or {},
                     "last_recomputed_at": None,
                     "orchestration": {
                         "can_enter_hub": orch_ns.get("can_enter_hub"),

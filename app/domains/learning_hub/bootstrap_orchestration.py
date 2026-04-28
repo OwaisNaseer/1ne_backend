@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 from app.domains.auth.models import TeacherProfileContext
 from app.domains.content_factory.models import ContentGenerationJob
 from app.core.config import (
-    settings,
     get_learning_hub_generation_mode,
     is_learning_hub_llm_enabled,
 )
@@ -34,6 +33,13 @@ SPECIALIST_VISIBLE = 1
 GROWTH_VISIBLE = 1
 GROWTH_LOCKED = 1
 REQUIRED_SIGNAL_COUNT = 5
+REQUIRED_SECTIONS = (
+    "micro_courses",
+    "growth_recommendations",
+    "tutorials",
+    "research_insights",
+    "specialist_tracks",
+)
 
 # Hard timeout hint (do not force-enter hub; show recovery state instead).
 HARD_TIMEOUT_AFTER_SECONDS = 60.0
@@ -131,6 +137,25 @@ def _failed_personalization_jobs(db: Session, user_id: uuid.UUID) -> bool:
         .first()
     )
     return row is not None
+
+
+def _empty_section_status(assignment_svc: AssignmentService) -> dict[str, dict[str, Any]]:
+    payload: dict[str, dict[str, Any]] = {}
+    for section in REQUIRED_SECTIONS:
+        inv = assignment_svc._get_inventory(section)
+        payload[section] = {
+            "visible_count": 0,
+            "locked_preview_count": 0,
+            "reserve_count": 0,
+            "target_visible_count": int(inv.get("visible", 0)),
+            "target_locked_count": int(inv.get("locked_preview", 0)),
+            "target_reserve_count": int(inv.get("reserve", 0)),
+            "is_minimum_ready": False,
+            "is_fully_ready": False,
+            "is_generating": False,
+            "is_preparing_more": True,
+        }
+    return payload
 
 
 def compute_truthful_progress_percent(
@@ -285,6 +310,7 @@ def compute_bootstrap_status(db: Session, user_id: uuid.UUID) -> Dict[str, Any]:
     """
     correlation_id = str(uuid.uuid4())
     profile_svc = PersonalizationProfileService(db)
+    assignment_svc = AssignmentService(db)
     profile = profile_svc.get(user_id)
     ctx = db.query(TeacherProfileContext).filter(TeacherProfileContext.user_id == user_id).first()
     ctx_complete = bool(
@@ -302,6 +328,7 @@ def compute_bootstrap_status(db: Session, user_id: uuid.UUID) -> Dict[str, Any]:
         elapsed = 0.0
 
     if not profile or not profile.personalization_started_at:
+        empty_sections = _empty_section_status(assignment_svc)
         return {
             "state": "orchestrating",
             "page_readiness_state": "hub_bootstrapping",
@@ -334,10 +361,11 @@ def compute_bootstrap_status(db: Session, user_id: uuid.UUID) -> Dict[str, Any]:
             "generation_mode": get_learning_hub_generation_mode(),
             "llm_enabled": is_learning_hub_llm_enabled(),
             "guard_reason": "profile_not_started",
+            "required_sections": list(REQUIRED_SECTIONS),
+            "section_readiness": empty_sections,
         }
 
     ver = profile.personalization_version
-    assignment_svc = AssignmentService(db)
     slate_svc = SlateService(db)
     slate = slate_svc.get_current(user_id)
     slate_exists = slate is not None
@@ -359,27 +387,119 @@ def compute_bootstrap_status(db: Session, user_id: uuid.UUID) -> Dict[str, Any]:
     research_ready = research_counts["visible"] >= RESEARCH_VISIBLE
     specialist_ready = specialist_counts["visible"] >= SPECIALIST_VISIBLE
 
-    # Progressive minimum viable readiness:
-    # count ready sections dynamically and unlock when configurable threshold is met.
+    section_jobs = (
+        db.query(ContentGenerationJob.job_type, ContentGenerationJob.status)
+        .filter(
+            ContentGenerationJob.requested_by_user_id == user_id,
+            ContentGenerationJob.status.in_(["pending", "running", "publishing"]),
+            ContentGenerationJob.job_type.in_(list(REQUIRED_SECTIONS)),
+        )
+        .all()
+    )
+    section_job_counts: dict[str, int] = {}
+    for job_type, _status in section_jobs:
+        key = str(job_type or "").strip()
+        if not key:
+            continue
+        section_job_counts[key] = section_job_counts.get(key, 0) + 1
+
+    targets = {section: assignment_svc._get_inventory(section) for section in REQUIRED_SECTIONS}
+    section_readiness: dict[str, dict[str, Any]] = {
+        "micro_courses": {
+            "visible_count": int(micro.get("visible", 0)),
+            "locked_preview_count": int(micro.get("locked_preview", 0)),
+            "reserve_count": int(micro.get("reserve", 0)),
+            "target_visible_count": int(targets["micro_courses"].get("visible", 0)),
+            "target_locked_count": int(targets["micro_courses"].get("locked_preview", 0)),
+            "target_reserve_count": int(targets["micro_courses"].get("reserve", 0)),
+            "is_minimum_ready": bool(micro_ready),
+            "is_fully_ready": bool(
+                micro.get("visible", 0) >= targets["micro_courses"].get("visible", 0)
+                and micro.get("locked_preview", 0) >= targets["micro_courses"].get("locked_preview", 0)
+                and micro.get("reserve", 0) >= targets["micro_courses"].get("reserve", 0)
+            ),
+            "is_generating": section_job_counts.get("micro_courses", 0) > 0,
+            "is_preparing_more": False,  # set below
+        },
+        "growth_recommendations": {
+            "visible_count": int(growth_counts.get("visible", 0)),
+            "locked_preview_count": int(growth_counts.get("locked_preview", 0)),
+            "reserve_count": int(growth_counts.get("reserve", 0)),
+            "target_visible_count": int(targets["growth_recommendations"].get("visible", 0)),
+            "target_locked_count": int(targets["growth_recommendations"].get("locked_preview", 0)),
+            "target_reserve_count": int(targets["growth_recommendations"].get("reserve", 0)),
+            "is_minimum_ready": bool(growth_counts.get("visible", 0) >= 1),
+            "is_fully_ready": bool(
+                growth_counts.get("visible", 0) >= targets["growth_recommendations"].get("visible", 0)
+                and growth_counts.get("locked_preview", 0) >= targets["growth_recommendations"].get("locked_preview", 0)
+                and growth_counts.get("reserve", 0) >= targets["growth_recommendations"].get("reserve", 0)
+            ),
+            "is_generating": bool(
+                growth_state.get("generation_status") == "running"
+                or section_job_counts.get("growth_recommendations", 0) > 0
+                or growth_rs in {"generating", "signal_building"}
+            ),
+            "is_preparing_more": False,  # set below
+        },
+        "tutorials": {
+            "visible_count": int(tutorials.get("visible", 0)),
+            "locked_preview_count": int(tutorials.get("locked_preview", 0)),
+            "reserve_count": int(tutorials.get("reserve", 0)),
+            "target_visible_count": int(targets["tutorials"].get("visible", 0)),
+            "target_locked_count": int(targets["tutorials"].get("locked_preview", 0)),
+            "target_reserve_count": int(targets["tutorials"].get("reserve", 0)),
+            "is_minimum_ready": bool(tutorials_ready),
+            "is_fully_ready": bool(
+                tutorials.get("visible", 0) >= targets["tutorials"].get("visible", 0)
+                and tutorials.get("locked_preview", 0) >= targets["tutorials"].get("locked_preview", 0)
+                and tutorials.get("reserve", 0) >= targets["tutorials"].get("reserve", 0)
+            ),
+            "is_generating": section_job_counts.get("tutorials", 0) > 0,
+            "is_preparing_more": False,  # set below
+        },
+        "research_insights": {
+            "visible_count": int(research_counts.get("visible", 0)),
+            "locked_preview_count": int(research_counts.get("locked_preview", 0)),
+            "reserve_count": int(research_counts.get("reserve", 0)),
+            "target_visible_count": int(targets["research_insights"].get("visible", 0)),
+            "target_locked_count": int(targets["research_insights"].get("locked_preview", 0)),
+            "target_reserve_count": int(targets["research_insights"].get("reserve", 0)),
+            "is_minimum_ready": bool(research_ready),
+            "is_fully_ready": bool(
+                research_counts.get("visible", 0) >= targets["research_insights"].get("visible", 0)
+                and research_counts.get("locked_preview", 0) >= targets["research_insights"].get("locked_preview", 0)
+                and research_counts.get("reserve", 0) >= targets["research_insights"].get("reserve", 0)
+            ),
+            "is_generating": section_job_counts.get("research_insights", 0) > 0,
+            "is_preparing_more": False,  # set below
+        },
+        "specialist_tracks": {
+            "visible_count": int(specialist_counts.get("visible", 0)),
+            "locked_preview_count": int(specialist_counts.get("locked_preview", 0)),
+            "reserve_count": int(specialist_counts.get("reserve", 0)),
+            "target_visible_count": int(targets["specialist_tracks"].get("visible", 0)),
+            "target_locked_count": int(targets["specialist_tracks"].get("locked_preview", 0)),
+            "target_reserve_count": int(targets["specialist_tracks"].get("reserve", 0)),
+            "is_minimum_ready": bool(specialist_ready),
+            "is_fully_ready": bool(
+                specialist_counts.get("visible", 0) >= targets["specialist_tracks"].get("visible", 0)
+                and specialist_counts.get("locked_preview", 0) >= targets["specialist_tracks"].get("locked_preview", 0)
+                and specialist_counts.get("reserve", 0) >= targets["specialist_tracks"].get("reserve", 0)
+            ),
+            "is_generating": section_job_counts.get("specialist_tracks", 0) > 0,
+            "is_preparing_more": False,  # set below
+        },
+    }
+    for section in REQUIRED_SECTIONS:
+        section_readiness[section]["is_preparing_more"] = bool(
+            (not section_readiness[section]["is_fully_ready"])
+            or section_readiness[section]["is_generating"]
+        )
+
     ready_for_entry_count = sum(
-        1
-        for is_ready in [
-            micro_ready,
-            tutorials_ready,
-            research_ready,
-            specialist_ready,
-            growth_inventory_ready,
-        ]
-        if is_ready
+        1 for section in REQUIRED_SECTIONS if section_readiness[section]["is_minimum_ready"]
     )
-    min_ready_sections = max(
-        1,
-        min(
-            5,
-            int(getattr(settings, "LEARNING_HUB_MIN_READY_SECTIONS", 4) or 4),
-        ),
-    )
-    minimum_viable_ready = ready_for_entry_count >= min_ready_sections
+    minimum_viable_ready = all(section_readiness[section]["is_minimum_ready"] for section in REQUIRED_SECTIONS)
     hard_timeout_reached = elapsed >= HARD_TIMEOUT_AFTER_SECONDS
     # Never-stuck guarantee: force entry once timeout is reached, then continue
     # section generation progressively inside the hub.
@@ -412,19 +532,9 @@ def compute_bootstrap_status(db: Session, user_id: uuid.UUID) -> Dict[str, Any]:
     if growth_inventory_ready:
         ready_sections.append("growth_recommendations")
 
-    minimum_ready_sections_met: List[str] = []
-    if micro_ready:
-        minimum_ready_sections_met.append("micro_courses")
-    if tutorials_ready:
-        minimum_ready_sections_met.append("tutorials")
-    if research_ready:
-        minimum_ready_sections_met.append("research_insights")
-    if specialist_ready:
-        minimum_ready_sections_met.append("specialist_tracks")
-    if growth_inventory_ready:
-        minimum_ready_sections_met.append("growth_recommendations")
-    elif growth_rs in {"signal_building", "no_signal", "generating"}:
-        minimum_ready_sections_met.append("growth_recommendations_signal_building")
+    minimum_ready_sections_met: List[str] = [
+        section for section in REQUIRED_SECTIONS if section_readiness[section]["is_minimum_ready"]
+    ]
 
     assembling = not can_enter_hub and (micro_ready or tutorials_ready or research_ready or specialist_ready)
 
@@ -550,6 +660,10 @@ def compute_bootstrap_status(db: Session, user_id: uuid.UUID) -> Dict[str, Any]:
         "correlation_id": correlation_id,
         "generation_mode": get_learning_hub_generation_mode(),
         "llm_enabled": is_learning_hub_llm_enabled(),
+        "required_sections": list(REQUIRED_SECTIONS),
+        "required_sections_minimum_ready_count": ready_for_entry_count,
+        "required_sections_total": len(REQUIRED_SECTIONS),
+        "section_readiness": section_readiness,
         "guard_reason": (
             "llm_disabled"
             if get_learning_hub_generation_mode() == "llm" and not is_learning_hub_llm_enabled()
