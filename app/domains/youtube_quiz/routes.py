@@ -1,9 +1,12 @@
 """
 Routes for YouTube quiz generation.
 """
+from typing import Any, Dict, List
+
 from fastapi import APIRouter, HTTPException, status
 
 from app.core.logging import get_logger
+from app.domains.content_factory.constants.lesson_strategies import LESSON_STRATEGIES
 from app.domains.youtube_quiz.schemas import (
     YouTubeQuizGenerateRequest,
     YouTubeQuizGenerateResponse,
@@ -14,6 +17,33 @@ logger = get_logger(__name__)
 
 router = APIRouter(tags=["youtube-quiz"])
 youtube_quiz_service = YouTubeQuizService()
+
+
+@router.get(
+    "/api/v1/youtube-quiz/lesson-strategies",
+    status_code=status.HTTP_200_OK,
+)
+async def get_lesson_strategies() -> List[Dict[str, Any]]:
+    """Return backend-defined lesson strategies for quiz planning."""
+    return [
+        {
+            "id": strategy["id"],
+            "title": strategy["title"],
+            "teaching_mode": strategy["teaching_mode"],
+            "description": strategy["description"],
+            "instruction": strategy["instruction"],
+            "learning_objectives": strategy["learning_objectives"],
+            "base_question_mix": strategy["base_question_mix"],
+            "generation_rules": strategy["generation_rules"],
+            "recommended_quiz_type": strategy["recommended_quiz_type"],
+            "estimated_classroom_time": strategy["estimated_classroom_time"],
+            "recommended_export_format": strategy["recommended_export_format"],
+            "best_use_case": strategy["best_use_case"],
+            "teacher_prompt": strategy["teacher_prompt"],
+            "differentiation_note": strategy["differentiation_note"],
+        }
+        for strategy in LESSON_STRATEGIES.values()
+    ]
 
 
 @router.post(

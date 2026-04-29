@@ -15,6 +15,114 @@ from app.domains.youtube_quiz.service import TranscriptContext, YouTubeQuizServi
 from app.llm.schemas import LLMResponse
 
 
+def test_resolve_effective_distribution_without_strategy_uses_selected_styles():
+    payload = YouTubeQuizGenerateRequest(
+        video_url="https://www.youtube.com/watch?v=sQK3Yr4Sc_k",
+        grade_band="Grades 6-8",
+        subject_lens="Science & STEM",
+        learning_focus="Concept comprehension",
+        quiz_language="English",
+        question_styles=["Multiple choice", "Quick check"],
+        question_count=6,
+        lesson_strategy_id=None,
+    )
+
+    distribution = YouTubeQuizService._resolve_effective_distribution(payload, strategy=None)
+    assert distribution == {"multiple_choice": 3, "quick_check": 3}
+
+
+def test_resolve_effective_distribution_inquiry_launch_strategy():
+    payload = YouTubeQuizGenerateRequest(
+        video_url="https://www.youtube.com/watch?v=sQK3Yr4Sc_k",
+        grade_band="Grades 6-8",
+        subject_lens="Science & STEM",
+        learning_focus="Concept comprehension",
+        quiz_language="English",
+        question_styles=["Quick check"],
+        question_count=6,
+        lesson_strategy_id="inquiry_launch",
+    )
+    strategy = {
+        "base_question_mix": {
+            "multiple_choice": 2,
+            "short_answer": 2,
+            "discussion_prompt": 2,
+        }
+    }
+
+    distribution = YouTubeQuizService._resolve_effective_distribution(payload, strategy=strategy)
+    assert distribution == {"multiple_choice": 2, "higher_order": 2, "discussion_prompt": 2}
+
+
+def test_resolve_effective_distribution_career_spotlight_strategy():
+    payload = YouTubeQuizGenerateRequest(
+        video_url="https://www.youtube.com/watch?v=sQK3Yr4Sc_k",
+        grade_band="Grades 6-8",
+        subject_lens="Science & STEM",
+        learning_focus="Concept comprehension",
+        quiz_language="English",
+        question_styles=["Multiple choice"],
+        question_count=6,
+        lesson_strategy_id="career_spotlight",
+    )
+    strategy = {
+        "base_question_mix": {
+            "scenario_based": 2,
+            "higher_order": 2,
+            "discussion_prompt": 2,
+        }
+    }
+
+    distribution = YouTubeQuizService._resolve_effective_distribution(payload, strategy=strategy)
+    assert distribution == {"higher_order": 4, "discussion_prompt": 2}
+
+
+def test_resolve_effective_distribution_stem_lab_prep_strategy():
+    payload = YouTubeQuizGenerateRequest(
+        video_url="https://www.youtube.com/watch?v=sQK3Yr4Sc_k",
+        grade_band="Grades 6-8",
+        subject_lens="Science & STEM",
+        learning_focus="Concept comprehension",
+        quiz_language="English",
+        question_styles=["Discussion prompt"],
+        question_count=6,
+        lesson_strategy_id="stem_lab_prep",
+    )
+    strategy = {
+        "base_question_mix": {
+            "procedure": 2,
+            "safety": 2,
+            "prediction": 2,
+        }
+    }
+
+    distribution = YouTubeQuizService._resolve_effective_distribution(payload, strategy=strategy)
+    assert distribution == {"quick_check": 4, "higher_order": 2}
+
+
+def test_resolve_effective_distribution_sel_morning_meeting_strategy():
+    payload = YouTubeQuizGenerateRequest(
+        video_url="https://www.youtube.com/watch?v=sQK3Yr4Sc_k",
+        grade_band="Grades 6-8",
+        subject_lens="Science & STEM",
+        learning_focus="Concept comprehension",
+        quiz_language="English",
+        question_styles=["Multiple choice"],
+        question_count=6,
+        lesson_strategy_id="sel_morning_meeting",
+    )
+    strategy = {
+        "base_question_mix": {
+            "reflection": 3,
+            "discussion_prompt": 2,
+            "quick_check": 1,
+        }
+    }
+
+    distribution = YouTubeQuizService._resolve_effective_distribution(payload, strategy=strategy)
+    assert distribution == {"discussion_prompt": 5, "quick_check": 1}
+
+
 def test_extract_video_id_watch_url():
     video_id = YouTubeQuizService.extract_video_id("https://www.youtube.com/watch?v=sQK3Yr4Sc_k")
     assert video_id == "sQK3Yr4Sc_k"

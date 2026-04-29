@@ -13,6 +13,12 @@ import requests
 from pydantic import ValidationError
 
 from app.core.logging import get_logger
+from app.domains.content_factory.constants.lesson_strategies import (
+    build_strategy_intent_lines,
+    get_strategy_by_id,
+    map_strategy_mix_to_schema_styles,
+    scale_question_mix,
+)
 from app.domains.youtube_quiz.schemas import QUESTION_STYLE_TO_KEY, QUESTION_STYLES
 from app.llm.router import ModelRouter
 from app.llm.schemas import LLMResponse
@@ -118,6 +124,63 @@ class YouTubeQuizService:
             idx += 1
 
         return distribution
+
+    @staticmethod
+    def _format_bulleted_lines(items: List[str]) -> str:
+        return "\n".join(f"- {item}" for item in items)
+
+    @classmethod
+    def _resolve_effective_distribution(
+        cls,
+        payload: YouTubeQuizGenerateRequest,
+        strategy: Optional[Dict[str, Any]],
+    ) -> Dict[str, int]:
+        if strategy:
+            mapped_mix = map_strategy_mix_to_schema_styles(strategy["base_question_mix"])
+            return scale_question_mix(mapped_mix, payload.question_count)
+        selected_styles = payload.question_styles or sorted(QUESTION_STYLES)
+        return cls._build_style_distribution(selected_styles, payload.question_count)
+
+    @classmethod
+    def _build_strategy_block(
+        cls,
+        strategy: Dict[str, Any],
+        question_count: int,
+        enforced_distribution: Dict[str, int],
+    ) -> str:
+        scaled_original_mix = scale_question_mix(strategy["base_question_mix"], question_count)
+        original_composition_lines = cls._format_bulleted_lines(
+            [f"{question_type}: {count}" for question_type, count in scaled_original_mix.items()]
+        )
+        enforced_composition_lines = cls._format_bulleted_lines(
+            [f"{schema_style}: {count}" for schema_style, count in enforced_distribution.items()]
+        )
+        objectives_lines = cls._format_bulleted_lines(strategy["learning_objectives"])
+        generation_rules_lines = cls._format_bulleted_lines(strategy["generation_rules"])
+        intent_lines = "\n".join(build_strategy_intent_lines(strategy["base_question_mix"]))
+
+        return f"""
+Teaching Strategy: {strategy['title']}
+Teaching Mode: {strategy['teaching_mode']}
+
+Learning Objectives:
+{objectives_lines}
+
+Generation Rules:
+{generation_rules_lines}
+
+Original Strategy Question Mix:
+{original_composition_lines}
+
+Enforced Schema Style Distribution:
+{enforced_composition_lines}
+
+Strategy Type Mapping Instructions:
+{intent_lines}
+
+Instructions:
+{strategy['instruction']}
+""".strip()
 
     @classmethod
     def _normalize_payload(cls, parsed_payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -247,9 +310,25 @@ class YouTubeQuizService:
         payload: YouTubeQuizGenerateRequest,
         context: TranscriptContext,
         expected_style_distribution: Dict[str, int],
+        strategy_block: str = "",
+        generation_mode: str = "style_selection",
     ) -> tuple[str, str]:
         selected_styles = payload.question_styles or sorted(QUESTION_STYLES)
         selected_style_keys = [QUESTION_STYLE_TO_KEY[style] for style in selected_styles]
+        if generation_mode == "strategy":
+            style_authority_instruction = f"""
+- A lesson strategy is applied. The strategy-derived distribution is the authority.
+- Ignore frontend-selected question styles for distribution.
+- Only output schema-supported styles from this enforced distribution: {list(expected_style_distribution.keys())}
+- Use this exact strategy-derived style distribution: {expected_style_distribution}
+- Preserve the original strategy intent described in the Strategy Type Mapping Instructions.
+""".strip()
+        else:
+            style_authority_instruction = f"""
+- No lesson strategy is applied. Use frontend-selected question styles as the authority.
+- Only use these selected styles: {selected_styles} -> mapped keys {selected_style_keys}
+- Use this exact style distribution: {expected_style_distribution}
+""".strip()
 
         system_message = (
             "You are an education assessment assistant. "
@@ -287,13 +366,13 @@ Generate a classroom-ready quiz blueprint with this exact schema:
 {schema_string}
 
 Rules:
+{strategy_block}
 - Keep exactly 3 sections with headings:
   1) Key idea check
   2) Application & transfer
   3) Discussion launcher
 - Total questions across all sections must be exactly {payload.question_count}.
-- Only use these selected styles: {selected_styles} -> mapped keys {selected_style_keys}
-- Use this exact style distribution (must match exactly): {expected_style_distribution}
+{style_authority_instruction}
 - Output language: {payload.quiz_language}
 - Grade band: {payload.grade_band}
 - Subject lens: {payload.subject_lens}
@@ -339,9 +418,28 @@ Transcript/context:
     @classmethod
     async def generate_quiz(cls, payload: YouTubeQuizGenerateRequest) -> YouTubeQuizGenerateResponse:
         context = cls._build_context(payload)
-        selected_styles = payload.question_styles or sorted(QUESTION_STYLES)
-        expected_style_distribution = cls._build_style_distribution(selected_styles, payload.question_count)
-        system_message, user_prompt = cls._build_prompt(payload, context, expected_style_distribution)
+        strategy = get_strategy_by_id(payload.lesson_strategy_id) if payload.lesson_strategy_id else None
+        if payload.lesson_strategy_id and not strategy:
+            logger.warning(f"Unknown lesson strategy id received: {payload.lesson_strategy_id}")
+        expected_style_distribution = cls._resolve_effective_distribution(payload, strategy)
+        strategy_block = ""
+        generation_mode = "style_selection"
+        if strategy:
+            strategy_block = cls._build_strategy_block(
+                strategy,
+                payload.question_count,
+                expected_style_distribution,
+            )
+            logger.info(f"Lesson strategy applied: {strategy['id']}")
+            generation_mode = "strategy"
+
+        system_message, user_prompt = cls._build_prompt(
+            payload,
+            context,
+            expected_style_distribution,
+            strategy_block=strategy_block,
+            generation_mode=generation_mode,
+        )
 
         llm_response: Optional[LLMResponse] = None
         try:
@@ -353,6 +451,11 @@ Transcript/context:
             previous_response = llm_response.content if llm_response else ""
             validation_errors = (
                 first_error.errors() if isinstance(first_error, ValidationError) else [str(first_error)]
+            )
+            strategy_repair_note = (
+                "- A lesson strategy is applied. Keep the strategy-derived style distribution and preserve original mapped strategy intent."
+                if strategy
+                else "- No strategy is applied. Keep the selected-style distribution."
             )
             repair_prompt = f"""
 Repair the previous response so it is valid JSON for the required schema and business rules.
@@ -370,6 +473,7 @@ Business rules:
   - higher_order: sample_answer and rubric_points.
   - quick_check: expected_response_type and answer.
   - discussion_prompt: sample_answer and rubric_points.
+{strategy_repair_note}
 
 Original invalid response:
 {previous_response}
