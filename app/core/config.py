@@ -153,6 +153,8 @@ class Settings(BaseSettings):
 
     # Worksheet generation: hard cap so requests never hang (seconds); configurable via env
     WORKSHEET_GENERATION_TIMEOUT_SECONDS: float = 180.0
+    # Quiz generation: hard cap for Teacher Tools quiz generation (seconds)
+    QUIZ_GENERATION_TIMEOUT_SECONDS: float = 180.0
     # When False: skip cache lookup and cache write (no worksheet_cache DB dependency)
     WORKSHEET_CACHE_ENABLED: bool = False
     # Max repair attempts for difficulty validation before downgrade or best-effort return

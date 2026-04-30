@@ -72,6 +72,7 @@ def resolve_ocr_engine(
     Returns OCRDecisionResult with engine_resolved, ocr_mode, fallback_used, warning.
     """
     ocr_mode = getattr(settings, "OCR_MODE", "local").lower()
+    strict_google_only = bool(getattr(settings, "OCR_STRICT_GOOGLE_ONLY", False))
     default_engine = getattr(settings, "OCR_ENGINE_DEFAULT", None) or getattr(settings, "OCR_ENGINE", "tesseract")
     fallback_engine = getattr(settings, "OCR_FALLBACK_ENGINE", "tesseract")
 
@@ -91,6 +92,20 @@ def resolve_ocr_engine(
     if not candidate:
         candidate = default_engine
     engine_lower = (candidate or "").lower().strip()
+
+    # Hard override for strict mode: OCR-required flows must resolve to Google Document AI.
+    # IngestionService enforces fail-fast if Google is not configured/reachable.
+    if strict_google_only and not ocr_engine_override:
+        return OCRDecisionResult(
+            ocr_required=True,
+            reason="engine_resolved",
+            engine_resolved="google_document_ai",
+            ocr_mode=ocr_mode,
+            warning=(
+                "OCR_STRICT_GOOGLE_ONLY=true; forcing engine to google_document_ai "
+                "and bypassing pack/local fallback rules"
+            ),
+        )
 
     # Map policy to engine: "math" -> prefer mathpix/google if api mode; "non_math" -> tesseract/easyocr; "auto" -> default
     if pack_policy == "math" and not ocr_engine_override:
