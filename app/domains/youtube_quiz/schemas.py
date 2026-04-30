@@ -62,6 +62,8 @@ class YouTubeQuizGenerateRequest(BaseModel):
     question_styles: List[str] = Field(default_factory=list)
     question_count: int = Field(..., ge=4, le=12)
     lesson_strategy_id: Optional[str] = None
+    difficultyLevel: Optional[Literal["easy", "medium", "challenging"]] = None
+    accessibilityMode: bool = False
 
     @field_validator("video_url")
     @classmethod

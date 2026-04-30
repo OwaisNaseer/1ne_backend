@@ -183,6 +183,58 @@ Instructions:
 """.strip()
 
     @classmethod
+    def _build_capability_block(cls, payload: YouTubeQuizGenerateRequest) -> str:
+        capability_lines: List[str] = []
+
+        if payload.difficultyLevel == "easy":
+            capability_lines.extend(
+                [
+                    "Adaptive Difficulty (easy):",
+                    "- Generate accessible, direct questions.",
+                    "- Prefer recall, simple comprehension, and clear short-answer style.",
+                    "- Avoid multi-step reasoning unless required by selected strategy.",
+                    "- Keep vocabulary age-appropriate for the selected grade band.",
+                ]
+            )
+        elif payload.difficultyLevel == "medium":
+            capability_lines.extend(
+                [
+                    "Adaptive Difficulty (medium):",
+                    "- Generate balanced questions.",
+                    "- Include some reasoning and application-based questions.",
+                    "- Avoid overly trivial or overly advanced wording.",
+                    "- Match Grade 6-8 style when grade band is Grades 6-8.",
+                ]
+            )
+        elif payload.difficultyLevel == "challenging":
+            capability_lines.extend(
+                [
+                    "Adaptive Difficulty (challenging):",
+                    "- Generate more demanding questions.",
+                    "- Include reasoning, application, explanation, and transfer where compatible with allowed styles.",
+                    "- Do not exceed the selected grade band.",
+                    "- Do not violate schema or style distribution requirements.",
+                ]
+            )
+
+        if payload.accessibilityMode:
+            capability_lines.extend(
+                [
+                    "Accessibility Assistant (enabled):",
+                    "- Use simple, clear language.",
+                    "- Avoid unnecessarily complex sentence structures.",
+                    "- Avoid dense academic phrasing.",
+                    "- Prefer short questions.",
+                    "- Make questions easy to read for students.",
+                    "- Preserve correct educational meaning.",
+                ]
+            )
+
+        if not capability_lines:
+            return ""
+        return "\n".join(capability_lines)
+
+    @classmethod
     def _normalize_payload(cls, parsed_payload: Dict[str, Any]) -> Dict[str, Any]:
         sections = parsed_payload.get("sections", [])
         question_counter = 1
@@ -311,6 +363,7 @@ Instructions:
         context: TranscriptContext,
         expected_style_distribution: Dict[str, int],
         strategy_block: str = "",
+        capability_block: str = "",
         generation_mode: str = "style_selection",
     ) -> tuple[str, str]:
         selected_styles = payload.question_styles or sorted(QUESTION_STYLES)
@@ -367,6 +420,7 @@ Generate a classroom-ready quiz blueprint with this exact schema:
 
 Rules:
 {strategy_block}
+{capability_block}
 - Keep exactly 3 sections with headings:
   1) Key idea check
   2) Application & transfer
@@ -423,6 +477,7 @@ Transcript/context:
             logger.warning(f"Unknown lesson strategy id received: {payload.lesson_strategy_id}")
         expected_style_distribution = cls._resolve_effective_distribution(payload, strategy)
         strategy_block = ""
+        capability_block = cls._build_capability_block(payload)
         generation_mode = "style_selection"
         if strategy:
             strategy_block = cls._build_strategy_block(
@@ -432,12 +487,17 @@ Transcript/context:
             )
             logger.info(f"Lesson strategy applied: {strategy['id']}")
             generation_mode = "strategy"
+        if payload.difficultyLevel:
+            logger.info(f"Capability applied: difficultyLevel={payload.difficultyLevel}")
+        if payload.accessibilityMode:
+            logger.info("Capability applied: accessibilityMode=true")
 
         system_message, user_prompt = cls._build_prompt(
             payload,
             context,
             expected_style_distribution,
             strategy_block=strategy_block,
+            capability_block=capability_block,
             generation_mode=generation_mode,
         )
 
@@ -457,6 +517,20 @@ Transcript/context:
                 if strategy
                 else "- No strategy is applied. Keep the selected-style distribution."
             )
+            capability_repair_notes: List[str] = []
+            if payload.difficultyLevel:
+                capability_repair_notes.append(
+                    f"- Keep adaptive difficulty intent aligned to '{payload.difficultyLevel}'."
+                )
+            if payload.accessibilityMode:
+                capability_repair_notes.append(
+                    "- Keep accessibility mode intent with simple, clear wording."
+                )
+            capability_repair_note = (
+                "\n".join(capability_repair_notes)
+                if capability_repair_notes
+                else "- No capability modifiers are active."
+            )
             repair_prompt = f"""
 Repair the previous response so it is valid JSON for the required schema and business rules.
 Return JSON only.
@@ -474,6 +548,7 @@ Business rules:
   - quick_check: expected_response_type and answer.
   - discussion_prompt: sample_answer and rubric_points.
 {strategy_repair_note}
+{capability_repair_note}
 
 Original invalid response:
 {previous_response}
