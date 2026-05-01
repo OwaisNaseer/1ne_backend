@@ -346,7 +346,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 
 @app.get("/health")
-def health_check():
+async def health_check():
     """
     Liveness probe — returns immediately (no DB).
     Use GET /health/ready for a database ping (may be slow on cold cloud Postgres).
@@ -355,19 +355,22 @@ def health_check():
 
 
 @app.get("/health/ready")
-def health_ready():
-    """Readiness: verifies DB connectivity. Sync route runs in a worker thread."""
+async def health_ready():
+    """Readiness: verifies DB connectivity with a bounded async timeout."""
     from app.db.session import SessionLocal
     from sqlalchemy import text
+    import asyncio
 
-    try:
+    def _db_ping() -> None:
         db = SessionLocal()
         try:
             db.execute(text("SELECT 1"))
-            db_status = "connected"
         finally:
             db.close()
-        return {"status": "ok", "database": db_status}
+
+    try:
+        await asyncio.wait_for(asyncio.to_thread(_db_ping), timeout=8.0)
+        return {"status": "ok", "database": "connected"}
     except Exception as e:
         logger.warning(f"Database health check failed: {e}")
         return {

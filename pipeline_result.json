@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-04-25T11:05:51.234951",
+  "timestamp": "2026-04-30T20:44:48.054397",
   "base_url": "http://127.0.0.1:8000",
-  "pdf_path": "c:\\Users\\Dell\\Downloads\\Physics 9.pdf",
+  "pdf_path": "C:\\Users\\Dell\\Downloads\\Physics 9.pdf",
   "dry_run": false,
-  "document_id": "10e4e2d9-c546-4232-9613-35e4821c2412",
+  "document_id": "38df7c9c-6a46-4abe-89e2-4af7483fc401",
   "statuses_seen": [
     "TEXT_EXTRACTING",
     "OCR_RUNNING",
@@ -11,33 +11,19 @@
     "CHUNKING",
     "EMBEDDING",
     "INDEXING",
-    "QA_VALIDATION",
-    "PUBLISHED"
+    "QA_VALIDATION"
   ],
-  "error_code": null,
-  "error_message": null,
-  "chunk_count": 891,
-  "sample_chunk": {
-    "chunk_id": "chunk_000000",
-    "text": "Unit 1 Physical Quantities and Measurement STUDENT'S LEARNING OUTCOMES After studying this unit, the students will be able to: describe the crucial role of Physics in Science, Technology and Society. explain with examples that Science is based on physical quantities which consist of numerical magnit",
-    "topic_id": "outline-1",
-    "topic_title": "Chapter 1",
-    "metadata_json": {
-      "role": "exercise_prompt",
-      "auto_role": "exercise_prompt",
-      "role_source": "auto",
-      "auto_confidence": 0.5
-    },
-    "page_start_pdf": 1,
-    "page_end_pdf": 1
-  },
+  "error_code": "TIMEOUT",
+  "error_message": "Timeout: PUBLISHED not reached within 1800 seconds.",
+  "chunk_count": 0,
+  "sample_chunk": null,
   "checks": {
     "upload": "PASS",
     "ocr": "PASS",
     "chunking": "PASS",
     "embedding": "PASS",
     "indexing": "PASS",
-    "vector_db": "PASS",
-    "overall": "PASS"
+    "vector_db": "FAIL",
+    "overall": "FAIL"
   }
 }

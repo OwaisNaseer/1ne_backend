@@ -60,7 +60,16 @@ def now_str() -> str:
 
 
 def print_status(msg: str) -> None:
-    print(msg, flush=True)
+    try:
+        print(msg, flush=True)
+    except UnicodeEncodeError:
+        try:
+            enc = getattr(sys.stdout, "encoding", None) or "utf-8"
+            safe = msg.encode(enc, errors="replace").decode(enc, errors="replace")
+            print(safe, flush=True)
+        except Exception:
+            sys.stdout.buffer.write((msg + "\n").encode("utf-8", errors="replace"))
+            sys.stdout.buffer.flush()
 
 
 def normalize_status(status_value: Optional[str]) -> str:
@@ -495,7 +504,7 @@ class PipelineTester:
         seen = {s.lower() for s in self.summary.statuses_seen}
         if "ocr_running" in seen:
             self.summary.ocr = "PASS"
-        if "chunking" in seen:
+        if "chunking" in seen or "normalizing" in seen:
             self.summary.chunking = "PASS"
         if "embedding" in seen:
             self.summary.embedding = "PASS"
@@ -547,7 +556,9 @@ class PipelineTester:
             n_pages = 0
         if n_pages > 30:
             per_page = int(os.getenv("PIPELINE_TIMEOUT_SECONDS_PER_PAGE", "45"))
-            max_auto = int(os.getenv("PIPELINE_MAX_AUTO_TIMEOUT_SECONDS", str(6 * 3600)))
+            # Cap auto-extension so large PDFs don't make tests look "stuck" for hours.
+            # Override via env if you explicitly want longer.
+            max_auto = int(os.getenv("PIPELINE_MAX_AUTO_TIMEOUT_SECONDS", str(30 * 60)))
             min_deadline = min(max_auto, 600 + n_pages * per_page)
             if self.timeout_seconds < min_deadline:
                 print_status(
@@ -611,6 +622,10 @@ class PipelineTester:
                 except Exception as exc:
                     print_status(f"Vector DB check failed: {exc}")
                     self.summary.vector_db = "FAIL"
+                # Some pipelines emit NORMALIZING instead of explicit CHUNKING.
+                # If document is published and chunks exist in DB, chunking is effectively successful.
+                if self.summary.chunk_count > 0:
+                    self.summary.chunking = "PASS"
                 break
 
             error_code = str(final_data.get("error_code") or "FAILED")

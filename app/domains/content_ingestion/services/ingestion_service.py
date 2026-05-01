@@ -398,6 +398,7 @@ class IngestionService:
             return document
 
         document = self.db.query(Document).filter(Document.id == document_id).first()
+        source_type = (document.source_type or "") if document else ""
 
         logger.info(f"Starting ingestion pipeline for document {document_id}")
         
@@ -424,7 +425,7 @@ class IngestionService:
                 raise ValueError("No text extracted from document")
             
             # PDF: classify digital vs scanned after extract (before OCR decision)
-            if document.source_type == "pdf" and pages:
+            if source_type == "pdf" and pages:
                 pdf_type = classify_pdf_after_extract(
                     [p.char_count for p in pages],
                     threshold_chars=getattr(settings, "SCANNED_THRESHOLD_CHARS", 50),
@@ -466,7 +467,7 @@ class IngestionService:
                 force_ocr=force_ocr,
                 skip_ocr=skip_ocr,
                 pages=pages,
-                source_type=document.source_type or "pdf",
+                source_type=source_type or "pdf",
             )
             ocr_engine_used = None
             ocr_mode_used = None
@@ -574,57 +575,73 @@ class IngestionService:
                     dpi = int(os.getenv("OCR_DPI") or 300)
                     thread_count = os.getenv("OCR_THREAD_COUNT")
                     total_pages = len(pages) if pages else (document.total_pages or 0)
+                    # Large PDFs: use smaller page windows to keep Google API payloads and latency bounded.
+                    if total_pages and total_pages >= 120:
+                        large_batch = int(os.getenv("OCR_BATCH_SIZE_LARGE", "5"))
+                        batch_size = max(1, min(batch_size, large_batch))
                     if total_pages <= 0:
                         pages = await ocr_provider.run_ocr(document.file_path, language="eng")
                         total_pages = len(pages)
                     else:
-                        ocr_pages: List[Any] = []
-                        for start_page in range(1, total_pages + 1, batch_size):
-                            end_page = min(total_pages, start_page + batch_size - 1)
-                            logger.info(
-                                "ocr_batch_start",
-                                extra={
-                                    "document_id": str(document_id),
-                                    "start_page": start_page,
-                                    "end_page": end_page,
-                                    "dpi": dpi,
-                                    "batch_size": batch_size,
-                                    "engine": getattr(ocr_provider, "provider_name", "unknown"),
-                                },
-                            )
-                            batch = await ocr_provider.run_ocr(
+                        # Google Document AI async batch mode should process the full PDF in one operation.
+                        # Splitting into many small windows triggers many independent batch jobs and is slower
+                        # and less reliable for large textbooks.
+                        if selected_engine == "google_document_ai":
+                            pages = await ocr_provider.run_ocr(
                                 document.file_path,
                                 language="eng",
-                                first_page=start_page,
-                                last_page=end_page,
                                 dpi=dpi,
                                 thread_count=thread_count,
                             )
-                            for page in batch:
-                                page_text = self.db.query(PageText).filter(
-                                    PageText.document_id == document_id,
-                                    PageText.page_no == page.page_no
-                                ).first()
-                                if page_text:
-                                    st = sanitize_pg_text(page.text)
-                                    page_text.text = st
-                                    page_text.char_count = len(st.strip())
-                                    page_text.ocr_confidence = getattr(page, "ocr_confidence", None)
-                                    page_text.ocr_engine = getattr(page, "ocr_engine", None) or getattr(ocr_provider, "provider_name", None)
-                            ocr_pages.extend(batch)
-                            processing_run.pages_processed = min(end_page, total_pages)
-                            self.db.commit()
-                            logger.info(
-                                "ocr_batch_complete",
-                                extra={
-                                    "document_id": str(document_id),
-                                    "start_page": start_page,
-                                    "end_page": end_page,
-                                    "pages_processed": processing_run.pages_processed,
-                                    "total_pages": total_pages,
-                                },
-                            )
-                        pages = ocr_pages
+                            total_pages = len(pages)
+                        else:
+                            ocr_pages: List[Any] = []
+                            for start_page in range(1, total_pages + 1, batch_size):
+                                end_page = min(total_pages, start_page + batch_size - 1)
+                                logger.info(
+                                    "ocr_batch_start",
+                                    extra={
+                                        "document_id": str(document_id),
+                                        "start_page": start_page,
+                                        "end_page": end_page,
+                                        "dpi": dpi,
+                                        "batch_size": batch_size,
+                                        "engine": getattr(ocr_provider, "provider_name", "unknown"),
+                                    },
+                                )
+                                batch = await ocr_provider.run_ocr(
+                                    document.file_path,
+                                    language="eng",
+                                    first_page=start_page,
+                                    last_page=end_page,
+                                    dpi=dpi,
+                                    thread_count=thread_count,
+                                )
+                                for page in batch:
+                                    page_text = self.db.query(PageText).filter(
+                                        PageText.document_id == document_id,
+                                        PageText.page_no == page.page_no
+                                    ).first()
+                                    if page_text:
+                                        st = sanitize_pg_text(page.text)
+                                        page_text.text = st
+                                        page_text.char_count = len(st.strip())
+                                        page_text.ocr_confidence = getattr(page, "ocr_confidence", None)
+                                        page_text.ocr_engine = getattr(page, "ocr_engine", None) or getattr(ocr_provider, "provider_name", None)
+                                ocr_pages.extend(batch)
+                                processing_run.pages_processed = min(end_page, total_pages)
+                                self.db.commit()
+                                logger.info(
+                                    "ocr_batch_complete",
+                                    extra={
+                                        "document_id": str(document_id),
+                                        "start_page": start_page,
+                                        "end_page": end_page,
+                                        "pages_processed": processing_run.pages_processed,
+                                        "total_pages": total_pages,
+                                    },
+                                )
+                            pages = ocr_pages
                     duration_ms = int((time.perf_counter() - t0) * 1000)
                     ocr_engine_used = getattr(ocr_provider, "provider_name", ocr_engine_used)
                     ocr_mode_used = ocr_mode_used or getattr(settings, "OCR_MODE", "local")
@@ -1096,6 +1113,18 @@ class IngestionService:
             elif "tesseract" in error_str.lower() or "ocr" in error_str.lower() or "TesseractNotFoundError" in error_str:
                 error_code = "OCR_ERROR"
                 remediation_hint = "Install Tesseract OCR: https://github.com/UB-Mannheim/tesseract/wiki (Windows) or 'sudo apt-get install tesseract-ocr' (Linux)"
+            elif "google document ai" in error_str.lower() and ("timeout" in error_str.lower() or "deadline" in error_str.lower()):
+                error_code = "OCR_TIMEOUT"
+                remediation_hint = (
+                    "Google OCR timed out. The backend will retry with exponential backoff. "
+                    "If it still fails, increase OCR_API_TIMEOUT_SECONDS and verify Document AI quota/region health."
+                )
+            elif "large pdf requires async batch ocr" in error_str.lower():
+                error_code = "OCR_CONFIG_ERROR"
+                remediation_hint = (
+                    "Large PDF requires async batch OCR, but Cloud Storage is not configured. "
+                    "Set DOCUMENT_AI_GCS_BUCKET (and optional DOCUMENT_AI_GCS_PREFIX), then retry."
+                )
             elif "file not found" in error_str.lower() or "FileNotFoundError" in error_str:
                 error_code = "FILE_NOT_FOUND"
                 remediation_hint = "The uploaded file may have been deleted or moved. Try re-uploading the document."

@@ -19,8 +19,9 @@ logger = get_logger(__name__)
 is_cloud_db = "supabase.co" in settings.DATABASE_URL or "pooler.supabase.com" in settings.DATABASE_URL
 
 # Create SQLAlchemy engine optimized for cloud databases with SSL
-# Add statement timeout to prevent hanging queries (10 seconds)
-statement_timeout = "-c statement_timeout=10000"  # 10 seconds in milliseconds
+# Keep statement timeout long enough for heavy OCR/chunk/index operations.
+statement_timeout_ms = int(getattr(settings, "DB_STATEMENT_TIMEOUT_MS", 600000) or 600000)
+statement_timeout = f"-c statement_timeout={statement_timeout_ms}"
 timezone_setting = "-c timezone=utc"
 db_options = f"{statement_timeout} {timezone_setting}"
 
@@ -49,7 +50,7 @@ engine = create_engine(
     pool_timeout=30,  # Pool timeout (30 seconds - increased for better reliability)
     pool_size=10,  # Increased pool size for better concurrency
     max_overflow=20,  # Allow more overflow connections
-    pool_reset_on_return='commit',  # Reset connection on return
+    pool_reset_on_return='rollback',  # Never issue implicit commit on pooled connections
     pool_recycle=3600,  # Recycle connections after 1 hour
     poolclass=None,  # Use default queue pool
 )
@@ -73,7 +74,12 @@ def receive_checkout(dbapi_conn, connection_record, connection_proxy):
     pass
 
 # Create SessionLocal class
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,  # Avoid implicit lazy reloads after commit on long-running jobs.
+    bind=engine,
+)
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -125,10 +131,15 @@ def get_db() -> Generator[Session, None, None]:
         raise RuntimeError("Could not create database session")
 
     try:
+        # Request handlers/services own transaction boundaries and call commit explicitly.
+        # Auto-committing here can fail after a streaming response has started and turn
+        # otherwise handled DB disconnects into ASGI runtime errors.
         yield db
-        db.commit()
     except Exception:
-        db.rollback()
+        try:
+            db.rollback()
+        except Exception:
+            pass
         raise
     finally:
         try:

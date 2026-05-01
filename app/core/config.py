@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_PER_MINUTE: int = 10
     RATE_LIMIT_LOGIN_PER_IP: int = 5
+    # Database safety/perf knobs
+    DB_STATEMENT_TIMEOUT_MS: int = 600000  # 10 minutes; avoid killing long OCR/indexing queries
 
     # Email Configuration
     SMTP_HOST: str = "smtp.gmail.com"
@@ -73,8 +75,14 @@ class Settings(BaseSettings):
     OCR_ENGINE_DEFAULT: str = "tesseract"  # default when pack has ocr_policy=auto
     OCR_FALLBACK_ENGINE: str = "tesseract"  # fallback when API keys missing
     # API OCR controls (applies to google_document_ai / future API engines)
-    OCR_API_TIMEOUT_SECONDS: int = 90
+    OCR_API_TIMEOUT_SECONDS: int = 300
     OCR_API_MAX_RETRIES: int = 2
+    OCR_API_RETRY_BACKOFF_SECONDS: str = "5,15,30,60"
+    OCR_ASYNC_BATCH_MIN_FILE_MB: int = 10
+    OCR_ASYNC_BATCH_MIN_PAGES: int = 20
+    OCR_ASYNC_BATCH_TIMEOUT_SECONDS: int = 900
+    OCR_ASYNC_BATCH_POLL_SECONDS: int = 5
+    OCR_MAX_UPLOAD_SIZE_MB_HARD: int = 100
     # Strict provider controls: fail fast when required external providers are unavailable.
     # When True, OCR-required documents must run on Google Document AI (no local fallback).
     OCR_STRICT_GOOGLE_ONLY: bool = True
@@ -88,6 +96,8 @@ class Settings(BaseSettings):
     DOCUMENT_AI_PROJECT_ID: Optional[str] = None
     DOCUMENT_AI_LOCATION: str = "us"
     DOCUMENT_AI_PROCESSOR_ID: Optional[str] = None
+    DOCUMENT_AI_GCS_BUCKET: Optional[str] = None
+    DOCUMENT_AI_GCS_PREFIX: str = "documentai"
     TEXT_EXTRACTOR_PROVIDER: str = "pdfplumber"  # pdfplumber | pymupdf | ...
     EMBEDDING_PROVIDER: str = "fake"  # fake | local | openai (free mode: fake or local)
     # When True, OpenAI embeddings are only used for OCR-processed docs (cost guard).
