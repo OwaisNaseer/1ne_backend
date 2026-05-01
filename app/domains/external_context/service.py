@@ -95,6 +95,14 @@ class TeacherContextService:
 
         self.db.commit()
         self.db.refresh(ctx)
+
+        try:
+            from app.domains.video_library.cache import invalidate_recommendations
+
+            invalidate_recommendations(user_id)
+        except Exception:  # pragma: no cover - defensive, cache must not break profile save
+            logger.warning("video_library cache invalidate failed for user_id=%s", user_id, exc_info=True)
+
         return ctx
 
     def get_resolution_status(self, user_id: UUID) -> str:

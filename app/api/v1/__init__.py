@@ -13,6 +13,7 @@ try:
     from app.domains.chatbots import routes as chatbot_routes
     from app.domains.pixgen import routes as pixgen_routes
     from app.domains.youtube_quiz import routes as youtube_quiz_routes
+    from app.domains.video_library import router as video_library_routes
     from app.domains.content_ingestion import routes as content_ingestion_routes
     from app.domains.content_ingestion.quiz_catalog_routes import router as quiz_catalog_router
     from app.domains.external_context import routes as metadata_routes
@@ -88,6 +89,9 @@ try:
 
     # YouTube quiz routes
     router.include_router(youtube_quiz_routes.router)
+
+    # Video library (recommendations for YouTube Quiz quick start)
+    router.include_router(video_library_routes.router)
     
     logger.info("All API v1 routes registered successfully")
 except Exception as e:

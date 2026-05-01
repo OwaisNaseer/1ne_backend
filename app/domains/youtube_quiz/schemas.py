@@ -1,9 +1,9 @@
 """
 Schemas for YouTube quiz generation endpoint.
 """
-from typing import List, Literal, Optional, Union
+from typing import Any, List, Literal, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 GRADE_BANDS = {
@@ -54,6 +54,8 @@ QuickCheckResponseType = Literal["one_word", "short_phrase", "true_false"]
 class YouTubeQuizGenerateRequest(BaseModel):
     """Request payload for quiz generation from a YouTube video."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     video_url: str = Field(..., min_length=10)
     grade_band: str
     subject_lens: str
@@ -64,6 +66,19 @@ class YouTubeQuizGenerateRequest(BaseModel):
     lesson_strategy_id: Optional[str] = None
     difficultyLevel: Optional[Literal["easy", "medium", "challenging"]] = None
     accessibilityMode: bool = False
+    video_id: Optional[str] = Field(None, alias="videoId")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _resolve_library_video_id(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        if not (data.get("video_id") or data.get("videoId")):
+            return data
+        from app.domains.video_library.quiz_merge import apply_video_id_to_request_dict
+        from app.domains.video_library.service import load_library
+
+        return apply_video_id_to_request_dict(data, load_library())
 
     @field_validator("video_url")
     @classmethod
