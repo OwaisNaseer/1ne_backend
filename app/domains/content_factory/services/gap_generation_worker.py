@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
 from app.core.config import settings
+from app.llm.config import llm_settings
 from app.db.session import SessionLocal
 from app.domains.content_factory.enums import JobStatus
 from app.domains.content_factory.models import ContentGenerationJob
@@ -24,6 +25,29 @@ from app.domains.content_factory.services.generation_orchestrator_service import
 )
 
 logger = get_logger(__name__)
+
+
+def pending_gap_worker_job_filters(personalization_llm_outbound_enabled: bool):
+    """
+    SQLAlchemy filter clauses for GapGenerationWorker pending-job selection.
+
+    When personalization outbound LLM is disabled, drop personalization inventory jobs and
+    user-attributed gap_detection jobs (created by personalization), but keep platform
+    gap_detection jobs (requested_by_user_id is NULL).
+    """
+    base = [
+        ContentGenerationJob.source.in_(["gap_detection", "inventory_expansion"]),
+        ContentGenerationJob.status == JobStatus.PENDING.value,
+    ]
+    if personalization_llm_outbound_enabled:
+        return base
+    return base + [
+        (ContentGenerationJob.source != "inventory_expansion")
+        & (
+            (ContentGenerationJob.source != "gap_detection")
+            | (ContentGenerationJob.requested_by_user_id.is_(None))
+        )
+    ]
 
 
 class GapGenerationWorker:
@@ -63,15 +87,10 @@ class GapGenerationWorker:
         return len(stale)
 
     def _next_pending_job(self) -> Optional[ContentGenerationJob]:
-        return (
-            self.db.query(ContentGenerationJob)
-            .filter(
-                ContentGenerationJob.source.in_(["gap_detection", "inventory_expansion"]),
-                ContentGenerationJob.status == JobStatus.PENDING.value,
-            )
-            .order_by(ContentGenerationJob.created_at.asc())
-            .first()
+        q = self.db.query(ContentGenerationJob).filter(
+            *pending_gap_worker_job_filters(llm_settings.PERSONALIZATION_LLM_OUTBOUND_ENABLED)
         )
+        return q.order_by(ContentGenerationJob.created_at.asc()).first()
 
     def _sync_recover_and_pick_next_job_id(self) -> Optional[UUID]:
         """Run blocking DB work in a dedicated session (thread-safe)."""

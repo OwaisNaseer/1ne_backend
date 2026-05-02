@@ -336,7 +336,9 @@ async def test_generate_quiz_returns_explicit_error_after_failed_repair(monkeypa
 
     monkeypatch.setattr(YouTubeQuizService, "_call_model", classmethod(fake_call_model))
 
-    with pytest.raises(RuntimeError) as exc:
-        await YouTubeQuizService.generate_quiz(request_payload)
-
-    assert "valid typed quiz response" in str(exc.value)
+    # Service now falls back to a deterministic schema-valid quiz instead of raising,
+    # so local/dev usage does not 502 when provider output is malformed.
+    response = await YouTubeQuizService.generate_quiz(request_payload)
+    assert response.title
+    assert response.summary
+    assert len(response.sections) == 3

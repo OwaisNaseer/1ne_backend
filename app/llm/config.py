@@ -54,6 +54,10 @@ class LLMSettings(BaseSettings):
     # Use for local/CI safety so a mis-set USE_REAL_LLM cannot burn provider tokens.
     # PixGen image API and OpenAI embeddings also respect this flag (see model_adapter / embedding_providers).
     LLM_OUTBOUND_ENABLED: bool = True
+    # When false, Learning Hub personalization must not enqueue or process content_factory jobs that
+    # exist only to fill personalized inventory (sources inventory_expansion and user-scoped gap_detection).
+    # Platform gap_detection jobs (requested_by_user_id NULL) and on-demand template flows still use LLM when LLM_OUTBOUND_ENABLED=true.
+    PERSONALIZATION_LLM_OUTBOUND_ENABLED: bool = False
 
     # Caching
     CACHE_ENABLED: bool = True

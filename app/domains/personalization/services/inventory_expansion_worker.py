@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.llm.config import llm_settings
 from app.db.session import SessionLocal
 from app.domains.content_factory.enums import ContentGenerationStrategy, JobStatus
 from app.domains.content_factory.models import ContentGenerationJob
@@ -362,6 +363,16 @@ class InventoryExpansionWorker:
                 },
             )
             return 0
+        if not llm_settings.PERSONALIZATION_LLM_OUTBOUND_ENABLED:
+            logger.info(
+                "personalization.generation_enqueue_skipped",
+                extra={
+                    "user_id": str(user_id),
+                    "section": section,
+                    "reason": "PERSONALIZATION_LLM_OUTBOUND_ENABLED=false",
+                },
+            )
+            return 0
         # Current generation pipeline is productionized for micro_course.
         # For other sections, this creates future-proof inventory jobs without blocking flow.
         count = 0
@@ -432,6 +443,8 @@ class InventoryExpansionWorker:
         Process up to N pending micro-course expansion jobs immediately to reduce thin states.
         """
         if not settings.LEARNING_HUB_AUTO_LLM_ENABLED:
+            return 0
+        if not llm_settings.PERSONALIZATION_LLM_OUTBOUND_ENABLED:
             return 0
         processed = 0
         worker = GapGenerationWorker(self.db)
