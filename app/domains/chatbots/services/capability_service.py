@@ -24,6 +24,9 @@ from app.domains.chatbots.models import (
     UserCapabilityProgress,
 )
 from app.domains.chatbots.services.model_service import ChatbotModelService
+from app.domains.subscriptions.services.credit_service import CreditService
+from app.domains.subscriptions.exceptions import InsufficientCreditsError
+from app.domains.subscriptions.feature_keys import CHATBOT_CAPABILITY
 
 logger = get_logger(__name__)
 
@@ -50,7 +53,8 @@ class CapabilityService:
             rate_limiter=self.rate_limiter,
             cost_tracker=self.cost_tracker,
         )
-        
+        self.credit_service = CreditService(db)
+
         # Initialize TOON handler for efficient structured parsing
         self.toon_handler = TOONHandler()
 
@@ -107,6 +111,15 @@ class CapabilityService:
         if not model_config:
             raise ValueError("No models assigned to chatbot")
 
+        credit_check = self.credit_service.check_balance(user_id)
+        cost = self.credit_service.get_feature_cost(CHATBOT_CAPABILITY)
+        if not credit_check.allowed or credit_check.balance < cost:
+            raise InsufficientCreditsError(
+                credit_check,
+                cost,
+                "You don't have enough credits to use this tool.",
+            )
+
         # 6. Generate response using ModelRouter
         try:
             llm_response: LLMResponse = await self.model_router.generate(
@@ -141,6 +154,13 @@ class CapabilityService:
 
             self.db.commit()
 
+            self.credit_service.charge(
+                user_id=user_id,
+                feature_key=CHATBOT_CAPABILITY,
+                llm_response=llm_response,
+                description=f"Capability · {capability_key}",
+            )
+
             return {
                 "result": result,
                 "metadata": {
@@ -153,6 +173,8 @@ class CapabilityService:
                 "progress_update": self._get_progress_update(user_id, capability.id),
             }
 
+        except InsufficientCreditsError:
+            raise
         except Exception as e:
             logger.error(f"Error executing capability: {e}", exc_info=True)
             # Log failure

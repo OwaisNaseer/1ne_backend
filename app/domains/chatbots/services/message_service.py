@@ -25,6 +25,7 @@ from app.domains.chatbots.models import (
 from app.domains.chatbots.services.model_service import ChatbotModelService
 from app.domains.chatbots.services.conversation_service import ConversationService
 from app.domains.subscriptions.services.quota_service import QuotaService
+from app.domains.subscriptions.services.credit_service import CreditService
 
 logger = get_logger(__name__)
 
@@ -37,6 +38,7 @@ class MessageService:
         self.model_service = ChatbotModelService(db)
         self.conversation_service = ConversationService(db)
         self.quota_service = QuotaService(db)
+        self.credit_service = CreditService(db)
         
         # Initialize LLM infrastructure (reuse existing components)
         self.cache = ResponseCache(
@@ -85,28 +87,10 @@ class MessageService:
                 metadata=metadata or {},  # This is passed to conversation_service, which will use conversation_metadata
             )
 
-        # 3. Check quota (for free tier) - gracefully handle if subscription tables don't exist
-        # Skip quota check if tables don't exist to avoid transaction errors
-        try:
-            # Check if subscription tables exist by doing a simple query
-            from sqlalchemy import text
-            self.db.execute(text("SELECT 1 FROM user_usage_quotas LIMIT 1"))
-            # If we get here, table exists - proceed with quota check
-            quota_check = self.quota_service.check_quota(
-                user_id=user_id,
-                feature_key="chat_messages",
-                increment=True,
-            )
-            if not quota_check.allowed:
-                raise ValueError(f"Quota exceeded: {quota_check.reason}")
-        except Exception as quota_error:
-            # Log warning but continue if quota service fails (e.g., subscription tables not set up)
-            # Rollback any failed transaction from quota service
-            try:
-                self.db.rollback()
-            except Exception:
-                pass
-            logger.warning(f"Quota check skipped (tables not available), allowing message: {quota_error}")
+        # 3. Check credit balance before processing
+        credit_check = self.credit_service.check_balance(user_id)
+        if not credit_check.allowed:
+            raise ValueError(credit_check.reason or "Insufficient credits")
 
         # 4. Save user message
         user_message = ChatbotMessage(
@@ -188,20 +172,13 @@ class MessageService:
             self.db.refresh(user_message)
             self.db.refresh(assistant_message)
 
-            # 13. Log usage for analytics (separate transaction, gracefully handle if subscription tables don't exist)
-            try:
-                self.quota_service.log_usage(
-                    user_id=user_id,
-                    action="message_sent",
-                    feature_key="chat_messages",
-                    tokens_used=llm_response.token_usage.total if llm_response.token_usage else 0,
-                    cost_estimate=float(llm_response.cost_estimate) if llm_response.cost_estimate else None,
-                    model_used=llm_response.model_used,
-                    provider_used=llm_response.provider,
-                )
-            except Exception as log_error:
-                # Usage logging is optional - don't fail the main operation
-                logger.warning(f"Usage logging failed (table may not exist), continuing: {log_error}")
+            # 13. Deduct credits (non-blocking — never fails the main operation)
+            self.credit_service.charge(
+                user_id=user_id,
+                feature_key="chatbot_message",
+                llm_response=llm_response,
+                description=f"AI Chat · {chatbot.name}",
+            )
             self.db.refresh(user_message)
             self.db.refresh(assistant_message)
 
@@ -300,21 +277,18 @@ class MessageService:
         self.db.add(user_message)
         # Don't flush - start streaming immediately
 
-        # 7. Check quota (non-blocking - skip if fails)
-        try:
-            from sqlalchemy import text
-            self.db.execute(text("SELECT 1 FROM user_usage_quotas LIMIT 1"))
-            quota_check = self.quota_service.check_quota(
-                user_id=user_id,
-                feature_key="chat_messages",
-                increment=True,
-            )
-            if not quota_check.allowed:
-                yield {"type": "error", "data": {"detail": f"Quota exceeded: {quota_check.reason}"}}
-                return
-        except Exception:
-            # Quota check failed - allow message (graceful degradation)
-            pass
+        # 7. Check credit balance before streaming
+        credit_check = self.credit_service.check_balance(user_id)
+        if not credit_check.allowed:
+            yield {
+                "type": "error",
+                "data": {
+                    "detail": "You don't have enough credits to continue.",
+                    "error_code": "insufficient_credits",
+                    "balance": credit_check.balance,
+                },
+            }
+            return
 
         # 8. Start streaming IMMEDIATELY (don't wait for DB operations)
         assistant_content = ""
@@ -357,7 +331,14 @@ class MessageService:
             self.db.refresh(user_message)
             self.db.refresh(assistant_message)
 
-            # 13. Yield final response with metadata
+            # 13. Deduct credits after streaming completes (non-blocking)
+            self.credit_service.charge(
+                user_id=user_id,
+                feature_key="chatbot_message",
+                description=f"AI Chat · {chatbot.name}",
+            )
+
+            # 14. Yield final response with metadata
             yield {
                 "type": "done",
                 "data": {

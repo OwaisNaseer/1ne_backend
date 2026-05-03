@@ -33,6 +33,9 @@ from app.domains.content_ingestion.services.processing_progress_view import (
     build_processing_progress,
 )
 from app.core.config import settings
+from app.domains.subscriptions.services.credit_service import CreditService
+from app.domains.subscriptions.credit_errors import insufficient_credits_detail
+from app.domains.subscriptions.feature_keys import WORKSHEET_GENERATE
 
 logger = get_logger(__name__)
 
@@ -847,6 +850,20 @@ async def generate_worksheet(
     skip_cache_write = request.skip_cache_write if request.skip_cache_write is not None else (not getattr(settings, "WORKSHEET_CACHE_ENABLED", False))
     # Bypass cache when client requests regeneration (force_regenerate or regenerate_key)
     force_regenerate = request.force_regenerate or bool(request.regenerate_key)
+
+    credit_service = CreditService(db)
+    credit_check = credit_service.check_balance(current_user.id)
+    ws_cost = credit_service.get_feature_cost(WORKSHEET_GENERATE)
+    if not credit_check.allowed or credit_check.balance < ws_cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                credit_check,
+                ws_cost,
+                "You don't have enough credits to generate this worksheet.",
+            ),
+        )
+
     service = WorksheetService(db)
     try:
         # Convert single difficulty to difficulty_mix if provided
@@ -963,6 +980,16 @@ async def generate_worksheet(
     citations = retrieval.get("citations")
     if not isinstance(citations, list):
         citations = []
+
+    try:
+        credit_service.charge(
+            user_id=current_user.id,
+            feature_key=WORKSHEET_GENERATE,
+            llm_response=None,
+            description="Worksheet generation",
+        )
+    except Exception:
+        pass
 
     return schemas.WorksheetResponse(
         id=worksheet_cache.id,

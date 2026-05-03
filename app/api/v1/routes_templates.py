@@ -25,6 +25,8 @@ from app.schemas.template import (
     TemplateExecuteResponse,
 )
 from app.services.execution_service import ExecutionService
+from app.domains.subscriptions.services.credit_service import CreditService
+from app.domains.subscriptions.credit_errors import insufficient_credits_detail
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -327,6 +329,21 @@ async def execute_template(
     user_id = current_user.id if current_user else None
     tenant_id = current_user.tenant_id if current_user else None
 
+    # Credit check — authenticated users must have sufficient balance
+    if current_user:
+        credit_service = CreditService(db)
+        check = credit_service.check_balance(current_user.id)
+        cost = credit_service.get_feature_cost("template_generate")
+        if not check.allowed or check.balance < cost:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=insufficient_credits_detail(
+                    check,
+                    cost,
+                    "You don't have enough credits to run this template.",
+                ),
+            )
+
     try:
         # Execute via execution service (async); output shape is from template's output_schema
         execution, output_dict = await ExecutionService.execute(
@@ -355,6 +372,19 @@ async def execute_template(
                 detail={"message": str(e), "error_type": "llm_config"},
             )
         raise
+
+    # Charge credits after successful execution
+    if current_user:
+        try:
+            credit_service = CreditService(db)
+            credit_service.charge(
+                user_id=current_user.id,
+                feature_key="template_generate",
+                llm_response=None,
+                description=f"Template · {template.name}",
+            )
+        except Exception:
+            pass  # never block the response if credit charge fails
 
     return TemplateExecuteResponse(
         execution_id=execution.id,
@@ -406,17 +436,32 @@ async def execute_template_stream(
     # Lightweight validation based on input_schema
     _validate_against_input_schema(latest_version.input_schema or {}, payload.data)
 
+    # Get user_id and tenant_id from auth if available
+    user_id = current_user.id if current_user else None
+    tenant_id = current_user.tenant_id if current_user else None
+
+    # Credit check before stream opens — must be done here (can't send 402 mid-stream)
+    if current_user:
+        credit_service = CreditService(db)
+        check = credit_service.check_balance(current_user.id)
+        cost = credit_service.get_feature_cost("template_generate")
+        if not check.allowed or check.balance < cost:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=insufficient_credits_detail(
+                    check,
+                    cost,
+                    "You don't have enough credits to run this template.",
+                ),
+            )
+
     async def generate_sse_events() -> AsyncIterator[str]:
         """Generate SSE-formatted events from ExecutionService domain events.
-        
+
         CRITICAL: Send events immediately without buffering for smooth streaming like GPT.
         Each chunk from the LLM is sent as soon as it arrives.
         """
         try:
-            # Get user_id and tenant_id from auth if available
-            user_id = current_user.id if current_user else None
-            tenant_id = current_user.tenant_id if current_user else None
-            
             async for event in ExecutionService.execute_stream(
                 db,
                 template=template,
@@ -432,6 +477,19 @@ async def execute_template_stream(
                 # CRITICAL: Format and send immediately without buffering
                 event_json = json.dumps(event)
                 yield f"data: {event_json}\n\n"
+
+            # Charge credits after stream completes successfully
+            if current_user:
+                try:
+                    credit_service = CreditService(db)
+                    credit_service.charge(
+                        user_id=current_user.id,
+                        feature_key="template_generate",
+                        llm_response=None,
+                        description=f"Template · {template.name}",
+                    )
+                except Exception:
+                    pass
         except Exception as e:
             # Emit error event
             error_event = {

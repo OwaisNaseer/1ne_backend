@@ -236,3 +236,134 @@ class UserUsageLog(Base):
 
     def __repr__(self) -> str:
         return f"<UserUsageLog(id={self.id}, user_id={self.user_id}, action={self.action})>"
+
+
+class FeatureCreditCost(Base):
+    """Credit cost configuration per feature key."""
+
+    __tablename__ = "feature_credit_costs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    feature_key = Column(String(100), unique=True, nullable=False, index=True)
+    display_name = Column(String(200), nullable=False)
+    module_name = Column(String(100), nullable=False)
+    base_credits = Column(Integer, nullable=False, default=1)
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<FeatureCreditCost(feature_key={self.feature_key}, base_credits={self.base_credits})>"
+
+
+class AccessCode(Base):
+    """Access codes for activating credits (beta and staff)."""
+
+    __tablename__ = "access_codes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    code = Column(String(50), unique=True, nullable=False, index=True)
+    code_type = Column(String(20), nullable=False)  # 'beta' | 'staff'
+    credit_allocation = Column(Integer, nullable=False)
+    validity_days = Column(Integer, nullable=False, default=30)
+    max_uses = Column(Integer, nullable=True)  # null = unlimited
+    times_used = Column(Integer, nullable=False, default=0)
+    is_active = Column(Boolean, default=True, nullable=False)
+    auto_renew = Column(Boolean, default=False, nullable=False)
+    auto_renew_threshold_pct = Column(Integer, nullable=True, default=20)
+    description = Column(Text, nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    redemptions = relationship("UserCodeRedemption", back_populates="access_code", cascade="all, delete-orphan")
+
+    def __repr__(self) -> str:
+        return f"<AccessCode(code={self.code}, type={self.code_type}, allocation={self.credit_allocation})>"
+
+
+class UserCodeRedemption(Base):
+    """Record of every access code activation per user."""
+
+    __tablename__ = "user_code_redemptions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    access_code_id = Column(UUID(as_uuid=True), ForeignKey("access_codes.id", ondelete="CASCADE"), nullable=False)
+    redeemed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    credit_allocation = Column(Integer, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    auto_renew = Column(Boolean, default=False, nullable=False)
+    last_renewed_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    access_code = relationship("AccessCode", back_populates="redemptions")
+
+    __table_args__ = (
+        Index("idx_redemption_user_active", "user_id", "is_active"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<UserCodeRedemption(user_id={self.user_id}, code_id={self.access_code_id})>"
+
+
+class UserTokenBalance(Base):
+    """The user's live credit wallet — one row per user."""
+
+    __tablename__ = "user_token_balances"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+                     unique=True, nullable=False, index=True)
+    balance = Column(Integer, nullable=False, default=0)
+    total_allocated = Column(Integer, nullable=False, default=0)
+    total_spent = Column(Integer, nullable=False, default=0)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    auto_renew = Column(Boolean, default=False, nullable=False)
+    subscription_started_at = Column(DateTime(timezone=True), nullable=True)
+    last_topped_up_at = Column(DateTime(timezone=True), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    user = relationship("User", foreign_keys=[user_id])
+
+    def __repr__(self) -> str:
+        return f"<UserTokenBalance(user_id={self.user_id}, balance={self.balance})>"
+
+
+class UserCreditTransaction(Base):
+    """Append-only credit ledger — every debit and credit event."""
+
+    __tablename__ = "user_credit_transactions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    type = Column(String(20), nullable=False)  # 'debit' | 'credit' | 'renewal' | 'expiry_adjustment'
+    amount = Column(Integer, nullable=False)   # positive = credit added, negative = credits spent
+    balance_after = Column(Integer, nullable=False)
+    feature_key = Column(String(100), nullable=True, index=True)
+    description = Column(String(500), nullable=True)
+    reference_id = Column(UUID(as_uuid=True), nullable=True)
+    model_used = Column(String(100), nullable=True)
+    input_tokens = Column(Integer, nullable=True)
+    output_tokens = Column(Integer, nullable=True)
+    usd_cost = Column(Numeric(10, 6), nullable=True)
+    transaction_metadata = Column("metadata", JSONB, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    user = relationship("User", foreign_keys=[user_id])
+
+    __table_args__ = (
+        Index("idx_txn_user_date", "user_id", "created_at"),
+        Index("idx_txn_feature_key", "user_id", "feature_key"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<UserCreditTransaction(user_id={self.user_id}, type={self.type}, amount={self.amount})>"

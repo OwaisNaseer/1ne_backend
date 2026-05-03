@@ -109,3 +109,90 @@ class UsageLogResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Credit system schemas ──────────────────────────────────────────────────────
+
+class RedeemCodeRequest(BaseModel):
+    code: str = Field(..., min_length=3, max_length=50, description="Access code string")
+
+
+class RedeemCodeResponse(BaseModel):
+    success: bool
+    credits_added: int = 0
+    balance: int = 0
+    expires_at: Optional[datetime] = None
+    auto_renew: bool = False
+    error: Optional[str] = None
+    error_code: Optional[str] = None
+
+
+class CreditBalanceResponse(BaseModel):
+    balance: int
+    total_allocated: int
+    total_spent: int
+    expires_at: Optional[datetime] = None
+    auto_renew: bool = False
+    subscription_started_at: Optional[datetime] = None
+    has_active_credits: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CreditTransactionResponse(BaseModel):
+    id: UUID
+    type: str
+    amount: int
+    balance_after: int
+    feature_key: Optional[str] = None
+    description: Optional[str] = None
+    model_used: Optional[str] = None
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CreditTransactionListResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    items: List[CreditTransactionResponse]
+
+
+class UsageBreakdownItem(BaseModel):
+    feature_key: str
+    display_name: str
+    module_name: str
+    credits: int
+    call_count: int
+    pct_of_total: float
+
+
+class UsageBreakdownResponse(BaseModel):
+    period_days: int
+    total_credits: int
+    breakdown: List[UsageBreakdownItem]
+
+
+class UsageSummaryResponse(BaseModel):
+    balance: int
+    total_allocated: int
+    total_spent: int
+    expires_at: Optional[str] = None
+    auto_renew: bool = False
+    subscription_started_at: Optional[str] = None
+    monthly_spent: int
+    top_module: Optional[str] = None
+
+
+class CreateAccessCodeRequest(BaseModel):
+    code: str = Field(..., min_length=3, max_length=50)
+    code_type: str = Field(..., description="'beta' or 'staff'")
+    credit_allocation: int = Field(..., gt=0)
+    validity_days: int = Field(30, gt=0)
+    max_uses: Optional[int] = None
+    auto_renew: bool = False
+    auto_renew_threshold_pct: int = 20
+    description: Optional[str] = None

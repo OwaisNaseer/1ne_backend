@@ -20,6 +20,8 @@ from app.domains.chatbots.services.conversation_service import ConversationServi
 from app.domains.chatbots.services.message_service import MessageService
 from app.domains.chatbots.services.capability_service import CapabilityService
 from app.domains.chatbots.models import Chatbot
+from app.domains.subscriptions.exceptions import InsufficientCreditsError
+from app.domains.subscriptions.credit_errors import insufficient_credits_detail
 
 logger = get_logger(__name__)
 
@@ -407,6 +409,11 @@ async def execute_capability(
             metadata=result.get("metadata"),
             usage_id=result.get("usage_id"),
             progress_update=result.get("progress_update"),
+        )
+    except InsufficientCreditsError as e:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(e.check, e.required, e.message),
         )
     except ValueError as e:
         raise HTTPException(

@@ -18,6 +18,9 @@ from app.domains.pixgen.schemas import (
     MyGenerationsResponse,
 )
 from app.domains.pixgen.services.pixgen_service import PixGenService
+from app.domains.subscriptions.services.credit_service import CreditService
+from app.domains.subscriptions.credit_errors import insufficient_credits_detail
+from app.domains.subscriptions.feature_keys import PIXGEN_IMAGE
 
 router = APIRouter(prefix="/api/v1", tags=["pixgen"])
 
@@ -30,14 +33,37 @@ def generate_single_image(
     db: Session = Depends(get_db),
 ):
     """Generate a single image and store generation metadata."""
+    credit_service = CreditService(db)
+    check = credit_service.check_balance(current_user.id)
+    cost = credit_service.get_feature_cost(PIXGEN_IMAGE)
+    if not check.allowed or check.balance < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                check,
+                cost,
+                "You don't have enough credits to generate an image.",
+            ),
+        )
     service = PixGenService(db)
     try:
-        return service.generate_single(user_id=current_user.id, payload=payload)
+        result = service.generate_single(user_id=current_user.id, payload=payload)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Image generation failed: {str(exc)}",
         ) from exc
+    if result.imageUrl:
+        try:
+            credit_service.charge(
+                user_id=current_user.id,
+                feature_key=PIXGEN_IMAGE,
+                llm_response=None,
+                description="PixGen image",
+            )
+        except Exception:
+            pass
+    return result
 
 
 @router.post("/generate-batch", response_model=BatchGenerationResponse)
@@ -48,15 +74,39 @@ def generate_batch_images(
     db: Session = Depends(get_db),
 ):
     """Generate multiple images for the same prompt parameters."""
+    credit_service = CreditService(db)
+    check = credit_service.check_balance(current_user.id)
+    cost = credit_service.get_feature_cost(PIXGEN_IMAGE)
+    total_required = cost * max(1, payload.batchSize)
+    if not check.allowed or check.balance < total_required:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                check,
+                total_required,
+                "You don't have enough credits for this batch.",
+            ),
+        )
     service = PixGenService(db)
     try:
         items = service.generate_batch(user_id=current_user.id, payload=payload)
-        return BatchGenerationResponse(items=items)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Batch generation failed: {str(exc)}",
         ) from exc
+    for item in items:
+        if item.imageUrl:
+            try:
+                credit_service.charge(
+                    user_id=current_user.id,
+                    feature_key=PIXGEN_IMAGE,
+                    llm_response=None,
+                    description="PixGen image (batch)",
+                )
+            except Exception:
+                pass
+    return BatchGenerationResponse(items=items)
 
 
 @router.get("/generation-status/{generation_id}", response_model=GenerationStatusResponse)

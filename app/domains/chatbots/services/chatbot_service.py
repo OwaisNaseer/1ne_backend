@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.logging import get_logger
 from app.domains.chatbots.models import Chatbot
 from app.domains.subscriptions.services.subscription_service import SubscriptionService
+from app.domains.subscriptions.services.credit_service import CreditService
 
 logger = get_logger(__name__)
 
@@ -19,6 +20,7 @@ class ChatbotService:
     def __init__(self, db: Session):
         self.db = db
         self.subscription_service = SubscriptionService(db)
+        self.credit_service = CreditService(db)
 
     def get_chatbot_by_slug(self, slug: str) -> Optional[Chatbot]:
         """Get chatbot by slug."""
@@ -32,12 +34,13 @@ class ChatbotService:
             query = query.filter(Chatbot.is_active == True)
 
         if user_id:
-            # Filter by user's tier
             tier = self.subscription_service.get_user_tier(user_id)
             if tier.value == "free":
-                # Free users can only see free chatbots
-                query = query.filter(Chatbot.access_level == "free")
-            # Premium users can see all chatbots
+                # Free subscription: show premium catalog only when user can spend credits
+                # (access-code credits do not upgrade DB tier; usage is still gated per request).
+                credit_check = self.credit_service.check_balance(user_id)
+                if not credit_check.allowed:
+                    query = query.filter(Chatbot.access_level == "free")
 
         return query.order_by(Chatbot.category, Chatbot.name).all()
 

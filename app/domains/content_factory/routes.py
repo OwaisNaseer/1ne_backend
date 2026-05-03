@@ -19,6 +19,9 @@ from app.domains.content_factory.services.content_factory_service import (
     ContentFactoryServiceError,
 )
 from app.domains.content_factory.services.review_service import ContentReviewService
+from app.domains.subscriptions.services.credit_service import CreditService
+from app.domains.subscriptions.credit_errors import insufficient_credits_detail
+from app.domains.subscriptions.feature_keys import CONTENT_GAP_FILL
 
 router = APIRouter(prefix="/api/v1/content-factory", tags=["content-factory"])
 
@@ -68,6 +71,18 @@ async def request_micro_course(
     db: Session = Depends(get_db),
 ):
     """Request a new micro-course generation (admin). Runs workflow to completion and returns job."""
+    credit_service = CreditService(db)
+    check = credit_service.check_balance(current_user.id)
+    cost = credit_service.get_feature_cost(CONTENT_GAP_FILL)
+    if not check.allowed or check.balance < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                check,
+                cost,
+                "You don't have enough credits to run content generation.",
+            ),
+        )
     service = ContentFactoryService(db)
     job = await service.generate_micro_course(
         topic=data.topic,
@@ -78,6 +93,15 @@ async def request_micro_course(
         requested_by_user_id=current_user.id,
         generation_mode=data.generation_mode,
     )
+    try:
+        credit_service.charge(
+            user_id=current_user.id,
+            feature_key=CONTENT_GAP_FILL,
+            llm_response=None,
+            description="Content factory · micro-course",
+        )
+    except Exception:
+        pass
     return job
 
 

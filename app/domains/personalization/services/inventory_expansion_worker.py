@@ -1,6 +1,9 @@
 """
 Inventory expansion worker for personalized learning hub.
 
+Billing: outbound LLM here is subscription/personalization infrastructure (not per-click user credits).
+Per-request 402 gating applies only to interactive HTTP routes (chat, templates, tools).
+
 Goals:
 - detect per-section inventory gaps (visible / locked_preview / reserve)
 - top up assignments from existing registry candidates
