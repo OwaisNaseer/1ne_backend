@@ -422,6 +422,17 @@ except Exception as e:
     logger.error(f"Failed to register API v1 router: {e}", exc_info=True)
     raise
 
+# Teacher Tools — assignments: explicit mount (same URL prefix as domain router).
+# Ensures /api/v1/teacher-tools/assignments is present even if the v1 package import tree drifts in a deploy.
+try:
+    from app.domains.teacher_assignment import routes as teacher_assignment_routes
+
+    app.include_router(teacher_assignment_routes.router)
+    logger.info("Teacher Tools assignment routes registered (explicit app mount)")
+except Exception as e:
+    logger.error("Failed to register teacher_assignment routes: %s", e, exc_info=True)
+    raise
+
 # Mount static files for profile pictures
 from app.core.config import settings
 profile_pictures_dir = Path(settings.PROFILE_PICTURES_DIR)

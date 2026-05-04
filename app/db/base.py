@@ -77,6 +77,11 @@ from app.domains.teacher_quiz.models import (  # noqa: F401, E402
     TeacherQuizGenerationRun,
 )
 
+from app.domains.teacher_assignment.models import (  # noqa: F401, E402
+    TeacherAssignment,
+    TeacherAssignmentGenerationRun,
+)
+
 # Import teacher identity models
 from app.domains.teacher_identity.models import (  # noqa: F401, E402
     TeacherExperience,

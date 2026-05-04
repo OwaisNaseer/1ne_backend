@@ -10,6 +10,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+from sqlalchemy import inspect
 
 
 revision: str = "t5u6v7w8x9y0"
@@ -19,6 +20,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Some dev databases were created before Alembic tracked this revision.
+    # If the tables already exist, treat this migration as a no-op so later
+    # revisions (e.g. teacher assignments) can still be applied.
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    existing = set(inspector.get_table_names())
+    if "teacher_quizzes" in existing:
+        return
+
     op.create_table(
         "teacher_quizzes",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, nullable=False),

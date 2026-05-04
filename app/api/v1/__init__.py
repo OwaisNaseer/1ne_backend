@@ -83,7 +83,8 @@ try:
 
     # Teacher Tools quiz routes
     router.include_router(teacher_quiz_routes.router)
-    
+    # Teacher Tools assignment routes are mounted in app.main (explicit include).
+
     # Core template routes
     router.include_router(routes_templates.router)
     
