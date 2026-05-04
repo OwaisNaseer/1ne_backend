@@ -82,6 +82,13 @@ from app.domains.teacher_assignment.models import (  # noqa: F401, E402
     TeacherAssignmentGenerationRun,
 )
 
+from app.domains.teacher_worksheet.models import (  # noqa: F401, E402
+    TeacherWorksheet,
+    TeacherWorksheetBlock,
+    TeacherWorksheetGenerationRun,
+    TeacherWorksheetSession,
+)
+
 # Import teacher identity models
 from app.domains.teacher_identity.models import (  # noqa: F401, E402
     TeacherExperience,

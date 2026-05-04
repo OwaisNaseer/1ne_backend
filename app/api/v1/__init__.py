@@ -14,6 +14,7 @@ try:
     from app.domains.pixgen import routes as pixgen_routes
     from app.domains.youtube_quiz import routes as youtube_quiz_routes
     from app.domains.teacher_quiz import routes as teacher_quiz_routes
+    from app.domains.teacher_worksheet import routes as teacher_worksheet_routes
     from app.domains.content_ingestion import routes as content_ingestion_routes
     from app.domains.content_ingestion.quiz_catalog_routes import router as quiz_catalog_router
     from app.domains.external_context import routes as metadata_routes
@@ -83,6 +84,7 @@ try:
 
     # Teacher Tools quiz routes
     router.include_router(teacher_quiz_routes.router)
+    router.include_router(teacher_worksheet_routes.router)
     # Teacher Tools assignment routes are mounted in app.main (explicit include).
 
     # Core template routes
