@@ -13,7 +13,7 @@ try:
     from app.domains.chatbots import routes as chatbot_routes
     from app.domains.pixgen import routes as pixgen_routes
     from app.domains.youtube_quiz import routes as youtube_quiz_routes
-    from app.domains.video_library import router as video_library_routes
+    from app.domains.teacher_quiz import routes as teacher_quiz_routes
     from app.domains.content_ingestion import routes as content_ingestion_routes
     from app.domains.content_ingestion.quiz_catalog_routes import router as quiz_catalog_router
     from app.domains.external_context import routes as metadata_routes
@@ -80,6 +80,9 @@ try:
 
     # Quiz Catalog routes
     router.include_router(quiz_catalog_router)
+
+    # Teacher Tools quiz routes
+    router.include_router(teacher_quiz_routes.router)
     
     # Core template routes
     router.include_router(routes_templates.router)

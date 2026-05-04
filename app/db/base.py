@@ -70,6 +70,13 @@ from app.domains.content_ingestion.models import (  # noqa: F401, E402
     WorksheetQuestionHash,
 )
 
+# Import teacher quiz models
+from app.domains.teacher_quiz.models import (  # noqa: F401, E402
+    TeacherQuiz,
+    TeacherQuizQuestion,
+    TeacherQuizGenerationRun,
+)
+
 # Import teacher identity models
 from app.domains.teacher_identity.models import (  # noqa: F401, E402
     TeacherExperience,

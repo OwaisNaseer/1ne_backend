@@ -815,7 +815,7 @@ class IngestionService:
             base_overlap = settings.CHUNK_OVERLAP_TOKENS_OCR if ocr_used_flag else settings.CHUNK_OVERLAP_TOKENS_DIGITAL
             # Adaptive threshold: small docs use lower min-chunks
             pages_count = len(normalized_pages)
-            min_pages_for_threshold = getattr(settings, "OCR_MIN_PAGES_FOR_THRESHOLD", 30)
+            min_pages_for_threshold = getattr(settings, "OCR_MIN_PAGES_FOR_TH RESHOLD", 30)
             if ocr_used_flag and pages_count < min_pages_for_threshold:
                 min_chunks_threshold = getattr(settings, "OCR_MIN_CHUNKS_THRESHOLD_SMALL", 10)
                 effective_threshold_used = min_chunks_threshold
