@@ -149,6 +149,156 @@ class TeacherQuizService:
         )
 
     # ------------------------------------------------------------------
+    # Individual question CRUD
+    # ------------------------------------------------------------------
+
+    def add_question(
+        self,
+        *,
+        current_user: User,
+        quiz_id: UUID,
+        payload: Dict[str, Any],
+    ) -> TeacherQuiz:
+        from uuid import uuid4 as _uuid4
+
+        quiz = self.repo.get_quiz(current_user.tenant_id, quiz_id, with_questions=True)
+        if not quiz:
+            raise not_found()
+        extra: Dict[str, Any] = {}
+        if payload.get("reviewBadges"):
+            extra["reviewBadges"] = payload["reviewBadges"]
+        question = TeacherQuizQuestion(
+            id=_uuid4(),
+            quiz_id=quiz.id,
+            sort_order=0,  # will be set by repo.add_question
+            type=payload["type"],
+            prompt=payload["prompt"],
+            points=float(payload.get("points") or 1.0),
+            options=payload.get("options"),
+            response_lines=payload.get("response_lines"),
+            extra=extra or None,
+        )
+        return self.repo.add_question(quiz, question)
+
+    def patch_question(
+        self,
+        *,
+        current_user: User,
+        quiz_id: UUID,
+        question_id: UUID,
+        patch: Dict[str, Any],
+    ) -> TeacherQuiz:
+        quiz = self.repo.get_quiz(current_user.tenant_id, quiz_id, with_questions=True)
+        if not quiz:
+            raise not_found()
+        question = self.repo.get_question(current_user.tenant_id, quiz_id, question_id)
+        if not question:
+            raise not_found("Question not found")
+        return self.repo.patch_question(quiz, question, patch)
+
+    def delete_question(
+        self,
+        *,
+        current_user: User,
+        quiz_id: UUID,
+        question_id: UUID,
+    ) -> TeacherQuiz:
+        quiz = self.repo.get_quiz(current_user.tenant_id, quiz_id, with_questions=True)
+        if not quiz:
+            raise not_found()
+        question = self.repo.get_question(current_user.tenant_id, quiz_id, question_id)
+        if not question:
+            raise not_found("Question not found")
+        if len(quiz.questions) <= 1:
+            raise validation_failed("Cannot delete the last question in a quiz.")
+        return self.repo.delete_question(quiz, question)
+
+    def reorder_questions(
+        self,
+        *,
+        current_user: User,
+        quiz_id: UUID,
+        order: List[Dict[str, Any]],
+    ) -> TeacherQuiz:
+        quiz = self.repo.get_quiz(current_user.tenant_id, quiz_id, with_questions=True)
+        if not quiz:
+            raise not_found()
+        return self.repo.bulk_reorder_questions(quiz, order)
+
+    async def regenerate_question(
+        self,
+        *,
+        current_user: User,
+        quiz_id: UUID,
+        question_id: UUID,
+        idempotency_key: Optional[str] = None,
+    ) -> TeacherQuiz:
+        """Re-generate a single question using the quiz's stored RAG scope."""
+        quiz = self.repo.get_quiz(current_user.tenant_id, quiz_id, with_questions=True)
+        if not quiz:
+            raise not_found()
+        question = self.repo.get_question(current_user.tenant_id, quiz_id, question_id)
+        if not question:
+            raise not_found("Question not found")
+
+        # Retrieve context (reuse same RAG pipeline)
+        context_text = ""
+        if not quiz.generate_without_sources:
+            try:
+                pack_ids = [UUID(x) for x in (quiz.source_pack_ids or []) if x]
+            except Exception:
+                raise validation_failed("Invalid pack IDs on quiz.")
+            if pack_ids:
+                rr = self.retrieval.retrieve(
+                    tenant_id=current_user.tenant_id,
+                    pack_ids=pack_ids,
+                    topics=list(quiz.scope_topics or []),
+                    refinement=quiz.scope_refinement,
+                    max_chunks=8,  # smaller window — just one question
+                )
+                context_text = rr.context_text
+
+        # Generate exactly 1 question of the same type
+        qtype = question.type
+        timeout_s = float(getattr(settings, "QUIZ_GENERATION_TIMEOUT_SECONDS", 180.0))
+        try:
+            gen_questions, _, _ = await asyncio.wait_for(
+                self.generator.generate_questions(
+                    subject=quiz.subject,
+                    grade=quiz.grade,
+                    topic_label=quiz.topic_summary or "General scope",
+                    difficulty=quiz.difficulty,
+                    question_count=1,
+                    include_mcq=(qtype == "mcq"),
+                    include_tf=(qtype == "tf"),
+                    include_short=(qtype == "short"),
+                    counts_by_type=None,
+                    teacher_notes=quiz.teacher_notes,
+                    context_text=context_text,
+                    avoid_prompts=[q.prompt for q in (quiz.questions or []) if q.prompt],
+                ),
+                timeout=timeout_s,
+            )
+        except asyncio.TimeoutError as e:
+            raise QuizError(code="GENERATION_TIMEOUT", message="Regeneration timed out", http_status=504) from e
+        except Exception as e:
+            raise generation_failed("Question regeneration failed") from e
+
+        if not gen_questions:
+            raise generation_failed("Generator returned no question.")
+
+        new_q = gen_questions[0]
+        # Preserve sort_order and quiz_id; replace content
+        patch: Dict[str, Any] = {
+            "prompt": new_q.prompt,
+            "points": new_q.points,
+            "options": new_q.options,
+            "response_lines": new_q.response_lines,
+            "reviewBadges": (new_q.extra or {}).get("reviewBadges"),
+        }
+        return self.repo.patch_question(quiz, question, patch)
+
+    # ------------------------------------------------------------------
     # Generation
     # ------------------------------------------------------------------
 
@@ -237,6 +387,7 @@ class TeacherQuizService:
                     counts_by_type=counts_by_type,
                     teacher_notes=teacher_notes,
                     context_text=context_text,
+                    avoid_prompts=[q.prompt for q in (quiz.questions or []) if q.prompt],
                 ),
                 timeout=timeout_s,
             )

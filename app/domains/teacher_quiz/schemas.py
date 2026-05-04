@@ -157,3 +157,63 @@ class GenerateResponse(BaseModel):
     warnings: List[str] = Field(default_factory=list)
     quiz: QuizResponse
 
+
+class QuizQuestionCreateRequest(BaseModel):
+    """Used by POST /quizzes/{id}/questions (add question manually)."""
+
+    type: QuestionType
+    prompt: str = Field(min_length=1, max_length=4000)
+    points: float = Field(default=1.0, ge=0.0, le=100.0)
+    options: Optional[List[str]] = None  # MCQ: 2–6 items
+    response_lines: Optional[int] = Field(default=None, ge=1, le=12)  # short only
+    reviewBadges: Optional[Dict[str, Optional[str]]] = None
+
+    @field_validator("options")
+    @classmethod
+    def _clean_options(cls, v):
+        if v is None:
+            return v
+        cleaned = [x.strip() for x in v if isinstance(x, str) and x.strip()]
+        return cleaned or None
+
+
+class QuizQuestionPatchRequest(BaseModel):
+    """Used by PATCH /quizzes/{id}/questions/{qid} (edit one question)."""
+
+    prompt: Optional[str] = Field(default=None, min_length=1, max_length=4000)
+    points: Optional[float] = Field(default=None, ge=0.0, le=100.0)
+    options: Optional[List[str]] = None
+    response_lines: Optional[int] = Field(default=None, ge=1, le=12)
+    reviewBadges: Optional[Dict[str, Optional[str]]] = None
+
+    @field_validator("options")
+    @classmethod
+    def _clean_options(cls, v):
+        if v is None:
+            return v
+        cleaned = [x.strip() for x in v if isinstance(x, str) and x.strip()]
+        return cleaned or None
+
+
+class QuestionOrderItem(BaseModel):
+    id: str  # UUID as string
+    sort_order: int = Field(ge=0)
+
+
+class QuizQuestionsReorderRequest(BaseModel):
+    """Used by PATCH /quizzes/{id}/questions/reorder."""
+
+    order: List[QuestionOrderItem] = Field(min_length=1)
+
+
+class QuizQuestionResponse(BaseModel):
+    """Single question response (also embedded in QuizResponse.questionStubs)."""
+
+    id: str
+    type: QuestionType
+    prompt: str
+    points: float
+    options: Optional[List[str]] = None
+    responseLines: Optional[int] = None
+    reviewBadges: Optional[Dict[str, Optional[str]]] = None
+

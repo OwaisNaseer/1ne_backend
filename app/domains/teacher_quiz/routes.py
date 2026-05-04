@@ -27,6 +27,9 @@ from app.domains.teacher_quiz.schemas import (
     QuizGenerateRequest,
     QuizListResponse,
     QuizPatchRequest,
+    QuizQuestionCreateRequest,
+    QuizQuestionPatchRequest,
+    QuizQuestionsReorderRequest,
     QuizResponse,
 )
 from app.domains.teacher_quiz.service import TeacherQuizService
@@ -182,16 +185,16 @@ def patch_quiz(
         raise
 
 
-@router.delete("/quizzes/{quiz_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/quizzes/{quiz_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def delete_quiz(
     quiz_id: UUID,
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
-) -> None:
+) -> Response:
     svc = TeacherQuizService(db)
     try:
         svc.delete_quiz(current_user=current_user, quiz_id=quiz_id)
-        return None
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     except QuizError as e:
         _raise_domain_error(e)
         raise
@@ -210,6 +213,127 @@ def duplicate_quiz(
     except QuizError as e:
         _raise_domain_error(e)
         raise
+
+
+@router.post(
+    "/quizzes/{quiz_id}/questions",
+    response_model=QuizResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_question(
+    quiz_id: UUID,
+    body: QuizQuestionCreateRequest,
+    current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
+    db: Session = Depends(get_db),
+) -> QuizResponse:
+    svc = TeacherQuizService(db)
+    try:
+        quiz = svc.add_question(
+            current_user=current_user,
+            quiz_id=quiz_id,
+            payload=body.model_dump(),
+        )
+        return _to_quiz_response(quiz)
+    except QuizError as e:
+        _raise_domain_error(e)
+        raise
+
+
+@router.patch(
+    "/quizzes/{quiz_id}/questions/reorder",
+    response_model=QuizResponse,
+)
+def reorder_questions(
+    quiz_id: UUID,
+    body: QuizQuestionsReorderRequest,
+    current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
+    db: Session = Depends(get_db),
+) -> QuizResponse:
+    svc = TeacherQuizService(db)
+    try:
+        quiz = svc.reorder_questions(
+            current_user=current_user,
+            quiz_id=quiz_id,
+            order=[item.model_dump() for item in body.order],
+        )
+        return _to_quiz_response(quiz)
+    except QuizError as e:
+        _raise_domain_error(e)
+        raise
+
+
+@router.patch(
+    "/quizzes/{quiz_id}/questions/{question_id}",
+    response_model=QuizResponse,
+)
+def patch_question(
+    quiz_id: UUID,
+    question_id: UUID,
+    body: QuizQuestionPatchRequest,
+    current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
+    db: Session = Depends(get_db),
+) -> QuizResponse:
+    svc = TeacherQuizService(db)
+    try:
+        quiz = svc.patch_question(
+            current_user=current_user,
+            quiz_id=quiz_id,
+            question_id=question_id,
+            patch=body.model_dump(exclude_unset=True),
+        )
+        return _to_quiz_response(quiz)
+    except QuizError as e:
+        _raise_domain_error(e)
+        raise
+
+
+@router.delete(
+    "/quizzes/{quiz_id}/questions/{question_id}",
+    response_model=QuizResponse,
+)
+def delete_question(
+    quiz_id: UUID,
+    question_id: UUID,
+    current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
+    db: Session = Depends(get_db),
+) -> QuizResponse:
+    svc = TeacherQuizService(db)
+    try:
+        quiz = svc.delete_question(
+            current_user=current_user,
+            quiz_id=quiz_id,
+            question_id=question_id,
+        )
+        return _to_quiz_response(quiz)
+    except QuizError as e:
+        _raise_domain_error(e)
+        raise
+
+
+@router.post(
+    "/quizzes/{quiz_id}/questions/{question_id}/regenerate",
+    response_model=QuizResponse,
+)
+async def regenerate_question(
+    quiz_id: UUID,
+    question_id: UUID,
+    current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
+    db: Session = Depends(get_db),
+) -> QuizResponse:
+    svc = TeacherQuizService(db)
+    try:
+        quiz = await svc.regenerate_question(
+            current_user=current_user,
+            quiz_id=quiz_id,
+            question_id=question_id,
+        )
+        return _to_quiz_response(quiz)
+    except QuizError as e:
+        _raise_domain_error(e)
+        raise
+    except Exception as e:
+        logger.error("question_regenerate_unexpected", exc_info=True)
+        raise HTTPException(status_code=500, detail={"code": "INTERNAL_ERROR", "message": str(e)})
 
 
 @router.post("/quizzes/{quiz_id}/generate", response_model=GenerateResponse)

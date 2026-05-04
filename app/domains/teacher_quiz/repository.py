@@ -140,6 +140,134 @@ class TeacherQuizRepository:
         self.db.commit()
         self.db.refresh(quiz)
 
+    def get_question(
+        self,
+        tenant_id: UUID,
+        quiz_id: UUID,
+        question_id: UUID,
+    ) -> Optional["TeacherQuizQuestion"]:
+        """Fetch a single question, validating it belongs to the tenant's quiz."""
+        from app.domains.teacher_quiz.models import TeacherQuizQuestion
+
+        return (
+            self.db.query(TeacherQuizQuestion)
+            .join(TeacherQuiz, TeacherQuizQuestion.quiz_id == TeacherQuiz.id)
+            .filter(
+                TeacherQuizQuestion.id == question_id,
+                TeacherQuizQuestion.quiz_id == quiz_id,
+                TeacherQuiz.tenant_id == tenant_id,
+            )
+            .first()
+        )
+
+    def add_question(
+        self,
+        quiz: "TeacherQuiz",
+        question: "TeacherQuizQuestion",
+    ) -> "TeacherQuiz":
+        """Append a new question. Updates quiz denormalized counts. Returns refreshed quiz."""
+        from app.domains.teacher_quiz.models import TeacherQuizQuestion
+
+        # Find max sort_order
+        existing_orders = [q.sort_order for q in (quiz.questions or [])]
+        question.sort_order = (max(existing_orders) + 1) if existing_orders else 0
+        question.quiz_id = quiz.id
+        self.db.add(question)
+        # Recalc counts
+        quiz.questions_count = len(quiz.questions) + 1  # pre-flush estimate
+        self.db.flush()
+        self.db.refresh(quiz)
+        # Accurate post-flush count
+        quiz.questions_count = len(quiz.questions)
+        quiz.total_marks = round(sum(float(q.points or 0) for q in quiz.questions) * 10) / 10
+        quiz.updated_at = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+        self.db.add(quiz)
+        self.db.commit()
+        self.db.refresh(quiz)
+        return quiz
+
+    def patch_question(
+        self,
+        quiz: "TeacherQuiz",
+        question: "TeacherQuizQuestion",
+        patch: dict,
+    ) -> "TeacherQuiz":
+        """Apply patch to a question and recompute quiz total_marks. Returns refreshed quiz."""
+        from datetime import datetime, timezone
+
+        if "prompt" in patch and patch["prompt"] is not None:
+            question.prompt = patch["prompt"]
+        if "points" in patch and patch["points"] is not None:
+            question.points = float(patch["points"])
+        if "options" in patch:
+            question.options = patch["options"]
+        if "response_lines" in patch:
+            question.response_lines = patch["response_lines"]
+        if "reviewBadges" in patch and patch["reviewBadges"] is not None:
+            existing_extra = dict(question.extra or {})
+            existing_extra["reviewBadges"] = patch["reviewBadges"]
+            question.extra = existing_extra
+        self.db.add(question)
+        self.db.flush()
+        self.db.refresh(quiz)
+        quiz.total_marks = round(sum(float(q.points or 0) for q in quiz.questions) * 10) / 10
+        quiz.updated_at = datetime.now(timezone.utc)
+        self.db.add(quiz)
+        self.db.commit()
+        self.db.refresh(quiz)
+        return quiz
+
+    def delete_question(
+        self,
+        quiz: "TeacherQuiz",
+        question: "TeacherQuizQuestion",
+    ) -> "TeacherQuiz":
+        """Delete a question and recompute quiz counts. Returns refreshed quiz."""
+        from datetime import datetime, timezone
+
+        self.db.delete(question)
+        self.db.flush()
+        self.db.refresh(quiz)
+        quiz.questions_count = len(quiz.questions)
+        quiz.total_marks = round(sum(float(q.points or 0) for q in quiz.questions) * 10) / 10
+        quiz.updated_at = datetime.now(timezone.utc)
+        self.db.add(quiz)
+        self.db.commit()
+        self.db.refresh(quiz)
+        return quiz
+
+    def bulk_reorder_questions(
+        self,
+        quiz: "TeacherQuiz",
+        order: list,  # list of {"id": str, "sort_order": int}
+    ) -> "TeacherQuiz":
+        """
+        Bulk-update sort_order for questions that belong to this quiz.
+        Validates all IDs belong to the quiz before writing.
+        Returns refreshed quiz.
+        """
+        from uuid import UUID as _UUID
+        from datetime import datetime, timezone
+        from app.domains.teacher_quiz.models import TeacherQuizQuestion
+
+        quiz_question_ids = {str(q.id) for q in (quiz.questions or [])}
+        order_map = {}
+        for item in order:
+            qid = str(item["id"]) if not isinstance(item["id"], str) else item["id"]
+            if qid not in quiz_question_ids:
+                continue  # silently skip unknown IDs for safety
+            order_map[qid] = int(item["sort_order"])
+        for q in (quiz.questions or []):
+            qid = str(q.id)
+            if qid in order_map:
+                q.sort_order = order_map[qid]
+                self.db.add(q)
+        quiz.updated_at = datetime.now(timezone.utc)
+        self.db.add(quiz)
+        self.db.commit()
+        self.db.refresh(quiz)
+        return quiz
+
     # ---------------------------------------------------------------------
     # Generation runs / idempotency
     # ---------------------------------------------------------------------

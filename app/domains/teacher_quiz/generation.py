@@ -52,6 +52,9 @@ def _difficulty_label(difficulty: Optional[str]) -> str:
         return "Challenge"
     return "Standard"
 
+def _norm_prompt(s: str) -> str:
+    return re.sub(r"\s+", " ", (s or "").strip().lower())
+
 
 class QuizGenerationService:
     def __init__(self) -> None:
@@ -76,6 +79,7 @@ class QuizGenerationService:
         counts_by_type: Optional[Dict[str, int]],
         teacher_notes: Optional[str],
         context_text: str,
+        avoid_prompts: Optional[List[str]] = None,
     ) -> Tuple[List[GeneratedQuestion], List[str], Dict[str, Any]]:
         """
         Generate a list of questions. Output is normalized for DB persistence and
@@ -123,6 +127,18 @@ class QuizGenerationService:
 
         diff_label = _difficulty_label(difficulty)
         teacher_line = f"\nTeacher focus: {teacher_notes.strip()}" if teacher_notes and teacher_notes.strip() else ""
+        avoid = [x for x in (avoid_prompts or []) if isinstance(x, str) and x.strip()]
+        avoid_norm = {_norm_prompt(x) for x in avoid}
+        avoid_hint = ""
+        if avoid:
+            trimmed = [re.sub(r"\s+", " ", x.strip())[:240] for x in avoid[:25]]
+            avoid_hint = (
+                "\nAVOID DUPLICATES:\n"
+                "- Do NOT repeat or paraphrase any of these existing questions.\n"
+                "- Each new question must be meaningfully different (new concept, scenario, numbers, or framing).\n"
+                + "\n".join([f"- {t}" for t in trimmed])
+                + "\n"
+            )
 
         schema = {
             "questions": [
@@ -153,6 +169,7 @@ REQUIREMENTS:\n
 - Short: include response_lines (1-12). Do NOT include options.\n
 - Points: MCQ 2, TF 1, Short 3 (you may vary +/-0.5 if needed).\n
 - Use the CONTEXT when present; if context is empty, generate from general knowledge and clearly keep it on-topic.\n
+{avoid_hint}\n
 {teacher_line}\n
 SCHEMA EXAMPLE (do not copy values):\n{json.dumps(schema, ensure_ascii=False)}\n
 CONTEXT:\n{context}\n
@@ -183,6 +200,7 @@ Return only JSON.\n
             raise ValueError("LLM returned invalid quiz JSON: missing questions list.")
 
         out: List[GeneratedQuestion] = []
+        seen_norm: set[str] = set()
         for i, row in enumerate(rows[:question_count]):
             if not isinstance(row, dict):
                 continue
@@ -196,6 +214,14 @@ Return only JSON.\n
             prompt_text = str(row.get("prompt") or "").strip()
             if not prompt_text:
                 continue
+            pn = _norm_prompt(prompt_text)
+            if pn in avoid_norm:
+                warnings.append("Skipped a generated question that duplicated an existing prompt.")
+                continue
+            if pn in seen_norm:
+                warnings.append("Skipped a generated question that duplicated another generated prompt.")
+                continue
+            seen_norm.add(pn)
             points = float(row.get("points") or (2 if qtype == "mcq" else 1 if qtype == "tf" else 3))
             options = row.get("options")
             resp_lines = row.get("response_lines")
@@ -220,6 +246,14 @@ Return only JSON.\n
             else:
                 resp_lines = None
 
+            correct_idx = row.get("correct_option_index")
+            extra_data: Dict[str, Any] = {"reviewBadges": {"difficulty": diff_label}}
+            if correct_idx is not None:
+                try:
+                    extra_data["correct_option_index"] = int(correct_idx)
+                except (TypeError, ValueError):
+                    pass
+
             out.append(
                 GeneratedQuestion(
                     qid=str(row.get("id") or f"q{i+1}"),
@@ -228,7 +262,7 @@ Return only JSON.\n
                     points=points,
                     options=options,
                     response_lines=resp_lines,
-                    extra={"reviewBadges": {"difficulty": diff_label}},
+                    extra=extra_data,
                 )
             )
 

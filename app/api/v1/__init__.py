@@ -93,9 +93,6 @@ try:
     # YouTube quiz routes
     router.include_router(youtube_quiz_routes.router)
 
-    # Video library (recommendations for YouTube Quiz quick start)
-    router.include_router(video_library_routes.router)
-    
     logger.info("All API v1 routes registered successfully")
 except Exception as e:
     logger.error(f"Error registering API v1 routes: {e}", exc_info=True)
