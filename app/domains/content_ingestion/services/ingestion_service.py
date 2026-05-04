@@ -5,14 +5,18 @@ Provider-driven; checkpoints and observability; free mode supported.
 import os
 import hashlib
 import time
+import re
 from typing import Optional, Dict, Any, List, Tuple
 from uuid import UUID
 from pathlib import Path
 
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
+from sqlalchemy.exc import PendingRollbackError
 
 from app.core.logging import get_logger
 from app.core.config import settings
+from app.llm.config import llm_settings
 from app.domains.content_ingestion.models import (
     Document, PageText, Chunk, DocumentProcessingRun, ContentPack
 )
@@ -120,12 +124,102 @@ class IngestionService:
         else:
             self.math_provider = BaselineMathExtractionProvider()
 
+    def _select_embedding_provider_for_document(self, document: Document):
+        """
+        Select embedding provider for this document run.
+        If OCR_EMBEDDINGS_ONLY is enabled, OpenAI embeddings are restricted to OCR-processed docs.
+        """
+        emb = (settings.EMBEDDING_PROVIDER or "fake").lower()
+        ocr_used = bool((document.processing_metadata or {}).get("ocr_used"))
+        ocr_only = bool(settings.OCR_EMBEDDINGS_ONLY)
+        has_openai_key = bool((getattr(llm_settings, "OPENAI_API_KEY", None) or "").strip())
+
+        # Safe default: for OCR-processed documents, prefer real OpenAI embeddings when key is present.
+        # This keeps document ingestion high quality without enabling OpenAI for other modules.
+        if ocr_used and has_openai_key:
+            return OpenAIEmbeddingProvider()
+
+        if emb == "openai" and ocr_only and not ocr_used:
+            return FakeEmbeddingProvider()
+        if emb == "openai":
+            return OpenAIEmbeddingProvider()
+        if emb == "local":
+            return LocalSentenceTransformersEmbeddingProvider()
+        return FakeEmbeddingProvider()
+
+    @staticmethod
+    def _slugify_topic_id(value: str) -> str:
+        """Build stable ASCII-like IDs for inferred topic labels."""
+        s = (value or "").strip().lower()
+        s = re.sub(r"[^a-z0-9]+", "-", s)
+        s = re.sub(r"-{2,}", "-", s).strip("-")
+        return s or "topic"
+
+    @staticmethod
+    def _infer_page_topic_labels(pages: List[Any], document: Document) -> Dict[int, str]:
+        """
+        Infer page-level topic labels from the first meaningful line on each page.
+
+        This is used only when chapter_map / PDF outline metadata is unavailable.
+        It keeps the existing page-bin fallback as a safety net for weak headings.
+        """
+        if not pages:
+            return {}
+
+        doc_base = normalize_topic_label((document.title or os.path.splitext(document.filename or "")[0]), max_len=200)
+        page_to_topic: Dict[int, str] = {}
+        carry_topic: Optional[str] = None
+
+        for p in pages:
+            page_no = int(getattr(p, "page_no", 0) or 0)
+            text = str(getattr(p, "text", "") or "").replace("\u0000", "")
+            if page_no <= 0 or not text.strip():
+                continue
+
+            lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+            candidate = ""
+            for ln in lines[:8]:
+                clean = normalize_topic_label(ln, max_len=120)
+                if len(clean) < 4:
+                    continue
+                if len(clean) > 90:
+                    continue
+                # Skip obvious paragraph-like lines; headings are usually short and low punctuation.
+                punct = clean.count(".") + clean.count(",") + clean.count(";") + clean.count(":")
+                if punct > 1:
+                    continue
+                candidate = clean
+                break
+
+            if not candidate:
+                if carry_topic:
+                    page_to_topic[page_no] = carry_topic
+                continue
+
+            # Ignore generic "Page X" style labels.
+            lower = candidate.lower()
+            if re.fullmatch(r"page\s+\d+(\s+of\s+\d+)?", lower):
+                if carry_topic:
+                    page_to_topic[page_no] = carry_topic
+                continue
+
+            if doc_base and lower == doc_base.lower():
+                if carry_topic:
+                    page_to_topic[page_no] = carry_topic
+                continue
+
+            carry_topic = candidate
+            page_to_topic[page_no] = candidate
+
+        return page_to_topic
+
     @staticmethod
     def _ensure_chunk_topic_fallback_labels(
         chunks: List[Any],
         document: Document,
         *,
         page_count: int,
+        page_topic_map: Optional[Dict[int, str]] = None,
     ) -> Tuple[str, str, int]:
         """
         Label chunks the chapter map did not cover using page windows.
@@ -154,6 +248,24 @@ class IngestionService:
                 continue
             ps = int(getattr(ch, "page_start", None) or 1)
             pe = int(getattr(ch, "page_end", None) or ps)
+
+            # Prefer inferred page headings when available and consistent for this chunk span.
+            inferred = None
+            if page_topic_map:
+                span = range(min(ps, pe), max(ps, pe) + 1)
+                labels = {page_topic_map.get(pn) for pn in span if page_topic_map.get(pn)}
+                if len(labels) == 1:
+                    inferred = labels.pop()
+                elif len(labels) > 1:
+                    # If multiple labels occur in one chunk, use chunk start-page label.
+                    inferred = page_topic_map.get(ps)
+            if inferred:
+                label = normalize_topic_label(inferred, max_len=500)
+                ch.topic_title = label
+                ch.topic_id = f"scope:topic-{IngestionService._slugify_topic_id(label)}"
+                filled += 1
+                continue
+
             mid = max(1, (ps + pe) // 2)
             bin_id = max(0, (mid - 1) // page_bin)
             p_lo = bin_id * page_bin + 1
@@ -171,6 +283,8 @@ class IngestionService:
             meta = document.processing_metadata or {}
             if meta.get("toc_source") == "pdf_outline_auto":
                 mode = "pdf_outline_plus_page_bins" if filled else "pdf_outline_only"
+            elif page_topic_map:
+                mode = "inferred_page_headings_plus_page_bins" if filled else "page_bins_only"
             else:
                 mode = "page_bins_only"
 
@@ -256,6 +370,16 @@ class IngestionService:
             )
             self.db.commit()
             claimed = rows == 1
+            if claimed:
+                # Purge any partial artifacts from the failed run so retry starts clean
+                # (prevents duplicate chunks / vectors on re-processing)
+                self.db.query(Chunk).filter(Chunk.document_id == document_id).delete(synchronize_session=False)
+                self.db.query(PageText).filter(PageText.document_id == document_id).delete(synchronize_session=False)
+                self.db.commit()
+                logger.info(
+                    "ingestion_retry_purge",
+                    extra={"document_id": str(document_id), "action": "purged chunks+pages for clean retry"},
+                )
         else:
             raise ValueError(
                 f"Cannot ingest document {document_id} from status '{document.status}' "
@@ -274,6 +398,7 @@ class IngestionService:
             return document
 
         document = self.db.query(Document).filter(Document.id == document_id).first()
+        source_type = (document.source_type or "") if document else ""
 
         logger.info(f"Starting ingestion pipeline for document {document_id}")
         
@@ -300,7 +425,7 @@ class IngestionService:
                 raise ValueError("No text extracted from document")
             
             # PDF: classify digital vs scanned after extract (before OCR decision)
-            if document.source_type == "pdf" and pages:
+            if source_type == "pdf" and pages:
                 pdf_type = classify_pdf_after_extract(
                     [p.char_count for p in pages],
                     threshold_chars=getattr(settings, "SCANNED_THRESHOLD_CHARS", 50),
@@ -342,7 +467,7 @@ class IngestionService:
                 force_ocr=force_ocr,
                 skip_ocr=skip_ocr,
                 pages=pages,
-                source_type=document.source_type or "pdf",
+                source_type=source_type or "pdf",
             )
             ocr_engine_used = None
             ocr_mode_used = None
@@ -381,10 +506,10 @@ class IngestionService:
                             },
                         )
                     
-                    # If OCR is required but binaries are missing, fail with actionable error
+                    # Keep preflight errors as warnings first; hard-fail decision is made
+                    # after engine resolution (API engines may proceed without local binaries).
                     if needs_ocr and preflight_result["errors"]:
-                        error_msg = "\n".join(preflight_result["errors"])
-                        raise OcrPreflightError(error_msg)
+                        ocr_warnings.extend(preflight_result["errors"])
                 except OcrPreflightError:
                     raise  # Re-raise preflight errors as-is
                 except Exception as e:
@@ -404,15 +529,41 @@ class IngestionService:
             if ocr_decision:
                 ocr_engine_used = ocr_decision.engine_resolved
                 ocr_mode_used = ocr_decision.ocr_mode
+            strict_google_only = bool(getattr(settings, "OCR_STRICT_GOOGLE_ONLY", False))
             ocr_provider = get_ocr_provider_for_engine(ocr_engine_used or getattr(settings, "OCR_ENGINE_DEFAULT", "tesseract")) if needs_ocr else self.ocr_provider
             ocr_provider_ok = ocr_provider.validate_config() if needs_ocr else False
-            if needs_ocr and not ocr_provider_ok:
+            selected_engine = getattr(ocr_provider, "provider_name", "").lower()
+            if needs_ocr and strict_google_only and selected_engine != "google_document_ai":
                 raise RuntimeError(
-                    f"OCR required for document {document_id} (scanned/low-text PDF or image) but OCR provider is not available. "
-                    "Install Tesseract and Poppler: Windows https://github.com/UB-Mannheim/tesseract/wiki, "
-                    "Linux: sudo apt-get install tesseract-ocr poppler-utils. "
-                    "Do not silently continue with empty or low-quality text."
+                    "Strict OCR mode is enabled (OCR_STRICT_GOOGLE_ONLY=true): "
+                    f"resolved OCR engine is '{selected_engine or 'unknown'}', expected 'google_document_ai'. "
+                    "Set content pack ocr_policy=auto|math (not non_math) and configure Google Document AI credentials."
                 )
+            if needs_ocr and not ocr_provider_ok:
+                if strict_google_only:
+                    raise RuntimeError(
+                        "Strict OCR mode is enabled (OCR_STRICT_GOOGLE_ONLY=true) but Google Document AI is not configured. "
+                        "Set GOOGLE_APPLICATION_CREDENTIALS, DOCUMENT_AI_PROJECT_ID, and DOCUMENT_AI_PROCESSOR_ID."
+                    )
+                if selected_engine in ("google_document_ai", "mathpix"):
+                    fallback_provider = get_ocr_provider_for_engine(getattr(settings, "OCR_FALLBACK_ENGINE", "tesseract"))
+                    if fallback_provider.validate_config():
+                        ocr_provider = fallback_provider
+                        ocr_provider_ok = True
+                        ocr_warnings.append(f"fallback_used:{selected_engine}->{getattr(fallback_provider, 'provider_name', 'tesseract')}")
+                        ocr_warnings.append("fallback_reason:selected_api_provider_not_configured")
+                        ocr_engine_used = getattr(fallback_provider, "provider_name", ocr_engine_used)
+                    else:
+                        raise RuntimeError(
+                            f"OCR required for document {document_id}, selected API OCR provider '{selected_engine}' is not configured and fallback provider is unavailable."
+                        )
+                else:
+                    raise RuntimeError(
+                        f"OCR required for document {document_id} (scanned/low-text PDF or image) but OCR provider is not available. "
+                        "Install Tesseract and Poppler: Windows https://github.com/UB-Mannheim/tesseract/wiki, "
+                        "Linux: sudo apt-get install tesseract-ocr poppler-utils. "
+                        "Do not silently continue with empty or low-quality text."
+                    )
             ocr_attempted = False
             total_chars_before_ocr = total_chars  # Store before OCR
             if needs_ocr and ocr_provider_ok:
@@ -424,57 +575,73 @@ class IngestionService:
                     dpi = int(os.getenv("OCR_DPI") or 300)
                     thread_count = os.getenv("OCR_THREAD_COUNT")
                     total_pages = len(pages) if pages else (document.total_pages or 0)
+                    # Large PDFs: use smaller page windows to keep Google API payloads and latency bounded.
+                    if total_pages and total_pages >= 120:
+                        large_batch = int(os.getenv("OCR_BATCH_SIZE_LARGE", "5"))
+                        batch_size = max(1, min(batch_size, large_batch))
                     if total_pages <= 0:
                         pages = await ocr_provider.run_ocr(document.file_path, language="eng")
                         total_pages = len(pages)
                     else:
-                        ocr_pages: List[Any] = []
-                        for start_page in range(1, total_pages + 1, batch_size):
-                            end_page = min(total_pages, start_page + batch_size - 1)
-                            logger.info(
-                                "ocr_batch_start",
-                                extra={
-                                    "document_id": str(document_id),
-                                    "start_page": start_page,
-                                    "end_page": end_page,
-                                    "dpi": dpi,
-                                    "batch_size": batch_size,
-                                    "engine": getattr(ocr_provider, "provider_name", "unknown"),
-                                },
-                            )
-                            batch = await ocr_provider.run_ocr(
+                        # Google Document AI async batch mode should process the full PDF in one operation.
+                        # Splitting into many small windows triggers many independent batch jobs and is slower
+                        # and less reliable for large textbooks.
+                        if selected_engine == "google_document_ai":
+                            pages = await ocr_provider.run_ocr(
                                 document.file_path,
                                 language="eng",
-                                first_page=start_page,
-                                last_page=end_page,
                                 dpi=dpi,
                                 thread_count=thread_count,
                             )
-                            for page in batch:
-                                page_text = self.db.query(PageText).filter(
-                                    PageText.document_id == document_id,
-                                    PageText.page_no == page.page_no
-                                ).first()
-                                if page_text:
-                                    st = sanitize_pg_text(page.text)
-                                    page_text.text = st
-                                    page_text.char_count = len(st.strip())
-                                    page_text.ocr_confidence = getattr(page, "ocr_confidence", None)
-                                    page_text.ocr_engine = getattr(page, "ocr_engine", None) or getattr(ocr_provider, "provider_name", None)
-                            ocr_pages.extend(batch)
-                            processing_run.pages_processed = min(end_page, total_pages)
-                            self.db.commit()
-                            logger.info(
-                                "ocr_batch_complete",
-                                extra={
-                                    "document_id": str(document_id),
-                                    "start_page": start_page,
-                                    "end_page": end_page,
-                                    "pages_processed": processing_run.pages_processed,
-                                    "total_pages": total_pages,
-                                },
-                            )
-                        pages = ocr_pages
+                            total_pages = len(pages)
+                        else:
+                            ocr_pages: List[Any] = []
+                            for start_page in range(1, total_pages + 1, batch_size):
+                                end_page = min(total_pages, start_page + batch_size - 1)
+                                logger.info(
+                                    "ocr_batch_start",
+                                    extra={
+                                        "document_id": str(document_id),
+                                        "start_page": start_page,
+                                        "end_page": end_page,
+                                        "dpi": dpi,
+                                        "batch_size": batch_size,
+                                        "engine": getattr(ocr_provider, "provider_name", "unknown"),
+                                    },
+                                )
+                                batch = await ocr_provider.run_ocr(
+                                    document.file_path,
+                                    language="eng",
+                                    first_page=start_page,
+                                    last_page=end_page,
+                                    dpi=dpi,
+                                    thread_count=thread_count,
+                                )
+                                for page in batch:
+                                    page_text = self.db.query(PageText).filter(
+                                        PageText.document_id == document_id,
+                                        PageText.page_no == page.page_no
+                                    ).first()
+                                    if page_text:
+                                        st = sanitize_pg_text(page.text)
+                                        page_text.text = st
+                                        page_text.char_count = len(st.strip())
+                                        page_text.ocr_confidence = getattr(page, "ocr_confidence", None)
+                                        page_text.ocr_engine = getattr(page, "ocr_engine", None) or getattr(ocr_provider, "provider_name", None)
+                                ocr_pages.extend(batch)
+                                processing_run.pages_processed = min(end_page, total_pages)
+                                self.db.commit()
+                                logger.info(
+                                    "ocr_batch_complete",
+                                    extra={
+                                        "document_id": str(document_id),
+                                        "start_page": start_page,
+                                        "end_page": end_page,
+                                        "pages_processed": processing_run.pages_processed,
+                                        "total_pages": total_pages,
+                                    },
+                                )
+                            pages = ocr_pages
                     duration_ms = int((time.perf_counter() - t0) * 1000)
                     ocr_engine_used = getattr(ocr_provider, "provider_name", ocr_engine_used)
                     ocr_mode_used = ocr_mode_used or getattr(settings, "OCR_MODE", "local")
@@ -505,10 +672,53 @@ class IngestionService:
                     self.db.commit()
                 except Exception as ocr_error:
                     logger.error(f"OCR failed for document {document_id}: {ocr_error}", exc_info=True)
-                    raise RuntimeError(
-                        f"OCR failed: {ocr_error}. Install Tesseract and Poppler (pdf2image). "
-                        "Fail loudly; do not continue with empty pages."
-                    ) from ocr_error
+                    # API engines: graceful fallback to local tesseract when provider fails
+                    if selected_engine in ("google_document_ai", "mathpix"):
+                        if strict_google_only:
+                            raise RuntimeError(
+                                "Strict OCR mode is enabled (OCR_STRICT_GOOGLE_ONLY=true): "
+                                f"Google OCR failed and local fallback is disabled. Root error: {ocr_error}"
+                            ) from ocr_error
+                        try:
+                            fallback_provider = get_ocr_provider_for_engine(getattr(settings, "OCR_FALLBACK_ENGINE", "tesseract"))
+                            if not fallback_provider.validate_config():
+                                raise RuntimeError("Fallback OCR provider is not configured")
+                            ocr_warnings.append(f"fallback_used:{selected_engine}->" + getattr(fallback_provider, "provider_name", "tesseract"))
+                            ocr_warnings.append(f"fallback_reason:{type(ocr_error).__name__}:{ocr_error}")
+                            pages = await fallback_provider.run_ocr(document.file_path, language="eng")
+                            ocr_engine_used = getattr(fallback_provider, "provider_name", "tesseract")
+                            ocr_mode_used = ocr_mode_used or getattr(settings, "OCR_MODE", "local")
+                            total_chars = sum(p.char_count for p in pages)
+                            meta = dict(document.processing_metadata or {})
+                            meta["ocr_used"] = True
+                            meta["ocr_engine_used"] = ocr_engine_used
+                            meta["ocr_mode"] = ocr_mode_used
+                            meta["ocr_decision_reason"] = ocr_decision_reason
+                            meta["ocr_fallback_used"] = True
+                            meta["ocr_fallback_from_engine"] = selected_engine
+                            meta["ocr_fallback_to_engine"] = ocr_engine_used
+                            if ocr_warnings:
+                                meta["ocr_warnings"] = ocr_warnings
+                            document.processing_metadata = meta
+                            self.db.commit()
+                            logger.warning(
+                                "ocr_fallback_success",
+                                extra={
+                                    "document_id": str(document_id),
+                                    "from_engine": selected_engine,
+                                    "to_engine": ocr_engine_used,
+                                    "total_chars_after_fallback": total_chars,
+                                },
+                            )
+                        except Exception as fallback_error:
+                            raise RuntimeError(
+                                f"OCR failed on engine '{selected_engine}' and fallback also failed: {fallback_error}"
+                            ) from fallback_error
+                    else:
+                        raise RuntimeError(
+                            f"OCR failed: {ocr_error}. Install Tesseract and Poppler (pdf2image). "
+                            "Fail loudly; do not continue with empty pages."
+                        ) from ocr_error
             else:
                 # No OCR used — store decision metadata
                 meta = dict(document.processing_metadata or {})
@@ -659,9 +869,17 @@ class IngestionService:
                 raise ValueError(
                     f"Chunking checkpoint failed: chunks=0. pages={len(normalized_pages)}, non_empty_pages={non_empty}, sample_snippet={sample!r}"
                 )
+            page_topic_map = None
+            if not document.chapter_map:
+                meta_now = dict(document.processing_metadata or {})
+                if meta_now.get("toc_source") != "pdf_outline_auto":
+                    page_topic_map = self._infer_page_topic_labels(normalized_pages, document)
             topic_scope_mode, primary_topic_label, topic_fallback_fill_count = (
                 self._ensure_chunk_topic_fallback_labels(
-                    chunks, document, page_count=len(normalized_pages)
+                    chunks,
+                    document,
+                    page_count=len(normalized_pages),
+                    page_topic_map=page_topic_map,
                 )
             )
             # Role tagging: assign chunk.metadata from structure_map or auto-heuristics
@@ -711,6 +929,15 @@ class IngestionService:
             # Step 5: Embedding
             t0 = time.perf_counter()
             await self._update_status(document_id, DocumentStatus.EMBEDDING.value, processing_run)
+            self.embedding_provider = self._select_embedding_provider_for_document(document)
+            strict_openai_embeddings = bool(getattr(settings, "OCR_STRICT_OPENAI_EMBEDDINGS", False))
+            ocr_used_for_doc = bool((document.processing_metadata or {}).get("ocr_used"))
+            if strict_openai_embeddings and ocr_used_for_doc and getattr(self.embedding_provider, "provider_name", "") != "openai":
+                raise RuntimeError(
+                    "Strict embedding mode is enabled (OCR_STRICT_OPENAI_EMBEDDINGS=true): "
+                    f"OCR document resolved embedding provider '{getattr(self.embedding_provider, 'provider_name', 'unknown')}', expected 'openai'. "
+                    "Set EMBEDDING_PROVIDER=openai and configure OPENAI_API_KEY."
+                )
             chunk_texts = [chunk.text for chunk in chunks]
             try:
                 embeddings = await self.embedding_provider.embed(chunk_texts)
@@ -723,6 +950,11 @@ class IngestionService:
                     and "billing" not in low
                 ):
                     raise
+                if strict_openai_embeddings and ocr_used_for_doc:
+                    raise RuntimeError(
+                        "Strict embedding mode is enabled (OCR_STRICT_OPENAI_EMBEDDINGS=true): "
+                        f"OpenAI embedding failed and fake fallback is disabled. Root error: {embed_err}"
+                    ) from embed_err
                 logger.warning(
                     "embedding_provider_quota_fallback_fake",
                     extra={"document_id": str(document_id), "error": str(embed_err)},
@@ -764,20 +996,17 @@ class IngestionService:
             qa_service = QAService(self.db)
             qa_validation = qa_service.run_qa_validation(document_id)
             
-            # Step 8: Verify chunks and embeddings were saved (embedding_v for fake/local)
-            from app.domains.content_ingestion.models import Chunk
+            # Step 8: Verify chunks and embeddings were saved.
+            # Primary store is embedding_v for all active providers in this pipeline.
+            # Keep legacy embedding as fallback for backward compatibility.
             active_provider = self.embedding_provider.provider_name
-            if active_provider in ("fake", "local"):
-                chunks_with_embeddings = self.db.query(Chunk).filter(
-                    Chunk.document_id == document_id,
-                    Chunk.embedding_v.isnot(None),
-                    Chunk.embedding_model == active_provider
-                ).count()
-            else:
-                chunks_with_embeddings = self.db.query(Chunk).filter(
-                    Chunk.document_id == document_id,
-                    Chunk.embedding.isnot(None)
-                ).count()
+            chunks_with_embeddings = self.db.query(Chunk).filter(
+                Chunk.document_id == document_id,
+                (
+                    Chunk.embedding_v.isnot(None)
+                    | Chunk.embedding.isnot(None)
+                )
+            ).count()
             
             if chunks_with_embeddings == 0:
                 error_msg = f"No chunks with embeddings found. Expected chunks but found 0. Document cannot be published."
@@ -810,18 +1039,14 @@ class IngestionService:
                              f"embedding_completeness={qa_validation.embedding_completeness_check}, "
                              f"vector_retrieval={qa_validation.vector_retrieval_check}")
             
-            # Verify again before publishing (embedding_v for fake/local)
-            if active_provider in ("fake", "local"):
-                final_chunk_count = self.db.query(Chunk).filter(
-                    Chunk.document_id == document_id,
-                    Chunk.embedding_v.isnot(None),
-                    Chunk.embedding_model == active_provider
-                ).count()
-            else:
-                final_chunk_count = self.db.query(Chunk).filter(
-                    Chunk.document_id == document_id,
-                    Chunk.embedding.isnot(None)
-                ).count()
+            # Verify again before publishing (embedding_v primary, legacy embedding fallback)
+            final_chunk_count = self.db.query(Chunk).filter(
+                Chunk.document_id == document_id,
+                (
+                    Chunk.embedding_v.isnot(None)
+                    | Chunk.embedding.isnot(None)
+                )
+            ).count()
             
             if final_chunk_count == 0:
                 error_msg = f"Chunks verification failed before publishing. Found 0 chunks with embeddings."
@@ -851,6 +1076,11 @@ class IngestionService:
             
         except Exception as e:
             logger.error(f"Ingestion failed for document {document_id}: {e}", exc_info=True)
+            # Reset failed transaction state before any additional DB access in this handler.
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
             
             # Provide more detailed error messages based on error type
             error_str = str(e)
@@ -883,6 +1113,18 @@ class IngestionService:
             elif "tesseract" in error_str.lower() or "ocr" in error_str.lower() or "TesseractNotFoundError" in error_str:
                 error_code = "OCR_ERROR"
                 remediation_hint = "Install Tesseract OCR: https://github.com/UB-Mannheim/tesseract/wiki (Windows) or 'sudo apt-get install tesseract-ocr' (Linux)"
+            elif "google document ai" in error_str.lower() and ("timeout" in error_str.lower() or "deadline" in error_str.lower()):
+                error_code = "OCR_TIMEOUT"
+                remediation_hint = (
+                    "Google OCR timed out. The backend will retry with exponential backoff. "
+                    "If it still fails, increase OCR_API_TIMEOUT_SECONDS and verify Document AI quota/region health."
+                )
+            elif "large pdf requires async batch ocr" in error_str.lower():
+                error_code = "OCR_CONFIG_ERROR"
+                remediation_hint = (
+                    "Large PDF requires async batch OCR, but Cloud Storage is not configured. "
+                    "Set DOCUMENT_AI_GCS_BUCKET (and optional DOCUMENT_AI_GCS_PREFIX), then retry."
+                )
             elif "file not found" in error_str.lower() or "FileNotFoundError" in error_str:
                 error_code = "FILE_NOT_FOUND"
                 remediation_hint = "The uploaded file may have been deleted or moved. Try re-uploading the document."
@@ -1153,7 +1395,11 @@ class IngestionService:
         remediation_hint: Optional[str] = None
     ):
         """Update document and processing run status."""
-        document = self.db.query(Document).filter(Document.id == document_id).first()
+        try:
+            document = self.db.query(Document).filter(Document.id == document_id).first()
+        except PendingRollbackError:
+            self.db.rollback()
+            document = self.db.query(Document).filter(Document.id == document_id).first()
         if document:
             document.status = status
             if error_code:
@@ -1187,7 +1433,66 @@ class IngestionService:
         }
         processing_run.progress_percentage = status_progress.get(status, 0)
         
-        self.db.commit()
+        try:
+            self.db.commit()
+        except PendingRollbackError:
+            # Recover from invalid transaction state and retry status update once.
+            self.db.rollback()
+            fresh_document = self.db.query(Document).filter(Document.id == document_id).first()
+            if fresh_document:
+                fresh_document.status = status
+                if error_code:
+                    fresh_document.error_code = error_code
+                if error_message:
+                    fresh_document.error_message = error_message
+                if remediation_hint:
+                    fresh_document.remediation_hint = remediation_hint
+
+            fresh_run = self.db.query(DocumentProcessingRun).filter(
+                DocumentProcessingRun.id == processing_run.id
+            ).first()
+            if fresh_run:
+                fresh_run.status = status
+                fresh_run.current_step = status
+                fresh_run.progress_percentage = status_progress.get(status, 0)
+                if error_code:
+                    fresh_run.error_code = error_code
+                if error_message:
+                    fresh_run.error_message = error_message
+                if remediation_hint:
+                    fresh_run.remediation_hint = remediation_hint
+            self.db.commit()
+        except StaleDataError:
+            # Can happen if a retry/reset removed processing rows while an old worker is still running.
+            self.db.rollback()
+            fresh_document = self.db.query(Document).filter(Document.id == document_id).first()
+            if fresh_document:
+                fresh_document.status = status
+                if error_code:
+                    fresh_document.error_code = error_code
+                if error_message:
+                    fresh_document.error_message = error_message
+                if remediation_hint:
+                    fresh_document.remediation_hint = remediation_hint
+
+            fresh_run = self.db.query(DocumentProcessingRun).filter(
+                DocumentProcessingRun.id == processing_run.id
+            ).first()
+            if fresh_run:
+                fresh_run.status = status
+                fresh_run.current_step = status
+                fresh_run.progress_percentage = status_progress.get(status, 0)
+                if error_code:
+                    fresh_run.error_code = error_code
+                if error_message:
+                    fresh_run.error_message = error_message
+                if remediation_hint:
+                    fresh_run.remediation_hint = remediation_hint
+            self.db.commit()
+            logger.warning(
+                "status_update_recovered_after_stale_data",
+                extra={"document_id": str(document_id), "status": status},
+            )
         logger.info(f"Updated document {document_id} status to {status}")
 
     def apply_structure_map_to_chunks(self, document_id: UUID) -> int:

@@ -32,6 +32,7 @@ _GRADE_SEP = re.compile(r"[,/\-]")
 # When chunks exist but chapter_map / chunk.topic_title produced no strands, the UI still
 # needs a selectable scope. Selecting this strand disables topic_title filtering (full pack).
 QUIZ_CATALOG_FULL_TEXT_STRAND = "Entire book (no chapter map)"
+_PAGE_RANGE_LABEL_RE = re.compile(r".+\s·\spp\.\s*\d+\s*[–-]\s*\d+$", re.IGNORECASE)
 
 
 def _chunks_match_topic_strings_clause(topic_strings: List[str]) -> ColumnElement:
@@ -58,6 +59,11 @@ def _topic_strings_apply_chunk_filter(topic_strings: List[str]) -> bool:
     if QUIZ_CATALOG_FULL_TEXT_STRAND in topic_strings:
         return False
     return True
+
+
+def _is_page_range_fallback_label(label: str) -> bool:
+    """Detect generic fallback labels like '<doc> · pp. 1–10'."""
+    return bool(_PAGE_RANGE_LABEL_RE.match((label or "").strip()))
 
 
 class QuizCatalogService:
@@ -340,6 +346,12 @@ class QuizCatalogService:
             )
             if indexed_chunks > 0:
                 topic_counts[QUIZ_CATALOG_FULL_TEXT_STRAND] = indexed_chunks
+
+        # If richer topic strands exist, suppress generic page-range fallback labels
+        # so quiz topic chips stay clear for teachers.
+        non_fallback_labels = [lbl for lbl in topic_counts.keys() if not _is_page_range_fallback_label(lbl)]
+        if non_fallback_labels:
+            topic_counts = {lbl: cnt for lbl, cnt in topic_counts.items() if not _is_page_range_fallback_label(lbl)}
 
         topics = sorted(
             [TopicStrand(label=lbl, count=cnt) for lbl, cnt in topic_counts.items()],

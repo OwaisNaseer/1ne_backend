@@ -57,6 +57,10 @@ def generate_image_with_model(params: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns a provider-agnostic dict consumed by PixGenService.
     """
+    if getattr(llm_settings, "OPENAI_EMBEDDINGS_ONLY_MODE", False):
+        raise ValueError(
+            "PixGen OpenAI usage is disabled (OPENAI_EMBEDDINGS_ONLY_MODE=true)."
+        )
     if not getattr(llm_settings, "LLM_OUTBOUND_ENABLED", True):
         raise ValueError(
             "Image generation is disabled because LLM_OUTBOUND_ENABLED=false. "

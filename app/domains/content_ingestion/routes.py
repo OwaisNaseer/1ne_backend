@@ -4,6 +4,7 @@ Content Ingestion API routes.
 import asyncio
 import json
 import time
+import hashlib
 from typing import List, Optional
 from uuid import UUID, uuid4
 from pathlib import Path
@@ -40,6 +41,39 @@ from app.domains.subscriptions.feature_keys import WORKSHEET_GENERATE
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["content-ingestion"])
+
+
+async def _save_upload_file_stream(
+    upload: UploadFile,
+    destination: Path,
+    *,
+    max_size_bytes: int,
+    chunk_size: int = 2 * 1024 * 1024,
+) -> tuple[int, str]:
+    """Stream UploadFile to disk with size guard and incremental hash."""
+    total = 0
+    hasher = hashlib.sha256()
+    hard_limit = int(getattr(settings, "OCR_MAX_UPLOAD_SIZE_MB_HARD", 100)) * 1024 * 1024
+    with open(destination, "wb") as out:
+        while True:
+            chunk = await upload.read(chunk_size)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > hard_limit:
+                raise ValueError(
+                    f"File is too large ({total / 1024 / 1024:.2f}MB). "
+                    f"Hard limit is {int(getattr(settings, 'OCR_MAX_UPLOAD_SIZE_MB_HARD', 100))}MB. "
+                    "Please split the PDF before upload."
+                )
+            if total > max_size_bytes:
+                raise ValueError(
+                    f"File size ({total / 1024 / 1024:.2f}MB) exceeds maximum ({settings.MAX_FILE_SIZE_MB}MB)"
+                )
+            out.write(chunk)
+            hasher.update(chunk)
+    await upload.seek(0)
+    return total, hasher.hexdigest()
 
 
 # ========== Content Pack Endpoints ==========
@@ -196,15 +230,9 @@ async def upload_document_with_stream(
                 return
             
             # Read file
-            yield f"data: {json.dumps({'type': 'progress', 'step': 'reading', 'message': 'Reading file...', 'percentage': 15})}\n\n"
+            yield f"data: {json.dumps({'type': 'progress', 'step': 'uploading', 'message': 'Uploading file...', 'percentage': 15})}\n\n"
             await asyncio.sleep(0.05)
-            
-            file_content = await file.read()
-            file_size = len(file_content)
             max_size = settings.MAX_FILE_SIZE_MB * 1024 * 1024
-            if file_size > max_size:
-                yield f"data: {json.dumps({'type': 'error', 'message': f'File size ({file_size / 1024 / 1024:.2f}MB) exceeds maximum ({settings.MAX_FILE_SIZE_MB}MB)'})}\n\n"
-                return
             
             # Step 2: Create or get pack
             yield f"data: {json.dumps({'type': 'progress', 'step': 'pack', 'message': 'Setting up content pack...', 'percentage': 30})}\n\n"
@@ -255,15 +283,19 @@ async def upload_document_with_stream(
             unique_filename = f"{uuid.uuid4()}_{int(datetime.now().timestamp())}{file_ext}"
             file_path = documents_dir / unique_filename
             
-            with open(file_path, "wb") as f:
-                f.write(file_content)
+            try:
+                file_size, file_hash = await _save_upload_file_stream(
+                    file,
+                    file_path,
+                    max_size_bytes=max_size,
+                )
+            except ValueError as ve:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(ve)})}\n\n"
+                return
             
             # Step 4: Create document record
             yield f"data: {json.dumps({'type': 'progress', 'step': 'creating', 'message': 'Creating document record...', 'percentage': 70})}\n\n"
             await asyncio.sleep(0.05)
-            
-            import hashlib
-            file_hash = hashlib.sha256(file_content).hexdigest()
             
             filename_lower = file.filename.lower()
             if filename_lower.endswith('.pdf'):
@@ -314,7 +346,7 @@ async def upload_document_with_stream(
             await asyncio.sleep(0.05)
             
             # Step 5: Start processing
-            yield f"data: {json.dumps({'type': 'progress', 'step': 'processing', 'message': 'Starting document processing...', 'percentage': 90})}\n\n"
+            yield f"data: {json.dumps({'type': 'progress', 'step': 'processing_ocr_async', 'message': 'Processing OCR (async)...', 'percentage': 90})}\n\n"
             await asyncio.sleep(0.05)
             
             # Trigger background ingestion job
@@ -372,15 +404,8 @@ async def upload_document(
             detail="No file provided"
         )
     
-    # Check file size
-    file_content = await file.read()
-    file_size = len(file_content)
+    # Check file size while streaming to disk (avoid loading entire file into memory)
     max_size = settings.MAX_FILE_SIZE_MB * 1024 * 1024
-    if file_size > max_size:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File size ({file_size / 1024 / 1024:.2f}MB) exceeds maximum ({settings.MAX_FILE_SIZE_MB}MB)"
-        )
     
     # Determine source type
     filename_lower = file.filename.lower()
@@ -406,12 +431,17 @@ async def upload_document(
     unique_filename = f"{uuid.uuid4()}_{int(datetime.now().timestamp())}{file_ext}"
     file_path = documents_dir / unique_filename
     
-    with open(file_path, "wb") as f:
-        f.write(file_content)
-    
-    # Calculate file hash
-    import hashlib
-    file_hash = hashlib.sha256(file_content).hexdigest()
+    try:
+        file_size, file_hash = await _save_upload_file_stream(
+            file,
+            file_path,
+            max_size_bytes=max_size,
+        )
+    except ValueError as ve:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(ve),
+        ) from ve
     
     # Parse chapter map if provided
     chapter_map_data = None
@@ -705,15 +735,25 @@ async def retry_document_processing(
 
     retryable = {
         DocumentStatus.FAILED.value,
-        DocumentStatus.TEXT_EXTRACTING.value,
-        DocumentStatus.OCR_RUNNING.value,
-        DocumentStatus.NORMALIZING.value,
-        DocumentStatus.CHUNKING.value,
-        DocumentStatus.EMBEDDING.value,
-        DocumentStatus.INDEXING.value,
-        DocumentStatus.QA_VALIDATION.value,
     }
     if document.status not in retryable:
+        in_progress = {
+            DocumentStatus.TEXT_EXTRACTING.value,
+            DocumentStatus.OCR_RUNNING.value,
+            DocumentStatus.NORMALIZING.value,
+            DocumentStatus.CHUNKING.value,
+            DocumentStatus.EMBEDDING.value,
+            DocumentStatus.INDEXING.value,
+            DocumentStatus.QA_VALIDATION.value,
+        }
+        if document.status in in_progress:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Document is currently processing ({document.status}). "
+                    "Do not retry yet; wait for completion or failure."
+                ),
+            )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot retry document with status: {document.status}",

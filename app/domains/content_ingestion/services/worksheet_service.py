@@ -1057,6 +1057,35 @@ QUESTION RULES:
             "marking_scheme": marking_scheme_out,
         }
     
+    def _resolve_difficulty_mix(
+        self,
+        difficulty: Optional[str],
+        difficulty_mix: Optional[Dict[str, float]],
+    ) -> Dict[str, float]:
+        if difficulty == "easy":
+            return {"easy": 1.0, "medium": 0.0, "hard": 0.0}
+        if difficulty == "medium":
+            return {"easy": 0.0, "medium": 1.0, "hard": 0.0}
+        if difficulty == "hard":
+            return {"easy": 0.0, "medium": 0.0, "hard": 1.0}
+        if difficulty_mix:
+            return difficulty_mix
+        return {"easy": 0.3, "medium": 0.5, "hard": 0.2}
+
+    def _strip_option_letter_prefix(self, text: str) -> str:
+        import re as _re
+        return _re.sub(r'^[A-Za-z][).]\s*', '', text)
+
+    def _build_difficulty_contract(
+        self,
+        difficulty: Optional[str],
+        difficulty_mix: Optional[Dict[str, float]],
+    ) -> str:
+        if not difficulty:
+            return ""
+        level = difficulty.upper()
+        return f"DIFFICULTY CONTRACT: {level}\nAll questions must be {level} difficulty."
+
     def _generate_signature_hash(
         self,
         pack_id: UUID,

@@ -162,7 +162,14 @@ def _engine_available(engine: str) -> bool:
         return bool(os.getenv("MATHPIX_APP_ID") and os.getenv("MATHPIX_APP_KEY"))
     if engine == "google_document_ai":
         import os
-        return bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or os.getenv("DOCUMENT_AI_API_KEY"))
+        cred_path = getattr(settings, "GOOGLE_APPLICATION_CREDENTIALS", None) or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        processor_id = getattr(settings, "DOCUMENT_AI_PROCESSOR_ID", None) or os.getenv("DOCUMENT_AI_PROCESSOR_ID")
+        api_key = getattr(settings, "DOCUMENT_AI_API_KEY", None) or os.getenv("DOCUMENT_AI_API_KEY")
+        # Service-account + processor is the primary production path.
+        if cred_path and processor_id and os.path.exists(cred_path):
+            return True
+        # Keep backward-compat flag for older setups, but do not claim full readiness.
+        return bool(api_key)
     return True
 
 
