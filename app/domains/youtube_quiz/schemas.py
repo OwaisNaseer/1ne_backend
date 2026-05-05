@@ -1,6 +1,7 @@
 """
 Schemas for YouTube quiz generation endpoint.
 """
+from datetime import datetime
 from typing import Any, List, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -179,6 +180,19 @@ class YouTubeQuizQuestion(BaseModel):
 class YouTubeQuizGenerateResponse(BaseModel):
     """Response shape expected by frontend quiz preview state."""
 
+    id: str | None = None
     title: str
     summary: str
     sections: List[YouTubeQuizSection]
+
+
+class YoutubeQuizGenerationDetailResponse(YouTubeQuizGenerateResponse):
+    """Persisted generation row including request metadata."""
+
+    video_url: str
+    grade_band: str
+    subject_lens: str
+    learning_focus: str
+    quiz_language: str
+    question_count: int
+    created_at: datetime

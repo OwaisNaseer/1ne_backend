@@ -119,6 +119,8 @@ class QuizResponse(BaseModel):
     status: QuizStatus
     assignedAt: Optional[datetime] = None
     dueAt: Optional[datetime] = None
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
 
     submissionCount: int
     avgScore: float

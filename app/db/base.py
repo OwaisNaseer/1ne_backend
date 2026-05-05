@@ -58,6 +58,15 @@ from app.domains.chatbots.models import (  # noqa: F401, E402
 # Import pixgen models
 from app.domains.pixgen.models import PixGenGeneration  # noqa: F401, E402
 
+# Import youtube quiz models
+from app.domains.youtube_quiz.models import YoutubeQuizGeneration  # noqa: F401, E402
+
+# Import history annotation models
+from app.domains.user_history.models import (  # noqa: F401, E402
+    UserContentPin,
+    UserContentFeedback,
+)
+
 # Import content ingestion models
 from app.domains.content_ingestion.models import (  # noqa: F401, E402
     ContentPack,
@@ -75,6 +84,13 @@ from app.domains.teacher_quiz.models import (  # noqa: F401, E402
     TeacherQuiz,
     TeacherQuizQuestion,
     TeacherQuizGenerationRun,
+)
+
+from app.domains.teacher_exam.models import (  # noqa: F401, E402
+    TeacherExam,
+    TeacherExamSection,
+    TeacherExamQuestion,
+    TeacherExamGenerationRun,
 )
 
 from app.domains.teacher_assignment.models import (  # noqa: F401, E402

@@ -2,6 +2,7 @@
 Template API routes (v1).
 """
 import json
+import uuid
 from typing import List, Optional, Dict, Any, AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
@@ -16,6 +17,7 @@ from app.domains.auth.models import User
 from app.models.template import Template, TemplateCategory
 from app.models.template_version import TemplateVersion, TemplateVersionStatus
 from app.models.template_execution import TemplateExecution
+from app.schemas.template_execution import TemplateExecutionPublic
 from app.models.template_favorite import TemplateFavorite
 from app.schemas.template import (
     TemplateListItem,
@@ -712,5 +714,66 @@ def toggle_favorite(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error toggling favorite: {str(e)[:200]}"
         )
+
+
+@router.get(
+    "/api/v1/template-executions/{execution_id}",
+    response_model=TemplateExecutionPublic,
+)
+def get_template_execution(
+    execution_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TemplateExecutionPublic:
+    """Return a saved template execution for the current user (history restore)."""
+    row = (
+        db.query(TemplateExecution)
+        .filter(
+            TemplateExecution.id == execution_id,
+            TemplateExecution.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Execution not found")
+
+    template = db.query(Template).filter(Template.id == row.template_id).first()
+    if not template:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+
+    return TemplateExecutionPublic(
+        id=row.id,
+        template_id=row.template_id,
+        template_slug=template.slug,
+        template_version=row.template_version,
+        input_data=row.input_data or {},
+        output_data=row.output_data,
+        model_used=row.model_used,
+        provider_used=row.provider_used,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+@router.delete("/api/v1/template-executions/{execution_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_template_execution(
+    execution_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a template execution owned by the current user (history cleanup)."""
+    row = (
+        db.query(TemplateExecution)
+        .filter(
+            TemplateExecution.id == execution_id,
+            TemplateExecution.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Execution not found")
+    db.delete(row)
+    db.commit()
+    return None
 
 

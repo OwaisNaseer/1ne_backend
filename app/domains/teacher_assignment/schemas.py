@@ -109,6 +109,8 @@ class AssignmentResponse(BaseModel):
     classes: List[str]
     type: str
     dueAt: Optional[datetime] = None
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
     assignedCount: int
     submitted: int
     pending: int

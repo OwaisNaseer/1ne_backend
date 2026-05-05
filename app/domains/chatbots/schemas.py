@@ -118,6 +118,16 @@ class MessageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class MessagesPage(BaseModel):
+    """Paginated slice of messages (newest page first; use `before` cursor to load older)."""
+
+    items: List[MessageResponse] = []
+    has_more: bool = False
+    next_before: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # Request schemas
 class SendMessageRequest(BaseModel):
     """Request to send a message to a chatbot."""
@@ -170,6 +180,21 @@ class ExecuteCapabilityResponse(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     usage_id: Optional[UUID] = None
     progress_update: Optional[Dict[str, Any]] = None
+    conversation_id: Optional[UUID] = None
+
+
+class HistoryLogRequest(BaseModel):
+    """Client-side logging for non-chat specialized tools (stores as a chatbot conversation)."""
+
+    title: Optional[str] = Field(None, max_length=200)
+    user_content: str = Field(..., min_length=1, max_length=10000)
+    assistant_content: str = Field(..., min_length=1, max_length=50000)
+    metadata: Optional[Dict[str, Any]] = None
+    conversation_id: Optional[UUID] = None
+
+
+class HistoryLogResponse(BaseModel):
+    conversation_id: UUID
 
 
 # Update forward references

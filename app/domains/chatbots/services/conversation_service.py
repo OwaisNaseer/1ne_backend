@@ -1,12 +1,12 @@
 """
 Conversation service for managing chatbot conversations.
 """
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from uuid import UUID
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, desc
+from sqlalchemy import and_, desc, tuple_
 
 from app.core.logging import get_logger
 from app.domains.chatbots.models import (
@@ -63,7 +63,7 @@ class ConversationService:
             user_id=user_id,
             tenant_id=tenant_id,
             title=title or "New Conversation",
-            metadata=metadata or {},
+            conversation_metadata=metadata or {},
         )
         self.db.add(conversation)
         self.db.commit()
@@ -114,3 +114,75 @@ class ConversationService:
         words = first_message.split()[:6]
         title = " ".join(words)
         return title[:50] + "..." if len(title) > 50 else title
+
+    def list_messages(
+        self,
+        conversation_id: UUID,
+        user_id: UUID,
+        *,
+        limit: int = 50,
+        before_cursor: Optional[str] = None,
+    ) -> Tuple[List[ChatbotMessage], bool, Optional[str]]:
+        """
+        Paginate messages newest-first: returns up to `limit` messages older than `before_cursor`.
+
+        Cursor format: "{iso8601}|{message_uuid}" (oldest message boundary for next "load older" page).
+        """
+        conv = self.get_conversation(conversation_id, user_id)
+        if not conv:
+            return [], False, None
+
+        lim = max(1, min(limit, 200))
+
+        before_ts: Optional[datetime] = None
+        before_id: Optional[UUID] = None
+        if before_cursor:
+            if "|" in before_cursor:
+                ts_part, id_part = before_cursor.split("|", 1)
+                try:
+                    before_ts = datetime.fromisoformat(ts_part.replace("Z", "+00:00"))
+                    before_id = UUID(id_part.strip())
+                except (ValueError, AttributeError):
+                    before_ts, before_id = None, None
+            else:
+                try:
+                    mid = UUID(before_cursor.strip())
+                    msg = (
+                        self.db.query(ChatbotMessage)
+                        .filter(
+                            ChatbotMessage.id == mid,
+                            ChatbotMessage.conversation_id == conversation_id,
+                        )
+                        .first()
+                    )
+                    if msg:
+                        before_ts = msg.created_at
+                        before_id = msg.id
+                except ValueError:
+                    pass
+
+        q = self.db.query(ChatbotMessage).filter(ChatbotMessage.conversation_id == conversation_id)
+
+        if before_ts is not None and before_id is not None:
+            q = q.filter(
+                tuple_(ChatbotMessage.created_at, ChatbotMessage.id)
+                < tuple_(before_ts, before_id)
+            )
+
+        q = q.order_by(desc(ChatbotMessage.created_at), desc(ChatbotMessage.id))
+
+        batch = q.limit(lim + 1).all()
+        has_more = len(batch) > lim
+        batch = batch[:lim]
+
+        # Chronological order for clients (oldest → newest within this page)
+        batch_chrono = list(reversed(batch))
+
+        next_before: Optional[str] = None
+        if batch:
+            oldest = batch[-1]  # smallest created_at in this page (we fetched desc)
+            next_before = f"{oldest.created_at.isoformat()}|{oldest.id}"
+        if not has_more:
+            next_before = None
+
+        return batch_chrono, has_more, next_before if has_more else None

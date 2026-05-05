@@ -52,3 +52,18 @@ class TemplateExecutionDetail(TemplateExecutionResponse):
 
     pass
 
+
+class TemplateExecutionPublic(BaseModel):
+    """Public API response for history restore (owner-scoped GET)."""
+
+    id: UUID
+    template_id: UUID
+    template_slug: str
+    template_version: Optional[int] = None
+    input_data: Dict[str, Any]
+    output_data: Optional[Dict[str, Any]] = None
+    model_used: Optional[str] = None
+    provider_used: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+

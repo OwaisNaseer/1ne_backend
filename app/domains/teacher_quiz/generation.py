@@ -80,6 +80,7 @@ class QuizGenerationService:
         teacher_notes: Optional[str],
         context_text: str,
         avoid_prompts: Optional[List[str]] = None,
+        must_differ_from: Optional[str] = None,
     ) -> Tuple[List[GeneratedQuestion], List[str], Dict[str, Any]]:
         """
         Generate a list of questions. Output is normalized for DB persistence and
@@ -140,6 +141,15 @@ class QuizGenerationService:
                 + "\n"
             )
 
+        replace_hint = ""
+        if must_differ_from and str(must_differ_from).strip():
+            out_old = re.sub(r"\s+", " ", str(must_differ_from).strip())[:420]
+            replace_hint = (
+                "\nREGENERATION (single slot):\n"
+                f"- The teacher is replacing an existing item. Outgoing question was: \"{out_old}\"\n"
+                "- Your new question MUST be clearly different: new scenario, different concept focus, or different numbers — not a light rewording.\n"
+            )
+
         schema = {
             "questions": [
                 {
@@ -170,11 +180,14 @@ REQUIREMENTS:\n
 - Points: MCQ 2, TF 1, Short 3 (you may vary +/-0.5 if needed).\n
 - Use the CONTEXT when present; if context is empty, generate from general knowledge and clearly keep it on-topic.\n
 {avoid_hint}\n
+{replace_hint}\n
 {teacher_line}\n
 SCHEMA EXAMPLE (do not copy values):\n{json.dumps(schema, ensure_ascii=False)}\n
 CONTEXT:\n{context}\n
 Return only JSON.\n
 """.strip()
+
+        llm_temp = 0.45 if (must_differ_from and str(must_differ_from).strip()) else 0.2
 
         llm_start = None
         try:
@@ -185,7 +198,7 @@ Return only JSON.\n
                 model_config={
                     "provider": getattr(llm_settings, "DEFAULT_MODEL_PROVIDER", "openai"),
                     "model": getattr(llm_settings, "DEFAULT_MODEL", "gpt-4o-mini"),
-                    "temperature": 0.2,
+                    "temperature": llm_temp,
                     "max_tokens": 2400,
                 },
             )

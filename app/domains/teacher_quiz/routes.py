@@ -33,6 +33,8 @@ from app.domains.teacher_quiz.schemas import (
     QuizResponse,
 )
 from app.domains.teacher_quiz.service import TeacherQuizService
+from app.domains.subscriptions.services.subscription_service import SubscriptionService
+from app.domains.user_history.quota_service import check_and_enforce
 
 logger = get_logger(__name__)
 
@@ -85,6 +87,8 @@ def _to_quiz_response(q: TeacherQuiz) -> QuizResponse:
         status=q.status,  # type: ignore[arg-type]
         assignedAt=q.assigned_at,
         dueAt=q.due_at,
+        createdAt=q.created_at,
+        updatedAt=q.updated_at,
         submissionCount=int(q.submission_count or 0),
         avgScore=float(q.avg_score or 0.0),
         topic=_topic_for_response(q),
@@ -148,9 +152,21 @@ def create_quiz(
     body: QuizCreateRequest,
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
+    response: Response = None,  # type: ignore[assignment]
 ) -> QuizResponse:
+    quota = None
+    if response is not None:
+        tier = SubscriptionService(db).get_user_tier(current_user.id).value
+        quota = check_and_enforce(db, user_id=str(current_user.id), source_type="quiz", tier=tier)
     svc = TeacherQuizService(db)
     quiz = svc.create_quiz(current_user=current_user, payload=body.model_dump())
+    if response is not None and quota is not None:
+        response.headers["X-History-Warning-Level"] = quota.warning_level
+        response.headers["X-History-Count"] = str(quota.current_count + 1)
+        response.headers["X-History-Limit"] = str(quota.limit)
+        if quota.evicted_id:
+            response.headers["X-History-Eviction-Title"] = quota.evicted_title or ""
+            response.headers["X-History-Eviction-Type"] = "quiz"
     return _to_quiz_response(quiz)
 
 

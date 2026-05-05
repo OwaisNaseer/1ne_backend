@@ -31,6 +31,8 @@ from app.domains.teacher_assignment.schemas import (
     RegeneratedTopicResponse,
 )
 from app.domains.teacher_assignment.service import TeacherAssignmentService
+from app.domains.subscriptions.services.subscription_service import SubscriptionService
+from app.domains.user_history.quota_service import check_and_enforce
 
 logger = get_logger(__name__)
 
@@ -60,6 +62,8 @@ def _to_assignment_response(a: TeacherAssignment) -> AssignmentResponse:
         classes=list(a.class_keys or []),
         type=a.assignment_type,
         dueAt=a.due_at,
+        createdAt=a.created_at,
+        updatedAt=a.updated_at,
         assignedCount=int(a.assigned_count or 0),
         submitted=int(a.submitted_count or 0),
         pending=int(a.pending_count or 0),
@@ -133,9 +137,21 @@ def create_assignment(
     body: AssignmentCreateRequest,
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
+    response: Response = None,  # type: ignore[assignment]
 ) -> AssignmentResponse:
+    quota = None
+    if response is not None:
+        tier = SubscriptionService(db).get_user_tier(current_user.id).value
+        quota = check_and_enforce(db, user_id=str(current_user.id), source_type="assignment", tier=tier)
     svc = TeacherAssignmentService(db)
     a = svc.create_assignment(current_user=current_user, payload=body.model_dump())
+    if response is not None and quota is not None:
+        response.headers["X-History-Warning-Level"] = quota.warning_level
+        response.headers["X-History-Count"] = str(quota.current_count + 1)
+        response.headers["X-History-Limit"] = str(quota.limit)
+        if quota.evicted_id:
+            response.headers["X-History-Eviction-Title"] = quota.evicted_title or ""
+            response.headers["X-History-Eviction-Type"] = "assignment"
     return _to_assignment_response(a)
 
 

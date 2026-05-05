@@ -276,6 +276,7 @@ class TeacherQuizService:
                     teacher_notes=quiz.teacher_notes,
                     context_text=context_text,
                     avoid_prompts=[q.prompt for q in (quiz.questions or []) if q.prompt],
+                    must_differ_from=question.prompt,
                 ),
                 timeout=timeout_s,
             )

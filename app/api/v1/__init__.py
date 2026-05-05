@@ -13,8 +13,12 @@ try:
     from app.domains.chatbots import routes as chatbot_routes
     from app.domains.pixgen import routes as pixgen_routes
     from app.domains.youtube_quiz import routes as youtube_quiz_routes
+    from app.domains.user_history import routes as user_history_routes
+    from app.domains.video_library import router as video_library_routes
     from app.domains.teacher_quiz import routes as teacher_quiz_routes
+    from app.domains.teacher_exam import routes as teacher_exam_routes
     from app.domains.teacher_worksheet import routes as teacher_worksheet_routes
+    from app.domains.teacher_stats import routes as teacher_stats_routes
     from app.domains.content_ingestion import routes as content_ingestion_routes
     from app.domains.content_ingestion.quiz_catalog_routes import router as quiz_catalog_router
     from app.domains.external_context import routes as metadata_routes
@@ -70,6 +74,9 @@ try:
 
     # PixGen routes
     router.include_router(pixgen_routes.router)
+
+    # Video library routes (YouTube quiz quick-start recommendations)
+    router.include_router(video_library_routes.router)
     
     # Content Ingestion routes
     try:
@@ -84,7 +91,9 @@ try:
 
     # Teacher Tools quiz routes
     router.include_router(teacher_quiz_routes.router)
+    router.include_router(teacher_exam_routes.router)
     router.include_router(teacher_worksheet_routes.router)
+    router.include_router(teacher_stats_routes.router)
     # Teacher Tools assignment routes are mounted in app.main (explicit include).
 
     # Core template routes
@@ -95,6 +104,9 @@ try:
 
     # YouTube quiz routes
     router.include_router(youtube_quiz_routes.router)
+
+    # History routes
+    router.include_router(user_history_routes.router)
 
     logger.info("All API v1 routes registered successfully")
 except Exception as e:

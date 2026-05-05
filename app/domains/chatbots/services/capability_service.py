@@ -7,6 +7,7 @@ from typing import Optional, Dict, Any, List
 from uuid import UUID
 from datetime import datetime, timezone
 
+from sqlalchemy import and_, desc
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
@@ -20,6 +21,8 @@ from app.llm.toon_handler import TOONHandler
 from app.domains.chatbots.models import (
     Chatbot,
     ChatbotCapability,
+    ChatbotConversation,
+    ChatbotMessage,
     ChatbotModelUsage,
     UserCapabilityProgress,
 )
@@ -66,6 +69,7 @@ class CapabilityService:
         input_data: str,
         parameters: Optional[Dict[str, Any]] = None,
         save_result: bool = True,
+        conversation_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
         """Execute a capability (e.g., text complexity analysis)."""
         # 1. Get chatbot
@@ -148,7 +152,118 @@ class CapabilityService:
             )
             self.db.add(usage_log)
 
-            # 9. Update user progress if save_result
+            # 9. Persist a traceable history item (chatbot_conversation) when requested.
+            # Many specialized chatbot pages use capabilities (not chat streaming), but users still
+            # expect these generations to show up in /history with a preview.
+            persisted_conversation_id: Optional[UUID] = None
+            if save_result:
+                title = capability.capability_name or f"Capability · {capability_key}"
+                meta_patch = {
+                    "chatbot_slug": chatbot.slug,
+                    "capability_key": capability_key,
+                    "capability_name": capability.capability_name,
+                    "parameters": parameters or {},
+                }
+
+                if conversation_id:
+                    conv = (
+                        self.db.query(ChatbotConversation)
+                        .filter(
+                            and_(
+                                ChatbotConversation.id == conversation_id,
+                                ChatbotConversation.user_id == user_id,
+                                ChatbotConversation.chatbot_id == chatbot_id,
+                            )
+                        )
+                        .first()
+                    )
+                    if not conv:
+                        raise ValueError("Conversation not found")
+
+                    conv.title = title
+                    existing_meta = conv.conversation_metadata or {}
+                    conv.conversation_metadata = {**existing_meta, **meta_patch}
+                    conv.updated_at = datetime.now(timezone.utc)
+                    usage_log.conversation_id = conv.id
+                    persisted_conversation_id = conv.id
+
+                    user_msg = (
+                        self.db.query(ChatbotMessage)
+                        .filter(
+                            ChatbotMessage.conversation_id == conv.id,
+                            ChatbotMessage.role == "user",
+                        )
+                        .order_by(desc(ChatbotMessage.created_at), desc(ChatbotMessage.id))
+                        .first()
+                    )
+                    msg_meta = {"capability_key": capability_key}
+                    if user_msg:
+                        user_msg.content = input_data
+                        user_msg.message_metadata = msg_meta
+                    else:
+                        self.db.add(
+                            ChatbotMessage(
+                                conversation_id=conv.id,
+                                role="user",
+                                content=input_data,
+                                message_metadata=msg_meta,
+                            )
+                        )
+
+                    assistant_msg = (
+                        self.db.query(ChatbotMessage)
+                        .filter(
+                            ChatbotMessage.conversation_id == conv.id,
+                            ChatbotMessage.role == "assistant",
+                        )
+                        .order_by(desc(ChatbotMessage.created_at), desc(ChatbotMessage.id))
+                        .first()
+                    )
+                    assistant_content = json.dumps(result, indent=2, ensure_ascii=False)
+                    if assistant_msg:
+                        assistant_msg.content = assistant_content
+                        assistant_msg.message_metadata = msg_meta
+                    else:
+                        self.db.add(
+                            ChatbotMessage(
+                                conversation_id=conv.id,
+                                role="assistant",
+                                content=assistant_content,
+                                message_metadata=msg_meta,
+                            )
+                        )
+                else:
+                    conv = ChatbotConversation(
+                        chatbot_id=chatbot_id,
+                        user_id=user_id,
+                        tenant_id=None,
+                        title=title,
+                        conversation_metadata=meta_patch,
+                    )
+                    self.db.add(conv)
+                    self.db.flush()  # get conv.id without committing
+
+                    usage_log.conversation_id = conv.id
+                    persisted_conversation_id = conv.id
+
+                    self.db.add(
+                        ChatbotMessage(
+                            conversation_id=conv.id,
+                            role="user",
+                            content=input_data,
+                            message_metadata={"capability_key": capability_key},
+                        )
+                    )
+                    self.db.add(
+                        ChatbotMessage(
+                            conversation_id=conv.id,
+                            role="assistant",
+                            content=json.dumps(result, indent=2, ensure_ascii=False),
+                            message_metadata={"capability_key": capability_key},
+                        )
+                    )
+
+            # 10. Update user progress if save_result
             if save_result:
                 self._update_user_progress(user_id, capability.id)
 
@@ -161,7 +276,7 @@ class CapabilityService:
                 description=f"Capability · {capability_key}",
             )
 
-            return {
+            out: Dict[str, Any] = {
                 "result": result,
                 "metadata": {
                     "processing_time_ms": llm_response.latency_ms,
@@ -172,6 +287,9 @@ class CapabilityService:
                 "usage_id": usage_log.id,
                 "progress_update": self._get_progress_update(user_id, capability.id),
             }
+            if save_result and persisted_conversation_id is not None:
+                out["conversation_id"] = persisted_conversation_id
+            return out
 
         except InsufficientCreditsError:
             raise

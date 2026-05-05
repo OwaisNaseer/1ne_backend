@@ -47,6 +47,8 @@ class Chatbot(Base):
 
     # Status
     is_active = Column(Boolean, default=True, nullable=False)
+    # When True, conversations are hidden from global user_history UNION (e.g. General Teaching Assistant).
+    exclude_from_history = Column(Boolean, default=False, nullable=False)
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

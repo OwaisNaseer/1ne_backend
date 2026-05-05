@@ -1,12 +1,14 @@
 """
 Chatbot API routes.
 """
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 import json
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status, Request
 from fastapi.responses import StreamingResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
@@ -19,9 +21,11 @@ from app.domains.chatbots.services.model_service import ChatbotModelService
 from app.domains.chatbots.services.conversation_service import ConversationService
 from app.domains.chatbots.services.message_service import MessageService
 from app.domains.chatbots.services.capability_service import CapabilityService
-from app.domains.chatbots.models import Chatbot
+from app.domains.chatbots.models import Chatbot, ChatbotConversation, ChatbotMessage
 from app.domains.subscriptions.exceptions import InsufficientCreditsError
 from app.domains.subscriptions.credit_errors import insufficient_credits_detail
+from app.domains.subscriptions.services.subscription_service import SubscriptionService
+from app.domains.user_history.quota_service import check_and_enforce
 
 logger = get_logger(__name__)
 
@@ -69,6 +73,45 @@ async def get_chatbot(
 
 
 # Conversation endpoints
+@router.get("/conversations", response_model=List[schemas.ConversationListItem])
+async def list_all_conversations(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return all conversations for the current user across all chatbots, sorted by updated_at desc."""
+    offset = (page - 1) * page_size
+
+    rows = (
+        db.query(ChatbotConversation, Chatbot, func.count(ChatbotMessage.id))
+        .join(Chatbot, Chatbot.id == ChatbotConversation.chatbot_id)
+        .outerjoin(ChatbotMessage, ChatbotMessage.conversation_id == ChatbotConversation.id)
+        .filter(ChatbotConversation.user_id == current_user.id)
+        .group_by(ChatbotConversation.id, Chatbot.id)
+        .order_by(ChatbotConversation.updated_at.desc())
+        .offset(offset)
+        .limit(page_size)
+        .all()
+    )
+
+    items: List[schemas.ConversationListItem] = []
+    for conv, bot, message_count in rows:
+        items.append(
+            schemas.ConversationListItem(
+                id=conv.id,
+                chatbot_id=conv.chatbot_id,
+                chatbot_slug=bot.slug,
+                chatbot_name=bot.name,
+                title=conv.title,
+                message_count=int(message_count or 0),
+                created_at=conv.created_at,
+                updated_at=conv.updated_at,
+            )
+        )
+    return items
+
+
 @router.get("/{slug}/conversations", response_model=List[schemas.ConversationListItem])
 async def list_conversations(
     slug: str,
@@ -109,26 +152,64 @@ async def list_conversations(
     return result
 
 
+@router.get("/conversations/{conversation_id}/messages", response_model=schemas.MessagesPage)
+async def list_conversation_messages(
+    conversation_id: UUID,
+    limit: int = Query(50, ge=1, le=200),
+    before: Optional[str] = Query(None, description="Cursor from prior page (next_before) to load older messages"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Paginated messages for a conversation (newest chunk first; scroll-up loads older via `before`)."""
+    conversation_service = ConversationService(db)
+    if not conversation_service.get_conversation(conversation_id, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        )
+    rows, has_more, next_before = conversation_service.list_messages(
+        conversation_id,
+        current_user.id,
+        limit=limit,
+        before_cursor=before,
+    )
+    items = [
+        schemas.MessageResponse(
+            id=m.id,
+            role=m.role,
+            content=m.content,
+            metadata=m.message_metadata,
+            created_at=m.created_at,
+        )
+        for m in rows
+    ]
+    return schemas.MessagesPage(items=items, has_more=has_more, next_before=next_before)
+
+
 @router.get("/conversations/{conversation_id}", response_model=schemas.ConversationDetail)
 async def get_conversation(
     conversation_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get conversation details with messages."""
+    """Get conversation metadata with the latest messages only (up to 50). Prefer GET .../messages for pagination."""
     conversation_service = ConversationService(db)
-    chatbot_service = ChatbotService(db)
-    
+
     conversation = conversation_service.get_conversation(conversation_id, current_user.id)
     if not conversation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Conversation not found",
         )
-    
-    # Get chatbot from conversation relationship
+
     chatbot = conversation.chatbot
-    
+
+    rows, _, _ = conversation_service.list_messages(
+        conversation_id,
+        current_user.id,
+        limit=50,
+        before_cursor=None,
+    )
     messages = [
         schemas.MessageResponse(
             id=msg.id,
@@ -137,9 +218,9 @@ async def get_conversation(
             metadata=msg.message_metadata,
             created_at=msg.created_at,
         )
-        for msg in conversation.messages
+        for msg in rows
     ]
-    
+
     return schemas.ConversationDetail(
         id=conversation.id,
         chatbot_id=conversation.chatbot_id,
@@ -159,6 +240,7 @@ async def send_message(
     http_request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    response: Response = None,  # type: ignore[assignment]
 ):
     """Send a message to a chatbot. Supports streaming if requested."""
     chatbot_service = ChatbotService(db)
@@ -187,10 +269,16 @@ async def send_message(
     accept_header = http_request.headers.get("accept", "").lower()
     stream_requested = "text/event-stream" in accept_header or http_request.query_params.get("stream") == "true"
 
+    # Quota enforcement: a new conversation is created when conversation_id is absent.
+    conversation_uuid = request.get_conversation_id_as_uuid()
+    quota = None
+    if conversation_uuid is None:
+        tier = SubscriptionService(db).get_user_tier(current_user.id).value
+        quota = check_and_enforce(db, user_id=str(current_user.id), source_type="chatbot_conversation", tier=tier)
+
     if stream_requested:
         async def generate_stream():
             try:
-                conversation_uuid = request.get_conversation_id_as_uuid()
                 async for chunk in message_service.stream_message(
                     chatbot_id=chatbot.id,
                     user_id=current_user.id,
@@ -219,13 +307,27 @@ async def send_message(
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
+                **(
+                    {
+                        "X-History-Warning-Level": quota.warning_level,
+                        "X-History-Count": str(quota.current_count + 1),
+                        "X-History-Limit": str(quota.limit),
+                        **(
+                            {
+                                "X-History-Eviction-Title": quota.evicted_title or "",
+                                "X-History-Eviction-Type": "chatbot_conversation",
+                            }
+                            if quota.evicted_id
+                            else {}
+                        ),
+                    }
+                    if quota is not None
+                    else {}
+                ),
             },
         )
     
     try:
-        # Convert conversation_id string to UUID if provided
-        conversation_uuid = request.get_conversation_id_as_uuid()
-        
         result = await message_service.send_message(
             chatbot_id=chatbot.id,
             user_id=current_user.id,
@@ -239,6 +341,14 @@ async def send_message(
                 "web_search": request.web_search,
             },
         )
+
+        if response is not None and quota is not None:
+            response.headers["X-History-Warning-Level"] = quota.warning_level
+            response.headers["X-History-Count"] = str(quota.current_count + 1)
+            response.headers["X-History-Limit"] = str(quota.limit)
+            if quota.evicted_id:
+                response.headers["X-History-Eviction-Title"] = quota.evicted_title or ""
+                response.headers["X-History-Eviction-Type"] = "chatbot_conversation"
         
         return schemas.SendMessageResponse(
             conversation_id=result["conversation_id"],
@@ -402,6 +512,7 @@ async def execute_capability(
             input_data=request.input,
             parameters=request.parameters,
             save_result=request.save_result,
+            conversation_id=request.conversation_id,
         )
         
         return schemas.ExecuteCapabilityResponse(
@@ -409,6 +520,7 @@ async def execute_capability(
             metadata=result.get("metadata"),
             usage_id=result.get("usage_id"),
             progress_update=result.get("progress_update"),
+            conversation_id=result.get("conversation_id"),
         )
     except InsufficientCreditsError as e:
         raise HTTPException(
@@ -426,3 +538,110 @@ async def execute_capability(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to execute capability",
         )
+
+
+@router.post("/{slug}/history-log", response_model=schemas.HistoryLogResponse)
+async def history_log(
+    slug: str,
+    body: schemas.HistoryLogRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Log a client-side generation as a chatbot conversation so it appears in /history."""
+    chatbot_service = ChatbotService(db)
+    chatbot = chatbot_service.get_chatbot_by_slug(slug)
+    if not chatbot:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chatbot not found")
+
+    conversation_service = ConversationService(db)
+    if body.conversation_id:
+        conversation = conversation_service.get_conversation(body.conversation_id, current_user.id)
+        if not conversation or conversation.chatbot_id != chatbot.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+
+        conversation.title = body.title or conversation.title
+        existing_meta = conversation.conversation_metadata or {}
+        conversation.conversation_metadata = {
+            **existing_meta,
+            **(body.metadata or {}),
+            "chatbot_slug": slug,
+            "chatbot_name": chatbot.name,
+        }
+        conversation.updated_at = datetime.now(timezone.utc)
+
+        user_msg = (
+            db.query(ChatbotMessage)
+            .filter(
+                ChatbotMessage.conversation_id == conversation.id,
+                ChatbotMessage.role == "user",
+            )
+            .order_by(ChatbotMessage.created_at.desc(), ChatbotMessage.id.desc())
+            .first()
+        )
+        if not user_msg:
+            user_msg = ChatbotMessage(
+                conversation_id=conversation.id,
+                role="user",
+                content=body.user_content,
+                message_metadata={"source": "history_log", **(body.metadata or {})},
+            )
+            db.add(user_msg)
+        else:
+            user_msg.content = body.user_content
+            user_msg.message_metadata = {"source": "history_log", **(body.metadata or {})}
+
+        assistant_msg = (
+            db.query(ChatbotMessage)
+            .filter(
+                ChatbotMessage.conversation_id == conversation.id,
+                ChatbotMessage.role == "assistant",
+            )
+            .order_by(ChatbotMessage.created_at.desc(), ChatbotMessage.id.desc())
+            .first()
+        )
+        if not assistant_msg:
+            assistant_msg = ChatbotMessage(
+                conversation_id=conversation.id,
+                role="assistant",
+                content=body.assistant_content,
+                message_metadata={"source": "history_log", **(body.metadata or {})},
+            )
+            db.add(assistant_msg)
+        else:
+            assistant_msg.content = body.assistant_content
+            assistant_msg.message_metadata = {"source": "history_log", **(body.metadata or {})}
+
+        db.commit()
+        return schemas.HistoryLogResponse(conversation_id=conversation.id)
+
+    conversation = conversation_service.create_conversation(
+        chatbot_id=chatbot.id,
+        user_id=current_user.id,
+        tenant_id=current_user.tenant_id,
+        title=body.title or "Generation",
+        metadata={
+            **(body.metadata or {}),
+            "chatbot_slug": slug,
+            "chatbot_name": chatbot.name,
+        },
+    )
+
+    db.add(
+        ChatbotMessage(
+            conversation_id=conversation.id,
+            role="user",
+            content=body.user_content,
+            message_metadata={"source": "history_log", **(body.metadata or {})},
+        )
+    )
+    db.add(
+        ChatbotMessage(
+            conversation_id=conversation.id,
+            role="assistant",
+            content=body.assistant_content,
+            message_metadata={"source": "history_log", **(body.metadata or {})},
+        )
+    )
+    db.commit()
+
+    return schemas.HistoryLogResponse(conversation_id=conversation.id)

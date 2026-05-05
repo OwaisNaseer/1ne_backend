@@ -52,3 +52,17 @@ class GenerationStatusResponse(GenerationResponse):
     model: Optional[str] = None
     error: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
+
+
+class PixGenGenerationDetailResponse(BaseModel):
+    """Full saved generation row for history restore / detail GET."""
+
+    id: UUID
+    imageUrl: Optional[str] = None
+    prompt: str
+    stylePreset: str
+    aspectRatio: str
+    status: str
+    createdAt: datetime
+
+    model_config = ConfigDict(from_attributes=True)

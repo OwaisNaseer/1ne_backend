@@ -3,12 +3,13 @@ PixGen API routes.
 """
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.domains.auth.dependencies import get_current_user
 from app.domains.auth.models import User
+from app.domains.pixgen import repository
 from app.domains.pixgen.schemas import (
     BatchGenerationResponse,
     GenerateBatchRequest,
@@ -16,11 +17,14 @@ from app.domains.pixgen.schemas import (
     GenerationResponse,
     GenerationStatusResponse,
     MyGenerationsResponse,
+    PixGenGenerationDetailResponse,
 )
 from app.domains.pixgen.services.pixgen_service import PixGenService
 from app.domains.subscriptions.services.credit_service import CreditService
+from app.domains.subscriptions.services.subscription_service import SubscriptionService
 from app.domains.subscriptions.credit_errors import insufficient_credits_detail
 from app.domains.subscriptions.feature_keys import PIXGEN_IMAGE
+from app.domains.user_history.quota_service import check_and_enforce
 
 router = APIRouter(prefix="/api/v1", tags=["pixgen"])
 
@@ -31,6 +35,7 @@ def generate_single_image(
     payload: GenerateImageRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    response: Response = None,  # type: ignore[assignment]
 ):
     """Generate a single image and store generation metadata."""
     credit_service = CreditService(db)
@@ -46,6 +51,17 @@ def generate_single_image(
             ),
         )
     service = PixGenService(db)
+    quota = None
+    try:
+        tier = SubscriptionService(db).get_user_tier(current_user.id).value
+        quota = check_and_enforce(
+            db,
+            user_id=str(current_user.id),
+            source_type="pixgen_generation",
+            tier=tier,
+        )
+    except HTTPException:
+        raise
     try:
         result = service.generate_single(user_id=current_user.id, payload=payload)
     except Exception as exc:
@@ -63,6 +79,13 @@ def generate_single_image(
             )
         except Exception:
             pass
+    if response is not None and quota is not None:
+        response.headers["X-History-Warning-Level"] = quota.warning_level
+        response.headers["X-History-Count"] = str(quota.current_count + 1)
+        response.headers["X-History-Limit"] = str(quota.limit)
+        if quota.evicted_id:
+            response.headers["X-History-Eviction-Title"] = quota.evicted_title or ""
+            response.headers["X-History-Eviction-Type"] = "pixgen_generation"
     return result
 
 
@@ -72,6 +95,7 @@ def generate_batch_images(
     payload: GenerateBatchRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    response: Response = None,  # type: ignore[assignment]
 ):
     """Generate multiple images for the same prompt parameters."""
     credit_service = CreditService(db)
@@ -88,8 +112,19 @@ def generate_batch_images(
             ),
         )
     service = PixGenService(db)
+    # Enforce quota per generated item; keep the last quota result for headers.
+    tier = SubscriptionService(db).get_user_tier(current_user.id).value
+    last_quota = None
     try:
-        items = service.generate_batch(user_id=current_user.id, payload=payload)
+        items = []
+        for _ in range(payload.batchSize):
+            last_quota = check_and_enforce(
+                db,
+                user_id=str(current_user.id),
+                source_type="pixgen_generation",
+                tier=tier,
+            )
+            items.append(service.generate_single(user_id=current_user.id, payload=payload, raise_on_error=False))
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -106,6 +141,13 @@ def generate_batch_images(
                 )
             except Exception:
                 pass
+    if response is not None and last_quota is not None:
+        response.headers["X-History-Warning-Level"] = last_quota.warning_level
+        response.headers["X-History-Count"] = str(last_quota.current_count + 1)
+        response.headers["X-History-Limit"] = str(last_quota.limit)
+        if last_quota.evicted_id:
+            response.headers["X-History-Eviction-Title"] = last_quota.evicted_title or ""
+            response.headers["X-History-Eviction-Type"] = "pixgen_generation"
     return BatchGenerationResponse(items=items)
 
 
@@ -136,3 +178,35 @@ def my_generations(
     service = PixGenService(db)
     items = service.list_user_generations(user_id=current_user.id, limit=limit, offset=offset)
     return MyGenerationsResponse(items=items)
+
+
+@router.get("/pixgen/generations/{generation_id}", response_model=PixGenGenerationDetailResponse)
+def get_generation_detail(
+    generation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    row = repository.get_generation(db, generation_id=generation_id, user_id=current_user.id)
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Generation not found")
+    return PixGenGenerationDetailResponse(
+        id=row.id,
+        imageUrl=row.image_url,
+        prompt=row.prompt,
+        stylePreset=row.style_preset,
+        aspectRatio=row.aspect_ratio,
+        status=row.status,
+        createdAt=row.created_at,
+    )
+
+
+@router.delete("/pixgen/generations/{generation_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_generation(
+    generation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    deleted = repository.delete_generation(db, generation_id=generation_id, user_id=current_user.id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Generation not found")
+    return None

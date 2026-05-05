@@ -70,7 +70,8 @@ class PixGenService:
             if raise_on_error:
                 raise
         finally:
-            self.db.flush()
+            # Persist the generation row (even on failure) so history can display it.
+            self.db.commit()
             self.db.refresh(generation)
 
         return GenerationResponse(

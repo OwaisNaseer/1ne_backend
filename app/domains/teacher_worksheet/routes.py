@@ -33,6 +33,8 @@ from app.domains.teacher_worksheet.schemas import (
     WorksheetSessionResponse,
 )
 from app.domains.teacher_worksheet.service import TeacherWorksheetService, _source_summary
+from app.domains.subscriptions.services.subscription_service import SubscriptionService
+from app.domains.user_history.quota_service import check_and_enforce
 
 logger = get_logger(__name__)
 
@@ -149,9 +151,21 @@ def create_worksheet(
     body: WorksheetCreateRequest,
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
+    response: Response = None,  # type: ignore[assignment]
 ) -> WorksheetApiResponse:
+    quota = None
+    if response is not None:
+        tier = SubscriptionService(db).get_user_tier(current_user.id).value
+        quota = check_and_enforce(db, user_id=str(current_user.id), source_type="worksheet", tier=tier)
     svc = TeacherWorksheetService(db)
     ws = svc.create_worksheet(current_user=current_user, payload=body.model_dump(by_alias=True))
+    if response is not None and quota is not None:
+        response.headers["X-History-Warning-Level"] = quota.warning_level
+        response.headers["X-History-Count"] = str(quota.current_count + 1)
+        response.headers["X-History-Limit"] = str(quota.limit)
+        if quota.evicted_id:
+            response.headers["X-History-Eviction-Title"] = quota.evicted_title or ""
+            response.headers["X-History-Eviction-Type"] = "worksheet"
     return _to_worksheet_response(ws)
 
 
