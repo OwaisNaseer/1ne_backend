@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone
 from sqlalchemy import Column, String, Integer, Float, Date, DateTime, Index
 from sqlalchemy.dialects.postgresql import UUID
 
-from app.db.base import Base
+from app.db.base_class import Base
 
 
 class RecommendationPerformanceSnapshot(Base):

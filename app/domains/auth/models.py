@@ -13,7 +13,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from app.db.base import Base
+from app.db.base_class import Base
 
 
 # Enums
@@ -149,6 +149,9 @@ class User(Base):
     full_name = Column(String(200), nullable=True)  # Computed field, can be updated
     phone = Column(String(20), nullable=True)
     profile_picture_url = Column(String(500), nullable=True)
+
+    # Preferences (language/timezone/theme, etc.)
+    preferences = Column(JSON, nullable=True)
     
     # Status
     status = Column(SQLEnum(UserStatus, values_callable=lambda x: [e.value for e in x]), default=UserStatus.PENDING_VERIFICATION, nullable=False, index=True)

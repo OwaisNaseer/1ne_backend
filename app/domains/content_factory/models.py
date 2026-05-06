@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, String, Text, Integer, Float, DateTime, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
-from app.db.base import Base
+from app.db.base_class import Base
 
 
 class ContentGenerationJob(Base):

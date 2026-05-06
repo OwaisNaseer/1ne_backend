@@ -2,7 +2,7 @@
 Authentication and authorization API routes.
 """
 import time
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks, UploadFile, File, Form
@@ -51,6 +51,8 @@ from app.domains.auth.schemas import (
     MembershipListResponse,
     MembershipSwitchRequest,
     MembershipSwitchResponse,
+    UserPreferencesUpdate,
+    UserPreferencesResponse,
 )
 from app.domains.auth.services import (
     AuthService,
@@ -74,6 +76,31 @@ from sqlalchemy.orm import joinedload
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["auth"])
+
+_ALLOWED_THEMES = {"light", "dark", "system"}
+_ALLOWED_LANGUAGES = {"en-US", "es-ES", "fr-FR", "pt-BR", "de-DE"}
+_VALID_TIMEZONES: set[str] | None = None
+
+
+def _get_valid_timezones() -> set[str]:
+    global _VALID_TIMEZONES
+    if _VALID_TIMEZONES is None:
+        try:
+            import zoneinfo
+            _VALID_TIMEZONES = zoneinfo.available_timezones()
+        except Exception:
+            _VALID_TIMEZONES = set()
+    return _VALID_TIMEZONES
+
+
+def _build_preferences_response(raw: Optional[Dict[str, Any]]) -> UserPreferencesResponse:
+    prefs = raw or {}
+    return UserPreferencesResponse(
+        theme=str(prefs.get("theme") or "system"),
+        language=str(prefs.get("language") or "en-US"),
+        timezone=str(prefs.get("timezone") or "UTC"),
+    )
+
 
 
 # ========== Public Auth Endpoints ==========
@@ -457,7 +484,8 @@ async def signup(
         # Generate refresh token
         refresh_token_string = create_refresh_token({"user_id": str(user.id)})
         refresh_token_hash = hash_token(refresh_token_string)
-        expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+        from app.core.config import settings
+        expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
         
         # Store refresh token - with error handling
         try:
@@ -666,7 +694,8 @@ async def switch_membership(
         # Create new refresh token
         refresh_token_string = create_refresh_token({"user_id": str(current_user.id)})
         refresh_token_hash = hash_token(refresh_token_string)
-        expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+        from app.core.config import settings
+        expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
         
         new_refresh_token = RefreshToken(
             user_id=current_user.id,
@@ -942,6 +971,7 @@ async def get_current_user_profile(
             "created_at": current_user.created_at,
             "updated_at": current_user.updated_at,
             "roles": roles_data if roles_data else [],
+            "preferences": _build_preferences_response(getattr(current_user, "preferences", None)).model_dump(),
         }
         
         # Attach teacher profile context if present
@@ -987,6 +1017,60 @@ async def get_current_user_profile(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve profile: {str(e)}"
         )
+
+
+@router.get("/auth/me/preferences", response_model=UserPreferencesResponse)
+async def get_my_preferences(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return the current user's display preferences."""
+    try:
+        db.refresh(current_user)
+        return _build_preferences_response(getattr(current_user, "preferences", None))
+    except Exception as e:
+        logger.error(f"Error retrieving preferences for user {current_user.id}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve preferences")
+
+
+@router.patch("/auth/me/preferences", response_model=UserPreferencesResponse)
+async def patch_my_preferences(
+    body: UserPreferencesUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Merge update one or more preferences keys for the current user."""
+    if body.theme is not None and body.theme not in _ALLOWED_THEMES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid theme value")
+    if body.language is not None and body.language not in _ALLOWED_LANGUAGES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported language code")
+    if body.timezone is not None:
+        valid_tzs = _get_valid_timezones()
+        if valid_tzs and body.timezone not in valid_tzs:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unknown IANA timezone: {body.timezone}",
+            )
+
+    try:
+        db.refresh(current_user)
+        current: Dict[str, Any] = dict(getattr(current_user, "preferences", None) or {})
+        patch = body.model_dump(exclude_unset=True)
+        for k in ("theme", "language", "timezone"):
+            if k in patch and patch[k] is not None:
+                current[k] = patch[k]
+
+        current_user.preferences = current
+        db.add(current_user)
+        db.commit()
+        db.refresh(current_user)
+        return _build_preferences_response(getattr(current_user, "preferences", None))
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating preferences for user {current_user.id}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update preferences")
 
 
 @router.put("/auth/me", response_model=UserResponse)

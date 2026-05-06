@@ -8,7 +8,7 @@ from typing import Optional
 from sqlalchemy import Column, String, Integer, JSON, Boolean, Numeric, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 
-from app.db.base import Base
+from app.db.base_class import Base
 
 
 class TemplateExecution(Base):

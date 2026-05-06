@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-change-in-production-use-openssl-rand-hex-32"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # Access tokens expire after 1 day (24 hours)
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 1       # Refresh tokens expire after 1 day
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 365     # Refresh tokens expire after 365 days
 
     # Password Policy
     PASSWORD_MIN_LENGTH: int = 10

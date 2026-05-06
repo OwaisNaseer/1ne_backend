@@ -9,7 +9,7 @@ from typing import Optional
 from sqlalchemy import Column, String, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 
-from app.db.base import Base
+from app.db.base_class import Base
 
 
 class TemplateFavorite(Base):

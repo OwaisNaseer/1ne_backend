@@ -1,7 +1,7 @@
 """
 Pydantic schemas for authentication and authorization.
 """
-from typing import Optional, List, Dict, Any  # noqa: F401 - Dict, Any used in UserProfile
+from typing import Optional, List, Dict, Any, Literal  # noqa: F401 - Dict, Any used in UserProfile
 from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
@@ -131,6 +131,20 @@ class UserUpdate(BaseModel):
     username: Optional[str] = None
 
 
+class UserPreferencesUpdate(BaseModel):
+    """Partial update of user preferences (all fields optional)."""
+    theme: Optional[Literal["light", "dark", "system"]] = None
+    language: Optional[str] = Field(None, max_length=20)  # IETF tag (e.g. 'en-US')
+    timezone: Optional[str] = Field(None, max_length=60)  # IANA tz (e.g. 'America/Denver')
+
+
+class UserPreferencesResponse(BaseModel):
+    """Full preferences object (defaults applied server-side)."""
+    theme: str = "system"
+    language: str = "en-US"
+    timezone: str = "UTC"
+
+
 class UserResponse(UserBase):
     """User response schema."""
     model_config = ConfigDict(from_attributes=True)
@@ -144,6 +158,7 @@ class UserResponse(UserBase):
     created_at: datetime
     updated_at: datetime
     roles: Optional[List["UserRoleInfo"]] = None
+    preferences: Optional[Dict[str, Any]] = None
 
 
 class UserRoleInfo(BaseModel):
@@ -161,6 +176,7 @@ class UserProfile(UserResponse):
     teacher_context: Optional[Dict[str, Any]] = None
     context_resolution_status: Optional[str] = None
     # profile_picture_url is already included via UserResponse inheritance
+    preferences: UserPreferencesResponse = Field(default_factory=UserPreferencesResponse)
 
 
 # Tenant schemas
