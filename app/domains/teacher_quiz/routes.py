@@ -33,6 +33,9 @@ from app.domains.teacher_quiz.schemas import (
     QuizResponse,
 )
 from app.domains.teacher_quiz.service import TeacherQuizService
+from app.domains.subscriptions.credit_errors import insufficient_credits_detail
+from app.domains.subscriptions.feature_keys import QUIZ_GENERATE, QUIZ_REGENERATE_QUESTION
+from app.domains.subscriptions.services.credit_service import CreditService
 from app.domains.subscriptions.services.subscription_service import SubscriptionService
 from app.domains.user_history.quota_service import check_and_enforce
 
@@ -336,6 +339,19 @@ async def regenerate_question(
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
 ) -> QuizResponse:
+    credit_service = CreditService(db)
+    check = credit_service.check_balance(current_user.id)
+    cost = credit_service.get_feature_cost(QUIZ_REGENERATE_QUESTION)
+    if not check.allowed or check.balance < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                check,
+                cost,
+                "You don't have enough credits to regenerate this question.",
+            ),
+        )
+
     svc = TeacherQuizService(db)
     try:
         quiz = await svc.regenerate_question(
@@ -343,6 +359,18 @@ async def regenerate_question(
             quiz_id=quiz_id,
             question_id=question_id,
         )
+        try:
+            credit_service.charge(
+                user_id=current_user.id,
+                feature_key=QUIZ_REGENERATE_QUESTION,
+                description=f"Quiz · regenerate question · {quiz.title or quiz_id}",
+                metadata={"quiz_id": str(quiz_id), "question_id": str(question_id)},
+            )
+        except Exception:
+            logger.exception(
+                "credit_charge_failed",
+                extra={"feature_key": QUIZ_REGENERATE_QUESTION},
+            )
         return _to_quiz_response(quiz)
     except QuizError as e:
         _raise_domain_error(e)
@@ -362,6 +390,19 @@ async def generate_quiz(
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
 ) -> GenerateResponse:
+    credit_service = CreditService(db)
+    check = credit_service.check_balance(current_user.id)
+    cost = credit_service.get_feature_cost(QUIZ_GENERATE)
+    if not check.allowed or check.balance < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                check,
+                cost,
+                "You don't have enough credits to generate a quiz.",
+            ),
+        )
+
     svc = TeacherQuizService(db)
     try:
         run, quiz, warnings = await svc.generate_for_quiz(
@@ -370,6 +411,15 @@ async def generate_quiz(
             req=body.model_dump(),
             idempotency_key=idempotency_key,
         )
+        try:
+            credit_service.charge(
+                user_id=current_user.id,
+                feature_key=QUIZ_GENERATE,
+                description=f"Quiz generation · {quiz.title or quiz_id}",
+                metadata={"quiz_id": str(quiz_id), "generation_run_id": str(run.id)},
+            )
+        except Exception:
+            logger.exception("credit_charge_failed", extra={"feature_key": QUIZ_GENERATE})
         response.headers["X-Request-Id"] = request.headers.get("X-Request-Id", str(run.id))
         return GenerateResponse(
             ok=True,

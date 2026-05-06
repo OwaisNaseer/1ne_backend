@@ -201,7 +201,8 @@ class UserUsageQuota(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "subscription_tier", name="uq_user_tier"),
-        Index("idx_user_tier", "user_id", "subscription_tier"),
+        # Distinct from UserSubscription.idx_user_tier — SQLite requires globally unique index names.
+        Index("idx_user_usage_quota_user_tier", "user_id", "subscription_tier"),
     )
 
     def __repr__(self) -> str:

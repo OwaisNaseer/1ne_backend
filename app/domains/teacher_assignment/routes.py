@@ -31,6 +31,13 @@ from app.domains.teacher_assignment.schemas import (
     RegeneratedTopicResponse,
 )
 from app.domains.teacher_assignment.service import TeacherAssignmentService
+from app.domains.subscriptions.credit_errors import insufficient_credits_detail
+from app.domains.subscriptions.feature_keys import (
+    ASSIGNMENT_GENERATE,
+    ASSIGNMENT_REGENERATE_LINE,
+    ASSIGNMENT_REGENERATE_TOPIC,
+)
+from app.domains.subscriptions.services.credit_service import CreditService
 from app.domains.subscriptions.services.subscription_service import SubscriptionService
 from app.domains.user_history.quota_service import check_and_enforce
 
@@ -242,6 +249,19 @@ async def generate_assignment(
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
 ) -> AssignmentGenerateResponse:
+    credit_service = CreditService(db)
+    check = credit_service.check_balance(current_user.id)
+    cost = credit_service.get_feature_cost(ASSIGNMENT_GENERATE)
+    if not check.allowed or check.balance < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                check,
+                cost,
+                "You don't have enough credits to generate an assignment.",
+            ),
+        )
+
     svc = TeacherAssignmentService(db)
     try:
         run, a, warnings = await svc.generate_brief(
@@ -250,6 +270,21 @@ async def generate_assignment(
             req=body.model_dump(),
             idempotency_key=idempotency_key,
         )
+        try:
+            credit_service.charge(
+                user_id=current_user.id,
+                feature_key=ASSIGNMENT_GENERATE,
+                description=f"Assignment generation · {a.title or assignment_id}",
+                metadata={
+                    "assignment_id": str(assignment_id),
+                    "generation_run_id": str(run.id),
+                },
+            )
+        except Exception:
+            logger.exception(
+                "credit_charge_failed",
+                extra={"feature_key": ASSIGNMENT_GENERATE},
+            )
         response.headers["X-Request-Id"] = request.headers.get("X-Request-Id", str(run.id))
         return AssignmentGenerateResponse(
             ok=True,
@@ -278,6 +313,19 @@ async def regenerate_topic(
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
 ) -> RegeneratedTopicResponse:
+    credit_service = CreditService(db)
+    check = credit_service.check_balance(current_user.id)
+    cost = credit_service.get_feature_cost(ASSIGNMENT_REGENERATE_TOPIC)
+    if not check.allowed or check.balance < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                check,
+                cost,
+                "You don't have enough credits to regenerate this topic.",
+            ),
+        )
+
     svc = TeacherAssignmentService(db)
     try:
         topic_stub, warnings = await svc.regenerate_topic(
@@ -286,6 +334,21 @@ async def regenerate_topic(
             topic_id=body.topicId,
             topic_title=body.topicTitle,
         )
+        try:
+            credit_service.charge(
+                user_id=current_user.id,
+                feature_key=ASSIGNMENT_REGENERATE_TOPIC,
+                description="Assignment · regenerate topic",
+                metadata={
+                    "assignment_id": str(assignment_id),
+                    "topic_id": body.topicId,
+                },
+            )
+        except Exception:
+            logger.exception(
+                "credit_charge_failed",
+                extra={"feature_key": ASSIGNMENT_REGENERATE_TOPIC},
+            )
         return RegeneratedTopicResponse(ok=True, topic=topic_stub, warnings=list(warnings))
     except AssignmentError as e:
         _raise_domain_error(e)
@@ -308,6 +371,19 @@ async def regenerate_line(
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
 ) -> RegeneratedLineResponse:
+    credit_service = CreditService(db)
+    check = credit_service.check_balance(current_user.id)
+    cost = credit_service.get_feature_cost(ASSIGNMENT_REGENERATE_LINE)
+    if not check.allowed or check.balance < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                check,
+                cost,
+                "You don't have enough credits to regenerate this line.",
+            ),
+        )
+
     svc = TeacherAssignmentService(db)
     try:
         line_id, line_text, warnings = await svc.regenerate_line(
@@ -317,6 +393,22 @@ async def regenerate_line(
             topic_title=body.topicTitle,
             line_index=body.lineIndex,
         )
+        try:
+            credit_service.charge(
+                user_id=current_user.id,
+                feature_key=ASSIGNMENT_REGENERATE_LINE,
+                description="Assignment · regenerate line",
+                metadata={
+                    "assignment_id": str(assignment_id),
+                    "topic_id": body.topicId,
+                    "line_index": body.lineIndex,
+                },
+            )
+        except Exception:
+            logger.exception(
+                "credit_charge_failed",
+                extra={"feature_key": ASSIGNMENT_REGENERATE_LINE},
+            )
         return RegeneratedLineResponse(
             ok=True, lineId=line_id, text=line_text, warnings=list(warnings)
         )

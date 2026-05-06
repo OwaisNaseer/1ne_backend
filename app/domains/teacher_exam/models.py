@@ -188,4 +188,8 @@ class TeacherExamGenerationRun(Base):
 
     exam = relationship("TeacherExam", back_populates="generation_runs")
 
-    __table_args__ = (Index("ix_exam_gen_exam_created", "exam_id", "created_at"),)
+    __table_args__ = (
+        Index("ix_exam_gen_exam_created", "exam_id", "created_at"),
+        # Idempotency is scoped per exam.
+        Index("ix_exam_gen_idempotency", "exam_id", "idempotency_key", unique=True),
+    )

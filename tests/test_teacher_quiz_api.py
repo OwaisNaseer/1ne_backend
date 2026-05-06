@@ -8,6 +8,7 @@ from app.main import app
 from app.db.session import get_db
 from app.domains.auth.dependencies import get_current_user
 from app.domains.auth.models import Tenant, TenantType, User, UserStatus, Role, RoleName, RoleScope, UserRole
+from app.domains.subscriptions.services.credit_service import CreditService
 
 
 @pytest.fixture
@@ -67,6 +68,9 @@ def client_with_auth(db):
     db.add(ur)
 
     db.commit()
+
+    # Generate routes require credits; give enough for patched LLM tests.
+    CreditService(db).top_up(user.id, 500, expires_at=None, source_description="pytest")
 
     def override_get_db():
         yield db

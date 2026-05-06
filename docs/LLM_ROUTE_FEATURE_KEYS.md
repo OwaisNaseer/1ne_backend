@@ -16,6 +16,17 @@ Values must match rows in `feature_credit_costs` (see `a9b8c7d6e5f4_create_credi
 | `/api/v1/youtube-quiz/generate` | POST | `YouTubeQuizService` → `ModelRouter` | `quiz_generate` | Requires auth |
 | `/api/v1/worksheets/generate` | POST | `WorksheetService` | `worksheet_generate` | See `content_ingestion/routes.py` (`router` prefix `/api/v1`) |
 | `/api/v1/content-factory/generate/micro-course` | POST | `ContentFactoryService` (admin) | `content_gap_fill` | `super_admin` / `org_admin` |
+| `/api/v1/teacher-tools/quizzes/{id}/generate` | POST | `TeacherQuizService` | `quiz_generate` | Full quiz generation |
+| `/api/v1/teacher-tools/quizzes/{id}/questions/{qid}/regenerate` | POST | `TeacherQuizService` | `quiz_regenerate_question` | Single question |
+| `/api/v1/teacher-tools/assignments/{id}/generate` | POST | `TeacherAssignmentService` | `assignment_generate` | Full brief |
+| `/api/v1/teacher-tools/assignments/{id}/topics/regenerate` | POST | `TeacherAssignmentService` | `assignment_regenerate_topic` | |
+| `/api/v1/teacher-tools/assignments/{id}/lines/regenerate` | POST | `TeacherAssignmentService` | `assignment_regenerate_line` | |
+| `/api/v1/teacher-tools/worksheets/{id}/generate` | POST | `TeacherWorksheetService` | `worksheet_generate` | |
+| `/api/v1/teacher-tools/worksheets/{id}/sessions/{sid}/blocks/{bid}/regenerate` | POST | `TeacherWorksheetService` | `worksheet_regenerate_block` | |
+| `/api/v1/teacher-tools/exams/{id}/generate` | POST | `TeacherExamService` | `exam_generate` | |
+| `/api/v1/teacher-tools/exams/{id}/questions/mcq/{qid}/regenerate` | POST | `TeacherExamService` | `exam_regenerate_mcq` | |
+| `/api/v1/teacher-tools/exams/{id}/questions/short/{qid}/regenerate` | POST | `TeacherExamService` | `exam_regenerate_short` | |
+| `/api/v1/teacher-tools/exams/{id}/questions/long/{qid}/regenerate` | POST | `TeacherExamService` | `exam_regenerate_long` | |
 
 **Seeded but not a separate charge path today**
 

@@ -39,6 +39,14 @@ from app.domains.teacher_exam.schemas import (
     ExamLongResponse,
 )
 from app.domains.teacher_exam.service import TeacherExamService, _source_summary
+from app.domains.subscriptions.credit_errors import insufficient_credits_detail
+from app.domains.subscriptions.feature_keys import (
+    EXAM_GENERATE,
+    EXAM_REGENERATE_LONG,
+    EXAM_REGENERATE_MCQ,
+    EXAM_REGENERATE_SHORT,
+)
+from app.domains.subscriptions.services.credit_service import CreditService
 from app.domains.subscriptions.services.subscription_service import SubscriptionService
 from app.domains.user_history.quota_service import check_and_enforce
 
@@ -266,6 +274,19 @@ async def generate_exam(
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
 ) -> ExamGenerateResponse:
+    credit_service = CreditService(db)
+    check = credit_service.check_balance(current_user.id)
+    cost = credit_service.get_feature_cost(EXAM_GENERATE)
+    if not check.allowed or check.balance < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                check,
+                cost,
+                "You don't have enough credits to generate an exam.",
+            ),
+        )
+
     svc = TeacherExamService(db)
     try:
         run, exam, warnings = await svc.generate_full_exam(
@@ -274,6 +295,18 @@ async def generate_exam(
             req=body.model_dump(),
             idempotency_key=idempotency_key,
         )
+        try:
+            credit_service.charge(
+                user_id=current_user.id,
+                feature_key=EXAM_GENERATE,
+                description=f"Exam generation · {exam.title or exam_id}",
+                metadata={
+                    "exam_id": str(exam_id),
+                    "generation_run_id": str(run.id),
+                },
+            )
+        except Exception:
+            logger.exception("credit_charge_failed", extra={"feature_key": EXAM_GENERATE})
         return ExamGenerateResponse(
             ok=True,
             generation_run_id=str(run.id),
@@ -520,9 +553,34 @@ async def regenerate_mcq(
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
 ) -> ExamApiResponse:
+    credit_service = CreditService(db)
+    check = credit_service.check_balance(current_user.id)
+    cost = credit_service.get_feature_cost(EXAM_REGENERATE_MCQ)
+    if not check.allowed or check.balance < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                check,
+                cost,
+                "You don't have enough credits to regenerate this question.",
+            ),
+        )
+
     svc = TeacherExamService(db)
     try:
         exam = await svc.regenerate_mcq(current_user=current_user, exam_id=exam_id, question_id=question_id)
+        try:
+            credit_service.charge(
+                user_id=current_user.id,
+                feature_key=EXAM_REGENERATE_MCQ,
+                description="Exam · regenerate MCQ",
+                metadata={"exam_id": str(exam_id), "question_id": str(question_id)},
+            )
+        except Exception:
+            logger.exception(
+                "credit_charge_failed",
+                extra={"feature_key": EXAM_REGENERATE_MCQ},
+            )
         return _to_exam_response(exam)
     except ExamError as e:
         _raise_domain_error(e)
@@ -539,9 +597,34 @@ async def regenerate_short(
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
 ) -> ExamApiResponse:
+    credit_service = CreditService(db)
+    check = credit_service.check_balance(current_user.id)
+    cost = credit_service.get_feature_cost(EXAM_REGENERATE_SHORT)
+    if not check.allowed or check.balance < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                check,
+                cost,
+                "You don't have enough credits to regenerate this question.",
+            ),
+        )
+
     svc = TeacherExamService(db)
     try:
         exam = await svc.regenerate_short(current_user=current_user, exam_id=exam_id, question_id=question_id)
+        try:
+            credit_service.charge(
+                user_id=current_user.id,
+                feature_key=EXAM_REGENERATE_SHORT,
+                description="Exam · regenerate short answer",
+                metadata={"exam_id": str(exam_id), "question_id": str(question_id)},
+            )
+        except Exception:
+            logger.exception(
+                "credit_charge_failed",
+                extra={"feature_key": EXAM_REGENERATE_SHORT},
+            )
         return _to_exam_response(exam)
     except ExamError as e:
         _raise_domain_error(e)
@@ -558,9 +641,34 @@ async def regenerate_long_route(
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
 ) -> ExamApiResponse:
+    credit_service = CreditService(db)
+    check = credit_service.check_balance(current_user.id)
+    cost = credit_service.get_feature_cost(EXAM_REGENERATE_LONG)
+    if not check.allowed or check.balance < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                check,
+                cost,
+                "You don't have enough credits to regenerate this question.",
+            ),
+        )
+
     svc = TeacherExamService(db)
     try:
         exam = await svc.regenerate_long(current_user=current_user, exam_id=exam_id, question_id=question_id)
+        try:
+            credit_service.charge(
+                user_id=current_user.id,
+                feature_key=EXAM_REGENERATE_LONG,
+                description="Exam · regenerate long answer",
+                metadata={"exam_id": str(exam_id), "question_id": str(question_id)},
+            )
+        except Exception:
+            logger.exception(
+                "credit_charge_failed",
+                extra={"feature_key": EXAM_REGENERATE_LONG},
+            )
         return _to_exam_response(exam)
     except ExamError as e:
         _raise_domain_error(e)

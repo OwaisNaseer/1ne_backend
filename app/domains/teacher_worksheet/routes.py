@@ -33,6 +33,9 @@ from app.domains.teacher_worksheet.schemas import (
     WorksheetSessionResponse,
 )
 from app.domains.teacher_worksheet.service import TeacherWorksheetService, _source_summary
+from app.domains.subscriptions.credit_errors import insufficient_credits_detail
+from app.domains.subscriptions.feature_keys import WORKSHEET_GENERATE, WORKSHEET_REGENERATE_BLOCK
+from app.domains.subscriptions.services.credit_service import CreditService
 from app.domains.subscriptions.services.subscription_service import SubscriptionService
 from app.domains.user_history.quota_service import check_and_enforce
 
@@ -240,6 +243,19 @@ async def generate_worksheet(
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
 ) -> WorksheetGenerateResponse:
+    credit_service = CreditService(db)
+    check = credit_service.check_balance(current_user.id)
+    cost = credit_service.get_feature_cost(WORKSHEET_GENERATE)
+    if not check.allowed or check.balance < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                check,
+                cost,
+                "You don't have enough credits to generate a worksheet.",
+            ),
+        )
+
     svc = TeacherWorksheetService(db)
     try:
         run, ws, warnings = await svc.generate_for_worksheet(
@@ -248,6 +264,21 @@ async def generate_worksheet(
             req=body.model_dump(by_alias=True),
             idempotency_key=idempotency_key,
         )
+        try:
+            credit_service.charge(
+                user_id=current_user.id,
+                feature_key=WORKSHEET_GENERATE,
+                description=f"Worksheet generation · {ws.title or worksheet_id}",
+                metadata={
+                    "worksheet_id": str(worksheet_id),
+                    "generation_run_id": str(run.id),
+                },
+            )
+        except Exception:
+            logger.exception(
+                "credit_charge_failed",
+                extra={"feature_key": WORKSHEET_GENERATE},
+            )
         response.headers["X-Request-Id"] = request.headers.get("X-Request-Id", str(run.id))
         return WorksheetGenerateResponse(
             ok=True,
@@ -451,6 +482,19 @@ async def regenerate_block(
     current_user: User = Depends(require_any_role(*_ALLOWED_ROLES)),
     db: Session = Depends(get_db),
 ) -> WorksheetApiResponse:
+    credit_service = CreditService(db)
+    check = credit_service.check_balance(current_user.id)
+    cost = credit_service.get_feature_cost(WORKSHEET_REGENERATE_BLOCK)
+    if not check.allowed or check.balance < cost:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=insufficient_credits_detail(
+                check,
+                cost,
+                "You don't have enough credits to regenerate this block.",
+            ),
+        )
+
     svc = TeacherWorksheetService(db)
     try:
         ws = await svc.regenerate_block(
@@ -459,6 +503,22 @@ async def regenerate_block(
             session_id=session_id,
             block_id=block_id,
         )
+        try:
+            credit_service.charge(
+                user_id=current_user.id,
+                feature_key=WORKSHEET_REGENERATE_BLOCK,
+                description="Worksheet · regenerate block",
+                metadata={
+                    "worksheet_id": str(worksheet_id),
+                    "session_id": str(session_id),
+                    "block_id": str(block_id),
+                },
+            )
+        except Exception:
+            logger.exception(
+                "credit_charge_failed",
+                extra={"feature_key": WORKSHEET_REGENERATE_BLOCK},
+            )
         return _to_worksheet_response(ws)
     except WorksheetError as e:
         _raise_domain_error(e)
